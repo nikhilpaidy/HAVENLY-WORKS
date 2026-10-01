@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "AURA Coworking",
+    "slug": "aura-coworking",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#090D16"
+      }
+    },
+    "extra": {
+      "apiBaseUrl": "http://192.168.29.165:6018/api/v1"
+    },
+    "plugins": [
+      "expo-asset",
+      "expo-font"
+    ]
+  }
+}

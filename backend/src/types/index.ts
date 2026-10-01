@@ -1,0 +1,117 @@
+/**
+ * Central type definitions and enums for the Coworking Platform.
+ * Supports multi-tenant isolation, granular staff permissions, 
+ * complaint ticketing, and emergency slot overrides.
+ */
+
+export enum UserRole {
+  SUPER_ADMIN = 'SUPER_ADMIN',
+  SUPER_ADMIN_STAFF = 'SUPER_ADMIN_STAFF',
+  COWORKING_ADMIN = 'COWORKING_ADMIN',
+  COWORKING_ADMIN_STAFF = 'COWORKING_ADMIN_STAFF',
+  COMPANY_OWNER = 'COMPANY_OWNER',
+  COMPANY_BOOKING_MANAGER = 'COMPANY_BOOKING_MANAGER',
+  COMPANY_STAFF = 'COMPANY_STAFF',
+  EMPLOYEE = 'EMPLOYEE'
+}
+
+export enum BookingStatus {
+  CONFIRMED = 'CONFIRMED',
+  CHECKED_IN = 'CHECKED_IN',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+  NO_SHOW = 'NO_SHOW',
+  EXPIRED = 'EXPIRED'
+}
+
+export enum InvoiceStatus {
+  DRAFT = 'DRAFT',
+  ISSUED = 'ISSUED',
+  PAID = 'PAID',
+  PARTIALLY_PAID = 'PARTIALLY_PAID',
+  VOID = 'VOID'
+}
+
+export enum PaymentMethod {
+  BANK_TRANSFER = 'BANK_TRANSFER',
+  CASH = 'CASH',
+  CHEQUE = 'CHEQUE',
+  POS_CARD = 'POS_CARD',
+  OTHER = 'OTHER'
+}
+
+export enum PaymentStatus {
+  RECORDED = 'RECORDED',
+  VERIFIED = 'VERIFIED',
+  REJECTED = 'REJECTED',
+  REFUNDED = 'REFUNDED'
+}
+
+export enum BlogPostStatus {
+  DRAFT = 'DRAFT',
+  PUBLISHED = 'PUBLISHED',
+  ARCHIVED = 'ARCHIVED'
+}
+
+export enum NotificationType {
+  BOOKING_CONFIRMED = 'BOOKING_CONFIRMED',
+  BOOKING_CANCELLED = 'BOOKING_CANCELLED',
+  ALLOWANCE_LOW = 'ALLOWANCE_LOW',
+  ALLOWANCE_GRANTED = 'ALLOWANCE_GRANTED',
+  INVOICE_GENERATED = 'INVOICE_GENERATED',
+  PAYMENT_RECORDED = 'PAYMENT_RECORDED',
+  TICKET_CREATED = 'TICKET_CREATED',
+  TICKET_UPDATED = 'TICKET_UPDATED',
+  OVERRIDE_REQUESTED = 'OVERRIDE_REQUESTED',
+  OVERRIDE_APPROVED = 'OVERRIDE_APPROVED',
+  OVERRIDE_REJECTED = 'OVERRIDE_REJECTED',
+  SYSTEM = 'SYSTEM'
+}
+
+export enum TicketCategory {
+  WIFI_NETWORK = 'WIFI_NETWORK',
+  WATER_REFRESHMENTS = 'WATER_REFRESHMENTS',
+  WASHROOM_HYGIENE = 'WASHROOM_HYGIENE',
+  AIR_CONDITIONING = 'AIR_CONDITIONING',
+  DISPLAY_AV = 'DISPLAY_AV',
+  POWER_ELECTRICAL = 'POWER_ELECTRICAL',
+  OTHER = 'OTHER'
+}
+
+export enum TicketPriority {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+  URGENT = 'URGENT'
+}
+
+export enum TicketStatus {
+  OPEN = 'OPEN',
+  IN_PROGRESS = 'IN_PROGRESS',
+  RESOLVED = 'RESOLVED',
+  CLOSED = 'CLOSED'
+}
+
+export enum OverrideRequestStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED'
+}
+
+export interface JwtPayload {
+  userId: string;
+  email: string;
+  role: UserRole;
+  organizationId?: string;
+  companyId?: string;
+  permissions?: string[];
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: JwtPayload;
+      correlationId?: string;
+    }
+  }
+}

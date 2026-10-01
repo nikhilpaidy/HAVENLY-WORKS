@@ -1,0 +1,28 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, Building2 } from 'lucide-react';
+
+export const NotFoundPage: React.FC = () => {
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-32 text-center space-y-6">
+      <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-[#C5A880] mx-auto flex items-center justify-center">
+        <Building2 className="w-8 h-8" />
+      </div>
+      <h1 className="text-4xl font-extrabold font-display text-slate-900 dark:text-white">
+        404 — Page Not Found
+      </h1>
+      <p className="text-slate-600 dark:text-slate-400 text-sm max-w-md mx-auto">
+        The requested architectural space or page does not exist. Please return to the homepage or explore our journal.
+      </p>
+      <div>
+        <Link
+          to="/"
+          className="inline-flex items-center space-x-2 px-6 py-3 rounded-2xl bg-[#141A29] dark:bg-[#C5A880] text-white dark:text-[#090D16] font-semibold text-sm shadow-md"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Return Home</span>
+        </Link>
+      </div>
+    </div>
+  );
+};
