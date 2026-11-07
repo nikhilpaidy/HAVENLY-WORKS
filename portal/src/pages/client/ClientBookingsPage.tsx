@@ -111,10 +111,10 @@ export const ClientBookingsPage: React.FC = () => {
 
         <Link
           to="/client/rooms"
-          className="px-4 py-2.5 rounded-xl bg-[#141A29] dark:bg-[#C5A880] text-white dark:text-[#090D16] text-xs font-bold shadow-md hover:opacity-95 transition-all flex items-center space-x-1.5 self-start sm:self-auto"
+          className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all flex items-center space-x-1.5 self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
-          <span>New Booking</span>
+          <span>Discover & Reserve Rooms</span>
         </Link>
       </div>
 
@@ -180,7 +180,14 @@ export const ClientBookingsPage: React.FC = () => {
               ) : bookings.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400">
-                    No reservations found in this view.
+                    <p className="mb-3">No reservations found in this view.</p>
+                    <Link
+                      to="/client/rooms"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-sm transition-colors"
+                    >
+                      <DoorOpen className="w-4 h-4" />
+                      Discover & Reserve Rooms
+                    </Link>
                   </td>
                 </tr>
               ) : (

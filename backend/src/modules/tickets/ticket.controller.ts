@@ -15,6 +15,7 @@ import {
 import { apiSuccess } from '../../utils/response.js';
 import { AppError } from '../../middleware/errorHandler.js';
 import { TicketCategory, TicketPriority, TicketStatus, UserRole } from '../../types/index.js';
+import { Company } from '../companies/company.model.js';
 
 export async function createTicketHandler(req: Request, res: Response, next: NextFunction) {
   try {
@@ -29,11 +30,14 @@ export async function createTicketHandler(req: Request, res: Response, next: Nex
       throw new AppError('User must belong to an organization and company to raise tickets', 400);
     }
 
+    const company = await Company.findById(user.companyId).select('locationId');
+    const targetLocationId = locationId || company?.locationId || undefined;
+
     const ticket = await createTicket({
       organizationId: user.organizationId,
       companyId: user.companyId,
       raisedByUserId: user.userId,
-      locationId: locationId || undefined,
+      locationId: targetLocationId,
       category: category as TicketCategory,
       priority: priority as TicketPriority,
       title: title.trim(),

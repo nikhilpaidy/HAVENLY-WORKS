@@ -46,6 +46,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
         items: [
           { label: 'Coworking Admins', to: '/super-admin/admins', icon: UserCheck },
           { label: 'Hub Organizations', to: '/super-admin/organizations', icon: Building },
+          { label: 'Workspace Types', to: '/admin/workspace-types', icon: Layers },
           { label: 'Operations Staff', to: '/super-admin/staff', icon: Shield }
         ]
       },
@@ -65,7 +66,8 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
         items: [
           { label: 'Hub Dashboard', to: '/admin/dashboard', icon: LayoutDashboard },
           { label: 'Locations & Hours', to: '/admin/locations', icon: Building },
-          { label: 'Meeting Rooms', to: '/admin/rooms', icon: DoorOpen }
+          { label: 'Meeting Rooms', to: '/admin/rooms', icon: DoorOpen },
+          { label: 'Workspace Types', to: '/admin/workspace-types', icon: Layers }
         ]
       },
       {

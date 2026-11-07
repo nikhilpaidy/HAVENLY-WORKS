@@ -60,14 +60,14 @@ export const ClientAllowancePage: React.FC = () => {
     <div className="space-y-8">
       {/* Top Header */}
       <div>
-        <span className="text-xs font-semibold uppercase tracking-wider text-[#B6925A] dark:text-[#C5A880]">
-          Quota Accounting
+        <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+          Annual Quota Accounting
         </span>
         <h1 className="text-2xl sm:text-3xl font-bold font-display text-slate-900 dark:text-white mt-1">
-          Free-Hour Allowance & Ledger
+          Complimentary Annual Allowance & Ledger
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          Transparent, double-entry audit trail of your company's monthly meeting room hours.
+          Transparent, double-entry audit trail of your company's annual meeting room and workspace hours pool.
         </p>
       </div>
 
@@ -81,16 +81,16 @@ export const ClientAllowancePage: React.FC = () => {
       {/* Quota Highlights */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="glass-panel p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-1">
-          <span className="text-xs text-slate-500 font-medium">Monthly Granted</span>
+          <span className="text-xs text-slate-500 font-medium">Annual Quota Pool</span>
           <div className="text-2xl font-bold font-display text-slate-900 dark:text-white">
-            {totalGranted} hrs
+            {totalGranted} hrs / yr
           </div>
-          <span className="text-[10px] text-slate-400">Granted automatically on cycle reset</span>
+          <span className="text-[10px] text-slate-400">Granted annually per calendar cycle</span>
         </div>
 
         <div className="glass-panel p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-1">
           <span className="text-xs text-slate-500 font-medium">Available Balance</span>
-          <div className="text-2xl font-bold font-display text-emerald-500">
+          <div className="text-2xl font-bold font-display text-emerald-600 dark:text-emerald-400">
             {availableHours} hrs
           </div>
           <span className="text-[10px] text-slate-400">Ready for instant room reservations</span>
@@ -98,7 +98,7 @@ export const ClientAllowancePage: React.FC = () => {
 
         <div className="glass-panel p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-1">
           <span className="text-xs text-slate-500 font-medium">Locked / Reserved</span>
-          <div className="text-2xl font-bold font-display text-blue-500">
+          <div className="text-2xl font-bold font-display text-emerald-500">
             {reservedHours} hrs
           </div>
           <span className="text-[10px] text-slate-400">Allocated to upcoming scheduled meetings</span>
@@ -106,7 +106,7 @@ export const ClientAllowancePage: React.FC = () => {
 
         <div className="glass-panel p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-1">
           <span className="text-xs text-slate-500 font-medium">Consumed to Date</span>
-          <div className="text-2xl font-bold font-display text-[#B6925A] dark:text-[#C5A880]">
+          <div className="text-2xl font-bold font-display text-slate-700 dark:text-slate-200">
             {consumedHours} hrs
           </div>
           <span className="text-[10px] text-slate-400">Completed meeting hours</span>
@@ -117,7 +117,7 @@ export const ClientAllowancePage: React.FC = () => {
       <div className="glass-panel p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-3">
         <div className="flex justify-between items-center text-xs">
           <span className="font-semibold text-slate-800 dark:text-slate-200">
-            Monthly Quota Utilization: {percentUsed}%
+            Annual Quota Utilization: {percentUsed}%
           </span>
           <span className="text-slate-500">
             {usedHours} consumed / reserved of {totalGranted} hours
@@ -125,7 +125,7 @@ export const ClientAllowancePage: React.FC = () => {
         </div>
         <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-[#B6925A] to-[#D4AF37] transition-all duration-500 rounded-full"
+            className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 transition-all duration-500 rounded-full"
             style={{ width: `${percentUsed}%` }}
           />
         </div>

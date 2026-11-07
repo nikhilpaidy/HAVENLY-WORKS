@@ -15,6 +15,7 @@ import { BlogPost } from '../modules/blogs/blog.model.js';
 import { Notification } from '../modules/notifications/notification.model.js';
 import { Ticket } from '../modules/tickets/ticket.model.js';
 import { EmergencyOverride } from '../modules/overrides/override.model.js';
+import { WorkspaceType } from '../modules/workspace-types/workspace-type.model.js';
 import {
   UserRole,
   BlogPostStatus,
@@ -53,7 +54,8 @@ async function runSeed() {
     BlogPost.deleteMany({}),
     Notification.deleteMany({}),
     Ticket.deleteMany({}),
-    EmergencyOverride.deleteMany({})
+    EmergencyOverride.deleteMany({}),
+    WorkspaceType.deleteMany({})
   ]);
 
   const superAdminPasswordHash = await bcrypt.hash('Nikhil@123', 10);
@@ -93,6 +95,81 @@ async function runSeed() {
     },
     isActive: true
   });
+
+  await WorkspaceType.create([
+    {
+      organizationId: organization._id,
+      name: 'Meeting Room',
+      code: 'MEETING_ROOM',
+      description: 'Collaborative rooms with interactive displays, video bar, and acoustic glass.',
+      icon: 'Users',
+      capacityDefault: 8,
+      hourlyRateDefault: 650
+    },
+    {
+      organizationId: organization._id,
+      name: 'Boardroom',
+      code: 'BOARDROOM',
+      description: 'Executive conference suites with premium audio-visual equipment and leather seating.',
+      icon: 'ShieldCheck',
+      capacityDefault: 16,
+      hourlyRateDefault: 1200
+    },
+    {
+      organizationId: organization._id,
+      name: 'Flex Desk',
+      code: 'FLEX_DESK',
+      description: 'Flexible open workstations with high-speed WiFi and coffee lounge access.',
+      icon: 'Laptop',
+      capacityDefault: 1,
+      hourlyRateDefault: 150
+    },
+    {
+      organizationId: organization._id,
+      name: 'Fixed Desk',
+      code: 'FIXED_DESK',
+      description: 'Dedicated reserved desk with lockable storage pedestal and ergonomic chair.',
+      icon: 'Briefcase',
+      capacityDefault: 1,
+      hourlyRateDefault: 200
+    },
+    {
+      organizationId: organization._id,
+      name: 'Private Office',
+      code: 'PRIVATE_OFFICE',
+      description: 'Enclosed team cabins with independent AC, biometric lock, and whiteboards.',
+      icon: 'Building2',
+      capacityDefault: 6,
+      hourlyRateDefault: 950
+    },
+    {
+      organizationId: organization._id,
+      name: 'Day Pass',
+      code: 'DAY_PASS',
+      description: 'All-day drop-in pass for freelancers and travelers with unlimited beverages.',
+      icon: 'Calendar',
+      capacityDefault: 1,
+      hourlyRateDefault: 120
+    },
+    {
+      organizationId: organization._id,
+      name: 'Hot Desk',
+      code: 'HOT_DESK',
+      description: 'On-demand communal desk seating in vibrant open atrium areas.',
+      icon: 'Coffee',
+      capacityDefault: 1,
+      hourlyRateDefault: 130
+    },
+    {
+      organizationId: organization._id,
+      name: 'Podcast Studio',
+      code: 'PODCAST_STUDIO',
+      description: 'Acoustically treated studio with broadcast microphones and audio mixer.',
+      icon: 'Mic',
+      capacityDefault: 4,
+      hourlyRateDefault: 800
+    }
+  ]);
 
   const cwsAdmin = await User.create({
     name: 'HavenlyWork Admin',
@@ -343,6 +420,72 @@ async function runSeed() {
     {
       organizationId: organization._id,
       locationId: madhapurLoc._id,
+      name: 'Open Flex Desk (Hot Desking)',
+      code: 'MDP-FLX-01',
+      workspaceType: 'FLEX_DESK',
+      description: 'Dynamic plug-and-play flex desk in our collaborative open plan atrium with cafe perks.',
+      capacity: 1,
+      hourlyRate: 140,
+      dailyRate: 650,
+      rating: 4.8,
+      reviewCount: 280,
+      saveBadge: 'Best Value',
+      photos: [
+        'https://images.unsplash.com/photo-1497215842964-222b430dc094?w=800&q=80'
+      ],
+      amenities: ['High-Speed WiFi', 'Power Bar', 'Unlimited Tea/Coffee', 'Community Lounge'],
+      slotIntervalMinutes: 60,
+      minBookingMinutes: 60,
+      maxBookingMinutes: 480,
+      isActive: true
+    },
+    {
+      organizationId: organization._id,
+      locationId: madhapurLoc._id,
+      name: 'Fixed Personal Desk with Pedestal',
+      code: 'MDP-FIX-01',
+      workspaceType: 'FIXED_DESK',
+      description: 'Your permanent reserved desk with steel lockable drawers, pin-up board, and ergonomic chair.',
+      capacity: 1,
+      hourlyRate: 190,
+      dailyRate: 850,
+      rating: 4.9,
+      reviewCount: 310,
+      saveBadge: 'Popular',
+      photos: [
+        'https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?w=800&q=80'
+      ],
+      amenities: ['High-Speed WiFi', 'Lockable Storage', 'Ergonomic Chair', 'Mail Handling'],
+      slotIntervalMinutes: 60,
+      minBookingMinutes: 60,
+      maxBookingMinutes: 480,
+      isActive: true
+    },
+    {
+      organizationId: organization._id,
+      locationId: madhapurLoc._id,
+      name: 'Madhapur Creator Studio (Podcast)',
+      code: 'MDP-POD-01',
+      workspaceType: 'PODCAST_STUDIO',
+      description: 'Soundproof podcast and video production studio with Shure SM7B mics and 4K lighting.',
+      capacity: 4,
+      hourlyRate: 850,
+      dailyRate: 4900,
+      rating: 5.0,
+      reviewCount: 140,
+      saveBadge: 'Creator Pick',
+      photos: [
+        'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800&q=80'
+      ],
+      amenities: ['Shure SM7B Mics', 'Rodecaster Pro II', 'Acoustic Soundproofing', 'Key Lights'],
+      slotIntervalMinutes: 60,
+      minBookingMinutes: 60,
+      maxBookingMinutes: 240,
+      isActive: true
+    },
+    {
+      organizationId: organization._id,
+      locationId: madhapurLoc._id,
       name: 'Cyber Conference Suite',
       code: 'MDP-CONF-01',
       workspaceType: 'MEETING_ROOM',
@@ -433,6 +576,7 @@ async function runSeed() {
 
   const company = await Company.create({
     organizationId: organization._id,
+    locationId: madhapurLoc._id,
     name: 'Aptapace Private Limited',
     billingEmail: 'aptapace@gmail.com',
     phone: '+91 98451 55667',
@@ -448,7 +592,8 @@ async function runSeed() {
     },
     status: 'ACTIVE',
     allowanceConfig: {
-      allowancePeriodType: 'MONTHLY',
+      allowancePeriodType: 'ANNUAL',
+      annualFreeHours: 240,
       monthlyFreeHours: 20,
       additionalHourlyRate: 500,
       currency: 'INR',
@@ -492,20 +637,22 @@ async function runSeed() {
   ]);
 
   const now = new Date();
-  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  const currentYear = now.getFullYear();
+  const periodStart = new Date(Date.UTC(currentYear, 0, 1, 0, 0, 0));
+  const periodEnd = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59));
 
   const allowance = await AllowancePeriod.create({
     companyId: company._id,
     organizationId: organization._id,
-    periodYear: now.getFullYear(),
-    periodMonth: now.getMonth() + 1,
+    periodYear: currentYear,
+    periodMonth: 0,
     periodStart,
     periodEnd,
-    grantedHours: 20,
+    grantedHours: 240,
     consumedHours: 2,
-    reservedHours: 0,
-    balanceHours: 18
+    reservedHours: 1,
+    balanceHours: 237,
+    notes: '2026 Annual Quota for Aptapace'
   });
 
   await AllowanceLedgerEntry.create([
@@ -514,9 +661,9 @@ async function runSeed() {
       organizationId: organization._id,
       allowancePeriodId: allowance._id,
       changeType: 'GRANT',
-      hours: 20,
-      balanceAfter: 20,
-      notes: 'Initial workspace quota granted'
+      hours: 240,
+      balanceAfter: 240,
+      notes: '2026 Annual complimentary workspace quota granted'
     },
     {
       companyId: company._id,
@@ -524,8 +671,17 @@ async function runSeed() {
       allowancePeriodId: allowance._id,
       changeType: 'CONSUME',
       hours: -2,
-      balanceAfter: 18,
+      balanceAfter: 238,
       notes: 'Consumed 2 hrs for strategy review meeting'
+    },
+    {
+      companyId: company._id,
+      organizationId: organization._id,
+      allowancePeriodId: allowance._id,
+      changeType: 'RESERVE',
+      hours: -1,
+      balanceAfter: 237,
+      notes: 'Reserved 1 hr for upcoming client demo'
     }
   ]);
 

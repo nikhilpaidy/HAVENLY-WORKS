@@ -24,6 +24,7 @@ import { SuperAdminStaffPage } from './pages/super-admin/SuperAdminStaffPage.js'
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage.js';
 import { AdminLocationsPage } from './pages/admin/AdminLocationsPage.js';
 import { AdminRoomsPage } from './pages/admin/AdminRoomsPage.js';
+import { AdminWorkspaceTypesPage } from './pages/admin/AdminWorkspaceTypesPage.js';
 import { AdminCompaniesPage } from './pages/admin/AdminCompaniesPage.js';
 import { AdminBookingsPage } from './pages/admin/AdminBookingsPage.js';
 import { AdminBillingPage } from './pages/admin/AdminBillingPage.js';
@@ -92,6 +93,7 @@ export const App: React.FC = () => {
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="locations" element={<AdminLocationsPage />} />
               <Route path="rooms" element={<AdminRoomsPage />} />
+              <Route path="workspace-types" element={<AdminWorkspaceTypesPage />} />
               <Route path="companies" element={<AdminCompaniesPage />} />
               <Route path="bookings" element={<AdminBookingsPage />} />
               <Route path="tickets" element={<AdminTicketsPage />} />

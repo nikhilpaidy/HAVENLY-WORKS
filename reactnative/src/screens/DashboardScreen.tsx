@@ -8,7 +8,8 @@ import {
   RefreshControl,
   TextInput,
   Dimensions,
-  Alert
+  Alert,
+  Modal
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { mobileApi } from '../services/api';
@@ -48,8 +49,20 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [selectedLocation, setSelectedLocation] = useState<LocationArea>(HYDERABAD_AREAS[0]);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [passType, setPassType] = useState<'DAY_PASS' | 'HOURLY'>('DAY_PASS');
-  const [personCount, setPersonCount] = useState(1);
+  
+  // Pass Type dropdown: Hourly, Day Pass, Week Pass, Monthly Pass
+  const [passType, setPassType] = useState<string>('Day Pass');
+  const [showPassPicker, setShowPassPicker] = useState(false);
+
+  // Person Count dropdown: 1, 2, 4, 6, 8, 12, 16+ or custom
+  const [personCount, setPersonCount] = useState<number | string>(1);
+  const [showPersonPicker, setShowPersonPicker] = useState(false);
+  const [customPersonInput, setCustomPersonInput] = useState('');
+
+  // Desk Type dropdown: Desk, Flex Desk, Fixed Desk, Meeting Room, Boardroom, Private Office, Day Pass, Podcast Studio
+  const [deskType, setDeskType] = useState<string>('Desk');
+  const [showDeskPicker, setShowDeskPicker] = useState(false);
+
   const [spaceTypeFilter, setSpaceTypeFilter] = useState('ALL');
   const [selectedRadiusKm, setSelectedRadiusKm] = useState(2);
 
@@ -58,6 +71,13 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [allowance, setAllowance] = useState<any>(null);
   const [upcomingBookings, setUpcomingBookings] = useState<any[]>([]);
   const [pendingGuestCount, setPendingGuestCount] = useState(0);
+
+  // Super Admin view
+  const [superAdminAdmins, setSuperAdminAdmins] = useState<any[]>([]);
+  const [expandedAdminId, setExpandedAdminId] = useState<string | null>(null);
+
+  // Pagination / infinite scroll (20 per page)
+  const [displayLimit, setDisplayLimit] = useState(20);
 
   const [selectedSpace, setSelectedSpace] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -74,6 +94,15 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       setNearbyLocations(nearbyData?.locations || []);
 
       if (user) {
+        if (isSuperAdmin) {
+          try {
+            const adminsData = await mobileApi.getSuperAdminAdmins();
+            setSuperAdminAdmins(adminsData || []);
+          } catch (e) {
+            console.warn('Failed to load super admin admins:', e);
+          }
+        }
+
         if (!isSuperAdmin && !isCoworkingAdmin) {
           try {
             const [allowanceData, myBookings] = await Promise.all([
@@ -188,28 +217,42 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             />
           </View>
 
+          <TouchableOpacity
+            style={[styles.fullWidthOptionPill, { borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}
+            onPress={() => setShowPassPicker(true)}
+            activeOpacity={0.8}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="calendar-outline" size={15} color="#00A859" style={{ marginRight: 8 }} />
+              <Text style={[styles.optionPillText, { color: theme.textPrimary, fontSize: 13 }]}>
+                {passType}
+              </Text>
+            </View>
+            <Ionicons name="chevron-down" size={14} color={theme.textMuted} />
+          </TouchableOpacity>
+
           <View style={styles.searchOptionRow}>
             <TouchableOpacity
-              style={[
-                styles.optionPill,
-                { borderColor: theme.inputBorder, backgroundColor: theme.inputBg },
-                passType === 'DAY_PASS' && { borderColor: '#00A859', backgroundColor: isDark ? 'rgba(0,168,89,0.15)' : '#DCFCE7' }
-              ]}
-              onPress={() => setPassType(passType === 'DAY_PASS' ? 'HOURLY' : 'DAY_PASS')}
+              style={[styles.optionPill, { borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}
+              onPress={() => setShowPersonPicker(true)}
+              activeOpacity={0.8}
             >
-              <Ionicons name="calendar-outline" size={14} color="#00A859" style={{ marginRight: 6 }} />
+              <Ionicons name="person-outline" size={15} color="#00A859" style={{ marginRight: 6 }} />
               <Text style={[styles.optionPillText, { color: theme.textPrimary }]}>
-                {passType === 'DAY_PASS' ? 'Day Pass' : 'Hourly Slot'}
+                {personCount} {typeof personCount === 'number' && personCount === 1 ? 'Person' : 'People'}
               </Text>
               <Ionicons name="chevron-down" size={12} color={theme.textMuted} style={{ marginLeft: 4 }} />
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.optionPill, { borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}
-              onPress={() => setPersonCount(personCount === 1 ? 4 : personCount === 4 ? 8 : 1)}
+              onPress={() => setShowDeskPicker(true)}
+              activeOpacity={0.8}
             >
-              <Ionicons name="person-outline" size={14} color="#00A859" style={{ marginRight: 6 }} />
-              <Text style={[styles.optionPillText, { color: theme.textPrimary }]}>{personCount} Person</Text>
+              <Ionicons name="briefcase-outline" size={15} color="#00A859" style={{ marginRight: 6 }} />
+              <Text style={[styles.optionPillText, { color: theme.textPrimary }]} numberOfLines={1}>
+                {deskType}
+              </Text>
               <Ionicons name="chevron-down" size={12} color={theme.textMuted} style={{ marginLeft: 4 }} />
             </TouchableOpacity>
           </View>
@@ -228,6 +271,15 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
         contentContainerStyle={{ paddingTop: 10, paddingBottom: 100 }}
+        onScroll={({ nativeEvent }) => {
+          const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+          if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 200) {
+            if (displayLimit < filteredWorkspaces.length) {
+              setDisplayLimit((prev) => prev + 20);
+            }
+          }
+        }}
+        scrollEventThrottle={300}
       >
         {isCoworkingAdmin && pendingGuestCount > 0 && (
           <View style={styles.adminAlertCard}>
@@ -242,6 +294,89 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             >
               <Text style={styles.adminAlertActionText}>Review</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {isSuperAdmin && superAdminAdmins.length > 0 && (
+          <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+            <View style={[styles.sectionHeader, { paddingHorizontal: 0, marginTop: 4 }]}>
+              <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
+                Coworking Operators ({superAdminAdmins.length})
+              </Text>
+            </View>
+            {superAdminAdmins.map((adm) => {
+              const isExpanded = expandedAdminId === adm._id;
+              return (
+                <View
+                  key={adm._id}
+                  style={[styles.adminOperatorCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
+                >
+                  <TouchableOpacity
+                    style={styles.adminOperatorHeader}
+                    onPress={() => setExpandedAdminId(isExpanded ? null : adm._id)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.adminOperatorAvatar}>
+                      <Ionicons name="business" size={20} color="#00A859" />
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={[styles.adminOperatorName, { color: theme.textPrimary }]}>{adm.name}</Text>
+                      <Text style={[styles.adminOperatorEmail, { color: theme.textMuted }]}>{adm.email}</Text>
+                      <Text style={[styles.adminOperatorOrg, { color: '#00A859' }]}>
+                        {adm.organizationId?.name || 'HavenlyWork Coworking'}
+                      </Text>
+                    </View>
+                    <Ionicons
+                      name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={20}
+                      color={theme.textMuted}
+                    />
+                  </TouchableOpacity>
+
+                  {isExpanded && (
+                    <View style={[styles.adminOperatorExpanded, { borderTopColor: theme.cardBorder }]}>
+                      <Text style={[styles.expandedSubtitle, { color: theme.textPrimary }]}>
+                        Managed Hubs ({adm.locations?.length || 0})
+                      </Text>
+                      {adm.locations?.map((loc: any) => (
+                        <View key={loc._id} style={styles.miniLocationRow}>
+                          <Ionicons name="location" size={14} color="#00A859" style={{ marginRight: 6 }} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.miniLocationName, { color: theme.textPrimary }]}>{loc.name}</Text>
+                            <Text style={[styles.miniLocationAddr, { color: theme.textMuted }]}>
+                              {loc.address?.street}, {loc.address?.city}
+                            </Text>
+                          </View>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#00A859' }}>
+                            ★ {loc.rating || 4.9}
+                          </Text>
+                        </View>
+                      ))}
+
+                      <Text style={[styles.expandedSubtitle, { color: theme.textPrimary, marginTop: 12 }]}>
+                        Client Companies ({adm.companies?.length || 0})
+                      </Text>
+                      {adm.companies?.map((comp: any) => (
+                        <View key={comp._id} style={styles.miniCompanyRow}>
+                          <Ionicons name="people" size={14} color="#00A859" style={{ marginRight: 6 }} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.miniLocationName, { color: theme.textPrimary }]}>{comp.name}</Text>
+                            <Text style={[styles.miniLocationAddr, { color: theme.textMuted }]}>
+                              Assigned Hub: {comp.locationId?.name || 'Madhapur Hub'} • {comp.billingEmail}
+                            </Text>
+                          </View>
+                          <View style={styles.miniQuotaPill}>
+                            <Text style={styles.miniQuotaText}>
+                              {comp.allowanceConfig?.annualFreeHours || 240}h / yr
+                            </Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
           </View>
         )}
 
@@ -463,6 +598,123 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           setShowLocationPicker(false);
         }}
       />
+
+      {/* Pass Type Picker Modal */}
+      <Modal visible={showPassPicker} transparent animationType="fade" onRequestClose={() => setShowPassPicker(false)}>
+        <TouchableOpacity
+          style={styles.pickerBackdrop}
+          activeOpacity={1}
+          onPress={() => setShowPassPicker(false)}
+        >
+          <View style={[styles.pickerSheet, { backgroundColor: theme.card }]}>
+            <Text style={[styles.pickerTitle, { color: theme.textPrimary }]}>Select Pass Type</Text>
+            {['Hourly', 'Day Pass', 'Week Pass', 'Monthly Pass'].map((opt) => (
+              <TouchableOpacity
+                key={opt}
+                style={styles.pickerOptionRow}
+                onPress={() => {
+                  setPassType(opt);
+                  setShowPassPicker(false);
+                }}
+              >
+                <Text style={[styles.pickerOptionText, { color: passType === opt ? '#00A859' : theme.textPrimary }]}>
+                  {opt}
+                </Text>
+                {passType === opt && <Ionicons name="checkmark-circle" size={18} color="#00A859" />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Person Count Picker Modal */}
+      <Modal visible={showPersonPicker} transparent animationType="fade" onRequestClose={() => setShowPersonPicker(false)}>
+        <TouchableOpacity
+          style={styles.pickerBackdrop}
+          activeOpacity={1}
+          onPress={() => setShowPersonPicker(false)}
+        >
+          <View style={[styles.pickerSheet, { backgroundColor: theme.card }]}>
+            <Text style={[styles.pickerTitle, { color: theme.textPrimary }]}>Select Number of People</Text>
+            {[1, 2, 4, 6, 8, 12, 16].map((num) => (
+              <TouchableOpacity
+                key={num}
+                style={styles.pickerOptionRow}
+                onPress={() => {
+                  setPersonCount(num);
+                  setShowPersonPicker(false);
+                }}
+              >
+                <Text style={[styles.pickerOptionText, { color: personCount === num ? '#00A859' : theme.textPrimary }]}>
+                  {num} {num === 1 ? 'Person' : 'People'}
+                </Text>
+                {personCount === num && <Ionicons name="checkmark-circle" size={18} color="#00A859" />}
+              </TouchableOpacity>
+            ))}
+
+            <View style={styles.customInputRow}>
+              <TextInput
+                style={[styles.customInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                placeholder="Or custom count (e.g. 25)"
+                placeholderTextColor={theme.textMuted}
+                keyboardType="number-pad"
+                value={customPersonInput}
+                onChangeText={setCustomPersonInput}
+              />
+              <TouchableOpacity
+                style={styles.customInputBtn}
+                onPress={() => {
+                  const val = parseInt(customPersonInput, 10);
+                  if (val && val > 0) {
+                    setPersonCount(val);
+                    setCustomPersonInput('');
+                    setShowPersonPicker(false);
+                  }
+                }}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Set</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Desk Type Picker Modal */}
+      <Modal visible={showDeskPicker} transparent animationType="fade" onRequestClose={() => setShowDeskPicker(false)}>
+        <TouchableOpacity
+          style={styles.pickerBackdrop}
+          activeOpacity={1}
+          onPress={() => setShowDeskPicker(false)}
+        >
+          <View style={[styles.pickerSheet, { backgroundColor: theme.card }]}>
+            <Text style={[styles.pickerTitle, { color: theme.textPrimary }]}>Select Workspace Type</Text>
+            {[
+              'Desk',
+              'Flex Desk',
+              'Fixed Desk',
+              'Meeting Room',
+              'Boardroom',
+              'Private Office',
+              'Day Pass',
+              'Podcast Studio'
+            ].map((d) => (
+              <TouchableOpacity
+                key={d}
+                style={styles.pickerOptionRow}
+                onPress={() => {
+                  setDeskType(d);
+                  setShowDeskPicker(false);
+                }}
+              >
+                <Text style={[styles.pickerOptionText, { color: deskType === d ? '#00A859' : theme.textPrimary }]}>
+                  {d}
+                </Text>
+                {deskType === d && <Ionicons name="checkmark-circle" size={18} color="#00A859" />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -818,5 +1070,147 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     marginTop: 8
+  },
+  fullWidthOptionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    marginBottom: 10
+  },
+  adminOperatorCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 1
+  },
+  adminOperatorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  adminOperatorAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  adminOperatorName: {
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  adminOperatorEmail: {
+    fontSize: 12,
+    marginTop: 1
+  },
+  adminOperatorOrg: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2
+  },
+  adminOperatorExpanded: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1
+  },
+  expandedSubtitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8
+  },
+  miniLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.06)'
+  },
+  miniLocationName: {
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  miniLocationAddr: {
+    fontSize: 11,
+    marginTop: 1
+  },
+  miniCompanyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.06)'
+  },
+  miniQuotaPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: '#DCFCE7'
+  },
+  miniQuotaText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#00A859'
+  },
+  pickerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end'
+  },
+  pickerSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: 460
+  },
+  pickerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 16,
+    textAlign: 'center'
+  },
+  pickerOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.08)'
+  },
+  pickerOptionText: {
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  customInputRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+    alignItems: 'center'
+  },
+  customInput: {
+    flex: 1,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    fontSize: 14
+  },
+  customInputBtn: {
+    backgroundColor: '#00A859',
+    height: 42,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center'
   }
 });

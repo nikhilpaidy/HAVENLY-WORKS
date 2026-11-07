@@ -37,6 +37,7 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
   const { theme, isDark } = useTheme();
 
   const [activeTab, setActiveTab] = useState<'About' | 'Workspace' | 'Gallery' | 'Reviews'>('About');
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [readMore, setReadMore] = useState(false);
 
@@ -160,19 +161,62 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
           <View style={styles.galleryContainer}>
-            <SafeImage uri={images[0]} style={styles.heroPhoto} borderRadius={24} />
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onScroll={({ nativeEvent }) => {
+                const slide = Math.round(nativeEvent.contentOffset.x / (width - 40));
+                if (slide !== activeImageIndex && slide >= 0 && slide < images.length) {
+                  setActiveImageIndex(slide);
+                }
+              }}
+              scrollEventThrottle={16}
+            >
+              {images.map((img: string, idx: number) => (
+                <View key={idx} style={{ width: width - 40, height: 220 }}>
+                  <SafeImage uri={img} style={styles.heroPhoto} borderRadius={24} />
+                </View>
+              ))}
+            </ScrollView>
+
             <View style={styles.badge360}>
               <Ionicons name="scan-outline" size={14} color="#FFFFFF" />
               <Text style={styles.badge360Text}>360°</Text>
             </View>
 
-            <View style={styles.thumbRow}>
-              {images.slice(1, 4).map((img: string, idx: number) => (
-                <SafeImage key={idx} uri={img} style={styles.thumb} borderRadius={12} />
-              ))}
-              <View style={[styles.moreThumb, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-                <Text style={styles.moreThumbText}>+10</Text>
+            {images.length > 1 && (
+              <View style={styles.paginationDotsRow}>
+                {images.map((_: any, idx: number) => (
+                  <View
+                    key={idx}
+                    style={[
+                      styles.paginationDot,
+                      activeImageIndex === idx && styles.paginationDotActive
+                    ]}
+                  />
+                ))}
               </View>
+            )}
+
+            <View style={styles.thumbRow}>
+              {images.slice(0, 4).map((img: string, idx: number) => (
+                <TouchableOpacity key={idx} onPress={() => setActiveImageIndex(idx)}>
+                  <SafeImage
+                    uri={img}
+                    style={[
+                      styles.thumb,
+                      activeImageIndex === idx && { borderWidth: 2, borderColor: '#00A859' }
+                    ]}
+                    borderRadius={12}
+                  />
+                </TouchableOpacity>
+              ))}
+              {images.length > 4 && (
+                <View style={[styles.moreThumb, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+                  <Text style={styles.moreThumbText}>+{images.length - 4}</Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -557,6 +601,28 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 15
+  },
+  paginationDotsRow: {
+    position: 'absolute',
+    bottom: 60,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6
+  },
+  paginationDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.5)'
+  },
+  paginationDotActive: {
+    width: 18,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#00A859'
   },
   infoSection: {
     paddingHorizontal: 20,

@@ -14,25 +14,38 @@ export async function getOrCreateCurrentAllowance(
     throw new AppError('Company not found', 404);
   }
 
-  const period = getBillingPeriod(date, company.allowanceConfig.billingCycleStartDay);
+  const isAnnual = company.allowanceConfig.allowancePeriodType !== 'MONTHLY';
+  const periodYear = date.getFullYear();
+  const periodMonth = isAnnual ? 0 : date.getMonth() + 1;
 
   let allowance = await AllowancePeriod.findOne({
     companyId: company._id,
-    periodYear: period.year,
-    periodMonth: period.month
+    periodYear,
+    periodMonth
   }).session(session || null);
 
   if (!allowance) {
-    const grantedHours = company.allowanceConfig.monthlyFreeHours;
+    const grantedHours = isAnnual
+      ? (company.allowanceConfig.annualFreeHours || 240)
+      : (company.allowanceConfig.monthlyFreeHours || 20);
+
+    const periodStart = isAnnual
+      ? new Date(Date.UTC(periodYear, 0, 1, 0, 0, 0))
+      : new Date(Date.UTC(periodYear, date.getMonth(), 1, 0, 0, 0));
+
+    const periodEnd = isAnnual
+      ? new Date(Date.UTC(periodYear, 11, 31, 23, 59, 59))
+      : new Date(Date.UTC(periodYear, date.getMonth() + 1, 0, 23, 59, 59));
+
     const docs = await AllowancePeriod.create(
       [
         {
           companyId: company._id,
           organizationId: company.organizationId,
-          periodYear: period.year,
-          periodMonth: period.month,
-          periodStart: period.start,
-          periodEnd: period.end,
+          periodYear,
+          periodMonth,
+          periodStart,
+          periodEnd,
           grantedHours,
           consumedHours: 0,
           reservedHours: 0,
@@ -52,7 +65,9 @@ export async function getOrCreateCurrentAllowance(
           changeType: 'GRANT',
           hours: grantedHours,
           balanceAfter: grantedHours,
-          notes: `Monthly quota granted for ${period.month}/${period.year}`
+          notes: isAnnual
+            ? `Annual complimentary quota granted for year ${periodYear}`
+            : `Monthly quota granted for ${periodMonth}/${periodYear}`
         }
       ],
       { session }

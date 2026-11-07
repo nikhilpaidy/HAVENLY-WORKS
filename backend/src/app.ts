@@ -26,6 +26,7 @@ import healthRoutes from './modules/health/health.routes.js';
 import ticketRoutes from './modules/tickets/ticket.routes.js';
 import overrideRoutes from './modules/overrides/override.routes.js';
 import staffRoutes from './modules/staff/staff.routes.js';
+import workspaceTypeRoutes from './modules/workspace-types/workspace-type.routes.js';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerDocument } from './config/swagger.js';
 
@@ -91,6 +92,7 @@ export function createApp(): Express {
   apiV1.use('/tickets', ticketRoutes);
   apiV1.use('/overrides', overrideRoutes);
   apiV1.use('/staff', staffRoutes);
+  apiV1.use('/workspace-types', workspaceTypeRoutes);
 
   app.use('/api/v1', apiV1);
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));

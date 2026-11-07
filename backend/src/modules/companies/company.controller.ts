@@ -49,20 +49,26 @@ export async function getCompanyById(req: Request, res: Response, next: NextFunc
       throw new AppError('Unauthorized access to this company', 403);
     }
 
-    const period = getBillingPeriod(new Date(), company.allowanceConfig.billingCycleStartDay);
+    const isAnnual = company.allowanceConfig?.allowancePeriodType !== 'MONTHLY';
+    const periodYear = new Date().getFullYear();
+    const periodMonth = isAnnual ? 0 : new Date().getMonth() + 1;
     const allowance = await AllowancePeriod.findOne({
       companyId: company._id,
-      periodYear: period.year,
-      periodMonth: period.month
+      periodYear,
+      periodMonth
     });
+
+    const defaultHours = isAnnual
+      ? (company.allowanceConfig?.annualFreeHours || 240)
+      : (company.allowanceConfig?.monthlyFreeHours || 20);
 
     return apiSuccess(res, {
       company,
       currentAllowance: allowance || {
-        grantedHours: company.allowanceConfig.monthlyFreeHours,
+        grantedHours: defaultHours,
         consumedHours: 0,
         reservedHours: 0,
-        balanceHours: company.allowanceConfig.monthlyFreeHours
+        balanceHours: defaultHours
       }
     });
   } catch (error) {
@@ -88,18 +94,31 @@ export async function createCompany(req: Request, res: Response, next: NextFunct
       organizationId
     });
 
-    const period = getBillingPeriod(new Date(), company.allowanceConfig.billingCycleStartDay);
+    const isAnnual = company.allowanceConfig?.allowancePeriodType !== 'MONTHLY';
+    const periodYear = new Date().getFullYear();
+    const periodMonth = isAnnual ? 0 : new Date().getMonth() + 1;
+    const grantedHours = isAnnual
+      ? (company.allowanceConfig?.annualFreeHours || 240)
+      : (company.allowanceConfig?.monthlyFreeHours || 20);
+
+    const periodStart = isAnnual
+      ? new Date(Date.UTC(periodYear, 0, 1, 0, 0, 0))
+      : new Date(Date.UTC(periodYear, new Date().getMonth(), 1, 0, 0, 0));
+    const periodEnd = isAnnual
+      ? new Date(Date.UTC(periodYear, 11, 31, 23, 59, 59))
+      : new Date(Date.UTC(periodYear, new Date().getMonth() + 1, 0, 23, 59, 59));
+
     await AllowancePeriod.create({
       companyId: company._id,
       organizationId,
-      periodYear: period.year,
-      periodMonth: period.month,
-      periodStart: period.start,
-      periodEnd: period.end,
-      grantedHours: company.allowanceConfig.monthlyFreeHours,
+      periodYear,
+      periodMonth,
+      periodStart,
+      periodEnd,
+      grantedHours,
       consumedHours: 0,
       reservedHours: 0,
-      balanceHours: company.allowanceConfig.monthlyFreeHours
+      balanceHours: grantedHours
     });
 
     let ownerUser = null;

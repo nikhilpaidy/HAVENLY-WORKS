@@ -36,7 +36,8 @@ const AllowancePeriodSchema = new Schema<IAllowancePeriod>(
     periodMonth: {
       type: Number,
       required: true,
-      min: 1,
+      default: 0,
+      min: 0,
       max: 12
     },
     periodStart: {

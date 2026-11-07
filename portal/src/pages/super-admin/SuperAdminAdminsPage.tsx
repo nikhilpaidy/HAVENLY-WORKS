@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { superAdminApi } from '../../services/api.js';
-import { UserCheck, Plus, CheckCircle, XCircle, Search, Building, Edit3, Shield, Mail, Phone, Lock } from 'lucide-react';
+import { UserCheck, Plus, CheckCircle, XCircle, Search, Building, Edit3, Shield, Mail, Phone, Lock, ChevronDown, ChevronUp, MapPin, Users, Star } from 'lucide-react';
 import { AlertModal } from '../../components/AlertModal.js';
 
 export const SuperAdminAdminsPage: React.FC = () => {
@@ -8,6 +8,7 @@ export const SuperAdminAdminsPage: React.FC = () => {
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [expandedAdminId, setExpandedAdminId] = useState<string | null>(null);
   
   // Provision Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -225,7 +226,8 @@ export const SuperAdminAdminsPage: React.FC = () => {
                 </tr>
               ) : (
                 filteredAdmins.map((a) => (
-                  <tr key={a._id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">
+                  <React.Fragment key={a._id}>
+                    <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">
                     <td className="py-4 px-6">
                       <div className="font-bold text-slate-900 dark:text-white flex items-center space-x-1.5">
                         <span>{a.name}</span>
@@ -259,8 +261,19 @@ export const SuperAdminAdminsPage: React.FC = () => {
                     <td className="py-4 px-6 text-right">
                       <div className="flex items-center justify-end space-x-2">
                         <button
+                          onClick={() => setExpandedAdminId(expandedAdminId === a._id ? null : a._id)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors flex items-center space-x-1"
+                        >
+                          <span>{expandedAdminId === a._id ? 'Hide Details' : `View Details (${a.locations?.length || 0})`}</span>
+                          {expandedAdminId === a._id ? (
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          ) : (
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                        <button
                           onClick={() => openEditModal(a)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-brand-600 dark:text-[#C5A880] hover:bg-brand-500/10 dark:hover:bg-[#C5A880]/10 transition-colors flex items-center space-x-1"
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center space-x-1"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                           <span>Edit</span>
@@ -278,6 +291,78 @@ export const SuperAdminAdminsPage: React.FC = () => {
                       </div>
                     </td>
                   </tr>
+                  {expandedAdminId === a._id && (
+                    <tr key={`${a._id}-expanded`} className="bg-slate-50/60 dark:bg-slate-800/40">
+                      <td colSpan={5} className="p-6 border-b border-slate-200 dark:border-slate-800">
+                        <div className="space-y-6">
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                <Building className="w-4 h-4 text-emerald-600" />
+                                Managed Coworking Spaces & Hubs ({a.locations?.length || 0})
+                              </h4>
+                            </div>
+                            {(!a.locations || a.locations.length === 0) ? (
+                              <p className="text-xs text-slate-400 italic">No coworking locations added yet.</p>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {a.locations.map((loc: any) => (
+                                  <div key={loc._id} className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <h5 className="font-semibold text-slate-900 dark:text-white text-xs">{loc.name}</h5>
+                                      <span className="flex items-center text-[11px] font-bold text-emerald-600">
+                                        <Star className="w-3 h-3 fill-emerald-500 mr-0.5" />
+                                        {loc.rating || 4.9}
+                                      </span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">
+                                      {loc.address?.street}, {loc.address?.city}
+                                    </p>
+                                    <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
+                                      <span>Manager: <strong className="text-slate-700 dark:text-slate-300">{loc.managerName || 'Olivia'}</strong></span>
+                                      <span>{loc.managerPhone || '+91 98450 12345'}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                <Users className="w-4 h-4 text-emerald-600" />
+                                Registered Client Companies ({a.companies?.length || 0})
+                              </h4>
+                            </div>
+                            {(!a.companies || a.companies.length === 0) ? (
+                              <p className="text-xs text-slate-400 italic">No client companies registered yet.</p>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {a.companies.map((comp: any) => (
+                                  <div key={comp._id} className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+                                    <div>
+                                      <h5 className="font-semibold text-slate-900 dark:text-white text-xs">{comp.name}</h5>
+                                      <span className="inline-block text-[10px] text-slate-400">
+                                        Assigned Hub: <strong className="text-emerald-600 dark:text-emerald-400">{comp.locationId?.name || 'Primary Hub'}</strong>
+                                      </span>
+                                      <div className="text-[11px] text-slate-500 mt-0.5">{comp.billingEmail} • {comp.phone}</div>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold">
+                                        {comp.allowanceConfig?.annualFreeHours || 240}h / yr
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 ))
               )}
             </tbody>

@@ -43,11 +43,35 @@ export async function getCoworkingSpacesSummaryHandler(req: Request, res: Respon
 export async function getAdminsList(req: Request, res: Response, next: NextFunction) {
   try {
     const admins = await User.find({ role: UserRole.COWORKING_ADMIN })
-      .populate('organizationId', 'name slug currency')
+      .populate('organizationId', 'name slug currency address')
       .select('-passwordHash')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    return apiSuccess(res, admins);
+    const enriched = await Promise.all(
+      admins.map(async (admin) => {
+        if (!admin.organizationId) {
+          return { ...admin, locations: [], companies: [] };
+        }
+        const orgId = (admin.organizationId as any)._id || admin.organizationId;
+        const [locations, companies] = await Promise.all([
+          Location.find({ organizationId: orgId, isActive: true })
+            .select('name address city state images rating managerName managerPhone')
+            .lean(),
+          Company.find({ organizationId: orgId, status: 'ACTIVE' })
+            .select('name billingEmail phone allowanceConfig locationId')
+            .populate('locationId', 'name')
+            .lean()
+        ]);
+        return {
+          ...admin,
+          locations,
+          companies
+        };
+      })
+    );
+
+    return apiSuccess(res, enriched);
   } catch (error) {
     next(error);
   }

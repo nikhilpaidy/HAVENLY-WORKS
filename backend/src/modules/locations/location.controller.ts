@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { Location } from './location.model.js';
 import { MeetingRoom } from '../rooms/room.model.js';
+import { Company } from '../companies/company.model.js';
 import { apiSuccess } from '../../utils/response.js';
 import { AppError } from '../../middleware/errorHandler.js';
 import { UserRole } from '../../types/index.js';
@@ -147,6 +148,13 @@ export async function getLocations(req: Request, res: Response, next: NextFuncti
       query.organizationId = req.user?.organizationId;
     } else if (req.query.organizationId) {
       query.organizationId = req.query.organizationId;
+    }
+
+    if (req.user?.companyId) {
+      const clientCompany = await Company.findById(req.user.companyId).select('locationId');
+      if (clientCompany?.locationId) {
+        query._id = clientCompany.locationId;
+      }
     }
 
     const locations = await Location.find(query).sort({ name: 1 });

@@ -113,11 +113,19 @@ export const adminApi = {
   getPayments: (params?: any) => {
     const q = new URLSearchParams(params || {});
     return request<any[]>(`/payments?${q.toString()}`);
-  }
+  },
+  getWorkspaceTypes: () => request<any[]>('/workspace-types'),
+  createWorkspaceType: (data: any) =>
+    request<any>('/workspace-types', { method: 'POST', body: JSON.stringify(data) }),
+  updateWorkspaceType: (id: string, data: any) =>
+    request<any>(`/workspace-types/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteWorkspaceType: (id: string) =>
+    request<any>(`/workspace-types/${id}`, { method: 'DELETE' })
 };
 
 // ----------------- CLIENT PORTAL APIS -----------------
 export const clientApi = {
+  getWorkspaceTypes: () => request<any[]>('/workspace-types'),
   getLocations: () => request<any[]>('/locations'),
   getRooms: (params?: any) => {
     const q = new URLSearchParams(params || {});

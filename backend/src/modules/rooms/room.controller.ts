@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { MeetingRoom } from './room.model.js';
+import { Company } from '../companies/company.model.js';
 import { apiSuccess } from '../../utils/response.js';
 import { AppError } from '../../middleware/errorHandler.js';
 import { UserRole } from '../../types/index.js';
@@ -9,7 +10,12 @@ export async function getPublicRooms(req: Request, res: Response, next: NextFunc
   try {
     let query: any = { isActive: true };
 
-    if (req.query.locationId) {
+    if (req.user?.companyId) {
+      const clientCompany = await Company.findById(req.user.companyId).select('locationId');
+      if (clientCompany?.locationId) {
+        query.locationId = clientCompany.locationId;
+      }
+    } else if (req.query.locationId) {
       query.locationId = req.query.locationId;
     }
     if (req.query.workspaceType && req.query.workspaceType !== 'ALL') {
@@ -70,7 +76,12 @@ export async function getRooms(req: Request, res: Response, next: NextFunction) 
       query.organizationId = req.query.organizationId;
     }
 
-    if (req.query.locationId) {
+    if (req.user?.companyId) {
+      const clientCompany = await Company.findById(req.user.companyId).select('locationId');
+      if (clientCompany?.locationId) {
+        query.locationId = clientCompany.locationId;
+      }
+    } else if (req.query.locationId) {
       query.locationId = req.query.locationId;
     }
 

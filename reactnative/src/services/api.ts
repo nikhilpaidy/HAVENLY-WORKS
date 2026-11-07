@@ -443,6 +443,8 @@ export const mobileApi = {
       body: JSON.stringify(payload)
     }),
   getCompanies: companiesApi.getCompanies,
+  getSuperAdminAdmins: () => request<any[]>('/super-admin/admins'),
+  getWorkspaceTypes: () => request<any[]>('/workspace-types'),
 
   getInvoices: billingApi.getInvoices,
 

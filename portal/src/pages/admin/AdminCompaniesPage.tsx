@@ -24,6 +24,10 @@ interface Company {
   gstin?: string;
   panNumber?: string;
   verificationStatus?: string;
+  locationId?: {
+    _id: string;
+    name: string;
+  } | string;
   allowanceConfig: {
     monthlyFreeHours: number;
     annualFreeHours?: number;
@@ -51,12 +55,15 @@ export const AdminCompaniesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  const [locations, setLocations] = useState<any[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('');
+
   // Onboard modal
   const [isOnboardOpen, setIsOnboardOpen] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [companyDomain, setCompanyDomain] = useState('');
-  const [freeHours, setFreeHours] = useState(20);
-  const [extraRate, setExtraRate] = useState(800);
+  const [annualFreeHours, setAnnualFreeHours] = useState(240);
+  const [extraRate, setExtraRate] = useState(500);
   const [currency, setCurrency] = useState('INR');
   const [ownerName, setOwnerName] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
@@ -89,8 +96,15 @@ export const AdminCompaniesPage: React.FC = () => {
   const fetchCompanies = async () => {
     try {
       setLoading(true);
-      const data = await adminApi.getCompanies();
-      setCompanies(data);
+      const [compData, locData] = await Promise.all([
+        adminApi.getCompanies(),
+        adminApi.getLocations()
+      ]);
+      setCompanies(compData);
+      setLocations(locData);
+      if (locData.length > 0 && !selectedLocationId) {
+        setSelectedLocationId(locData[0]._id);
+      }
       setError(null);
     } catch (err: any) {
       setError(err.message || 'Failed to load companies');
@@ -106,11 +120,16 @@ export const AdminCompaniesPage: React.FC = () => {
   const openOnboardModal = () => {
     setCompanyName('');
     setCompanyDomain('');
-    setFreeHours(20);
-    setExtraRate(45);
-    setCurrency('USD');
+    setAnnualFreeHours(240);
+    setExtraRate(500);
+    setCurrency('INR');
     setOwnerName('');
     setOwnerEmail('');
+    setGstin('');
+    setPanNumber('');
+    if (locations.length > 0) {
+      setSelectedLocationId(locations[0]._id);
+    }
     setIsOnboardOpen(true);
   };
 
@@ -123,18 +142,19 @@ export const AdminCompaniesPage: React.FC = () => {
       await adminApi.createCompany({
         name: companyName,
         domain: companyDomain,
+        locationId: selectedLocationId,
         gstin: gstin.trim() || undefined,
         panNumber: panNumber.trim() || undefined,
         allowanceConfig: {
-          monthlyFreeHours: Number(freeHours),
-          extraHourRate: Number(extraRate),
-          currency,
-          resetDayOfMonth: 1
+          allowancePeriodType: 'ANNUAL',
+          annualFreeHours: Number(annualFreeHours),
+          monthlyFreeHours: Math.round(Number(annualFreeHours) / 12),
+          additionalHourlyRate: Number(extraRate),
+          currency: 'INR',
+          billingCycleStartDay: 1
         },
-        owner: {
-          name: ownerName,
-          email: ownerEmail
-        }
+        ownerName,
+        ownerEmail
       });
       setIsOnboardOpen(false);
       setSuccessMsg(`Successfully onboarded ${companyName}`);
@@ -326,15 +346,24 @@ export const AdminCompaniesPage: React.FC = () => {
                   <span className="text-xs text-slate-400 block mt-0.5">@{company.domain}</span>
                 )}
 
+                <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                  <span>Assigned Hub:</span>
+                  <span className="font-semibold underline">
+                    {typeof company.locationId === 'object' && company.locationId !== null
+                      ? company.locationId.name
+                      : 'Madhapur Apex Hub'}
+                  </span>
+                </div>
+
                 {/* Allowance Config Box */}
                 <div className="mt-4 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/50 space-y-2 border border-slate-100 dark:border-slate-800/60">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-500 flex items-center space-x-1.5">
-                      <Clock className="w-3.5 h-3.5 text-[#B6925A] dark:text-[#C5A880]" />
-                      <span>Monthly Free Quota:</span>
+                      <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Annual Free Quota:</span>
                     </span>
                     <span className="font-bold text-slate-900 dark:text-white">
-                      {company.allowanceConfig?.monthlyFreeHours || 0} hrs / mo
+                      {company.allowanceConfig?.annualFreeHours || 240} hrs / yr
                     </span>
                   </div>
 
@@ -421,10 +450,32 @@ export const AdminCompaniesPage: React.FC = () => {
                     required
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder="e.g. Nexus AI Corp"
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-[#B6925A]"
+                    placeholder="e.g. Aptapace Technologies"
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
+
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Assigned Coworking Hub / Location *
+                  </label>
+                  <select
+                    required
+                    value={selectedLocationId}
+                    onChange={(e) => setSelectedLocationId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-900 dark:text-white"
+                  >
+                    {locations.map((loc) => (
+                      <option key={loc._id} value={loc._id}>
+                        {loc.name} ({loc.address?.city || 'Hyderabad'})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    This company will only see and reserve meeting spaces belonging to this registered location.
+                  </p>
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Corporate Domain
@@ -433,21 +484,21 @@ export const AdminCompaniesPage: React.FC = () => {
                     type="text"
                     value={companyDomain}
                     onChange={(e) => setCompanyDomain(e.target.value)}
-                    placeholder="nexusai.com"
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-[#B6925A]"
+                    placeholder="aptapace.com"
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Monthly Free Hours *
+                    Annual Free Hours (Yearly Quota) *
                   </label>
                   <input
                     type="number"
                     min="0"
                     required
-                    value={freeHours}
-                    onChange={(e) => setFreeHours(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-[#B6925A]"
+                    value={annualFreeHours}
+                    onChange={(e) => setAnnualFreeHours(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
               </div>

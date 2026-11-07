@@ -7,13 +7,7 @@ export interface IMaintenanceBlock {
   createdBy?: Types.ObjectId;
 }
 
-export type WorkspaceType = 
-  | 'HOT_DESK' 
-  | 'DEDICATED_DESK' 
-  | 'PRIVATE_OFFICE' 
-  | 'MEETING_ROOM' 
-  | 'BOARDROOM' 
-  | 'DAY_PASS';
+export type WorkspaceType = string;
 
 export interface IMeetingRoom extends Document {
   organizationId: Types.ObjectId;
@@ -76,7 +70,8 @@ const MeetingRoomSchema = new Schema<IMeetingRoom>(
     },
     workspaceType: {
       type: String,
-      enum: ['HOT_DESK', 'DEDICATED_DESK', 'PRIVATE_OFFICE', 'MEETING_ROOM', 'BOARDROOM', 'DAY_PASS'],
+      required: true,
+      trim: true,
       default: 'MEETING_ROOM',
       index: true
     },

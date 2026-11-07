@@ -100,6 +100,13 @@ export async function createAtomicBooking(params: {
     throw new AppError('Company account is suspended or inactive. Bookings prohibited.', 403);
   }
 
+  if (company.locationId && room.locationId) {
+    const roomLocStr = (room.locationId as any)._id ? (room.locationId as any)._id.toString() : room.locationId.toString();
+    if (company.locationId.toString() !== roomLocStr) {
+      throw new AppError('Your company is registered at a different coworking hub. Room reservations are restricted to your registered location.', 403);
+    }
+  }
+
   const durHours = durationInHours(startTime, endTime);
   const entitlement = await calculateEntitlement(companyId, durHours, startTime);
 

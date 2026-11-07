@@ -19,6 +19,7 @@ export interface ICompanyAllowanceConfig {
 
 export interface ICompany extends Document {
   organizationId: Types.ObjectId;
+  locationId?: Types.ObjectId;
   name: string;
   registrationNumber?: string;
   gstin?: string;
@@ -47,6 +48,11 @@ const CompanySchema = new Schema<ICompany>(
       type: Schema.Types.ObjectId,
       ref: 'CoworkingOrganization',
       required: true,
+      index: true
+    },
+    locationId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Location',
       index: true
     },
     name: {
@@ -96,7 +102,7 @@ const CompanySchema = new Schema<ICompany>(
       allowancePeriodType: {
         type: String,
         enum: ['MONTHLY', 'ANNUAL'],
-        default: 'MONTHLY'
+        default: 'ANNUAL'
       },
       monthlyFreeHours: {
         type: Number,

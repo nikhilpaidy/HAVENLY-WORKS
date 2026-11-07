@@ -58,21 +58,26 @@ export const RadiusSearchModal: React.FC<RadiusSearchModalProps> = ({
 
   const workspaceTypes = [
     { label: 'All Types', value: 'ALL' },
+    { label: 'Flex Desk', value: 'FLEX_DESK' },
+    { label: 'Fixed Desk', value: 'FIXED_DESK' },
     { label: 'Hot Desk', value: 'HOT_DESK' },
     { label: 'Dedicated Desk', value: 'DEDICATED_DESK' },
     { label: 'Private Office', value: 'PRIVATE_OFFICE' },
-    { label: 'Conference Room', value: 'MEETING_ROOM' },
+    { label: 'Meeting Room', value: 'MEETING_ROOM' },
     { label: 'Boardroom', value: 'BOARDROOM' },
-    { label: 'Day Pass', value: 'DAY_PASS' }
+    { label: 'Day Pass', value: 'DAY_PASS' },
+    { label: 'Podcast Studio', value: 'PODCAST_STUDIO' }
   ];
 
   const amenitiesList = [
+    'High-Speed WiFi',
     'Parking',
     'Printer',
     'Phone Booth',
-    'High-Speed WiFi',
-    'Coffee Bar',
-    '24/7 Access'
+    'Artisanal Coffee',
+    '24/7 Access',
+    'Video Conferencing',
+    'Podcast Studio'
   ];
 
   const ratingOptions = [
@@ -200,7 +205,7 @@ export const RadiusSearchModal: React.FC<RadiusSearchModalProps> = ({
                 Max Budget: ₹{maxPrice.toLocaleString('en-IN')}/hr
               </Text>
               <View style={styles.chipRow}>
-                {[500, 1000, 1500, 2500].map((p) => (
+                {[500, 1500, 3000, 7500, 15000, 25000].map((p) => (
                   <TouchableOpacity
                     key={p}
                     style={[
@@ -211,7 +216,7 @@ export const RadiusSearchModal: React.FC<RadiusSearchModalProps> = ({
                     onPress={() => setMaxPrice(p)}
                   >
                     <Text style={[styles.chipText, maxPrice === p && { color: '#FFFFFF' }]}>
-                      Up to ₹{p}
+                      Up to ₹{p.toLocaleString('en-IN')}
                     </Text>
                   </TouchableOpacity>
                 ))}
