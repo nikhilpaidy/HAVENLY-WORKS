@@ -27,6 +27,7 @@ import ticketRoutes from './modules/tickets/ticket.routes.js';
 import overrideRoutes from './modules/overrides/override.routes.js';
 import staffRoutes from './modules/staff/staff.routes.js';
 import workspaceTypeRoutes from './modules/workspace-types/workspace-type.routes.js';
+import legalRoutes from './modules/legal/legal.routes.js';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerDocument } from './config/swagger.js';
 
@@ -93,6 +94,7 @@ export function createApp(): Express {
   apiV1.use('/overrides', overrideRoutes);
   apiV1.use('/staff', staffRoutes);
   apiV1.use('/workspace-types', workspaceTypeRoutes);
+  apiV1.use('/legal', legalRoutes);
 
   app.use('/api/v1', apiV1);
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));

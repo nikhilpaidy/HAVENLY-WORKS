@@ -6,7 +6,10 @@ import {
   updateRoom,
   addMaintenanceBlock,
   getPublicRooms,
-  getPublicRoomById
+  getPublicRoomById,
+  addRoomReview,
+  getRoomReviews,
+  toggleRoomLike
 } from './room.controller.js';
 import { authenticateJwt, requireRole } from '../../middleware/auth.js';
 import { UserRole } from '../../types/index.js';
@@ -15,11 +18,15 @@ const router = Router();
 
 router.get('/public', getPublicRooms);
 router.get('/public/:id', getPublicRoomById);
+router.get('/public/:id/reviews', getRoomReviews);
 
 router.use(authenticateJwt);
 
 router.get('/', getRooms);
 router.get('/:id', getRoomById);
+router.get('/:id/reviews', getRoomReviews);
+router.post('/:id/reviews', addRoomReview);
+router.post('/:id/like', toggleRoomLike);
 router.post(
   '/',
   requireRole(UserRole.SUPER_ADMIN, UserRole.COWORKING_ADMIN),

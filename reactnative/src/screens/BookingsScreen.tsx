@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { SafeImage } from '../components/SafeImage';
 import { ListRowSkeleton } from '../components/SkeletonLoader';
+import { RoomReviewModal } from '../components/RoomReviewModal';
 
 interface BookingsScreenProps {
   onOpenNotifications: () => void;
@@ -39,6 +40,11 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
 
   const [selectedReceipt, setSelectedReceipt] = useState<any | null>(null);
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
+
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [reviewRoomId, setReviewRoomId] = useState('');
+  const [reviewRoomName, setReviewRoomName] = useState('');
+  const [reviewBookingId, setReviewBookingId] = useState('');
 
   const fetchBookings = async () => {
     try {
@@ -170,6 +176,22 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
             />
           </View>
         </View>
+
+        {activeTab === 'COMPLETED' && (
+          <TouchableOpacity
+            style={styles.rateReviewBtn}
+            onPress={() => {
+              setReviewRoomId(room._id || item.roomId);
+              setReviewRoomName(room.name || item.title || 'Workspace');
+              setReviewBookingId(item._id);
+              setReviewModalVisible(true);
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="star" size={14} color="#F59E0B" style={{ marginRight: 6 }} />
+            <Text style={styles.rateReviewBtnText}>Rate & Review Room</Text>
+          </TouchableOpacity>
+        )}
 
         {activeTab === 'ONGOING' && (
           <TouchableOpacity
@@ -308,6 +330,13 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
           </View>
         </View>
       </Modal>
+      <RoomReviewModal
+        visible={reviewModalVisible}
+        roomId={reviewRoomId}
+        roomName={reviewRoomName}
+        bookingId={reviewBookingId}
+        onClose={() => setReviewModalVisible(false)}
+      />
     </View>
   );
 };
@@ -444,6 +473,22 @@ const styles = StyleSheet.create({
   receiptBtnText: {
     color: '#FFFFFF',
     fontSize: 13,
+    fontWeight: '700'
+  },
+  rateReviewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    paddingVertical: 9,
+    borderRadius: 12,
+    marginTop: 10
+  },
+  rateReviewBtnText: {
+    color: '#B45309',
+    fontSize: 12,
     fontWeight: '700'
   },
   remindRow: {

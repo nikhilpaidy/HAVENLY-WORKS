@@ -137,6 +137,25 @@ export const authApi = {
     return request<any>('/auth/me');
   },
 
+  updateProfile: async (payload: { name?: string; phone?: string; designation?: string; avatarUrl?: string }) => {
+    return request<any>('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  deleteAccount: async () => {
+    const res = await request<any>('/auth/account', {
+      method: 'DELETE'
+    });
+    await AsyncStorage.removeItem('aura_auth_token');
+    return res;
+  },
+
+  getLegal: async () => {
+    return request<any>('/legal');
+  },
+
   logout: async () => {
     try {
       await request<any>('/auth/logout', { method: 'POST' });
@@ -204,6 +223,23 @@ export const roomsApi = {
 
   checkAvailability: (roomId: string, date: string) => {
     return request<any>(`/availability/room/${roomId}?date=${date}`);
+  },
+
+  toggleLike: (roomId: string) => {
+    return request<{ liked: boolean; favoriteRoomIds: string[] }>(`/rooms/${roomId}/like`, {
+      method: 'POST'
+    });
+  },
+
+  addReview: (roomId: string, rating: number, comment: string, bookingId?: string) => {
+    return request<any>(`/rooms/${roomId}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify({ rating, comment, bookingId })
+    });
+  },
+
+  getReviews: (roomId: string) => {
+    return request<any[]>(`/rooms/public/${roomId}/reviews`);
   }
 };
 
@@ -332,6 +368,10 @@ export const ticketsApi = {
     request<any>(`/tickets/${id}/comments`, {
       method: 'POST',
       body: JSON.stringify({ message })
+    }),
+  clearComments: (id: string) =>
+    request<any>(`/tickets/${id}/comments`, {
+      method: 'DELETE'
     })
 };
 
@@ -410,6 +450,9 @@ export const mobileApi = {
   login: authApi.login,
   getMe: authApi.getMe,
   getProfile: authApi.getMe,
+  updateProfile: authApi.updateProfile,
+  deleteAccount: authApi.deleteAccount,
+  getLegal: authApi.getLegal,
   logout: authApi.logout,
 
   locations: locationsApi,
@@ -423,6 +466,9 @@ export const mobileApi = {
   getRoomById: roomsApi.getRoomById,
   checkAvailability: roomsApi.checkAvailability,
   getRoomAvailability: roomsApi.checkAvailability,
+  toggleRoomLike: roomsApi.toggleLike,
+  addRoomReview: roomsApi.addReview,
+  getRoomReviews: roomsApi.getReviews,
 
   getBookings: bookingsApi.getBookings,
   getMyBookings: (scope?: string) => {
@@ -444,7 +490,13 @@ export const mobileApi = {
     }),
   getCompanies: companiesApi.getCompanies,
   getSuperAdminAdmins: () => request<any[]>('/super-admin/admins'),
-  getWorkspaceTypes: () => request<any[]>('/workspace-types'),
+  getWorkspaceTypes: async () => {
+    try {
+      return await request<any[]>('/workspace-types/public');
+    } catch {
+      return await request<any[]>('/workspace-types');
+    }
+  },
 
   getInvoices: billingApi.getInvoices,
 
@@ -454,6 +506,7 @@ export const mobileApi = {
   broadcastNotification: notificationsApi.broadcast,
 
   tickets: ticketsApi,
+  clearTicketComments: ticketsApi.clearComments,
   overrides: overridesApi,
   staff: staffApi,
 

@@ -46,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
         )}
         <View>
           {subtitle && (
-            <Text style={[styles.subtitle, { color: theme.gold }]}>
+            <Text style={[styles.subtitle, { color: '#00A859' }]}>
               {subtitle.toUpperCase()}
             </Text>
           )}
@@ -66,9 +66,9 @@ export const Header: React.FC<HeaderProps> = ({
           ]}
           activeOpacity={0.7}
         >
-          <Ionicons name="notifications-outline" size={20} color={theme.gold} />
+          <Ionicons name="notifications-outline" size={20} color="#00A859" />
           {effectiveCount > 0 && (
-            <View style={[styles.badge, { backgroundColor: theme.danger }]}>
+            <View style={[styles.badge, { backgroundColor: '#DC2626' }]}>
               <Text style={styles.badgeText}>
                 {effectiveCount > 9 ? '9+' : effectiveCount}
               </Text>
@@ -100,38 +100,37 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.5,
+    fontWeight: '800',
+    letterSpacing: 1,
     marginBottom: 2
   },
   title: {
     fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: -0.3
+    fontWeight: '800'
   },
   notifButton: {
-    width: 38,
-    height: 38,
+    width: 42,
+    height: 42,
     borderRadius: 12,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
     position: 'relative'
   },
   badge: {
     position: 'absolute',
-    top: -3,
-    right: -3,
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4
   },
   badgeText: {
     color: '#FFFFFF',
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800'
   }
 });

@@ -19,6 +19,9 @@ import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { TicketsScreen } from './src/screens/TicketsScreen';
 import { StaffScreen } from './src/screens/StaffScreen';
 import { LivingSplashScreen } from './src/screens/LivingSplashScreen';
+import { LeftDrawerModal } from './src/components/LeftDrawerModal';
+import { LegalModal } from './src/components/LegalModal';
+import { SupportModal } from './src/components/SupportModal';
 
 const MainApp: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -29,6 +32,10 @@ const MainApp: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<TabKey>('dashboard');
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const [showLeftDrawer, setShowLeftDrawer] = useState(false);
+  const [showLegalModal, setShowLegalModal] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
 
   const fetchUnreadCount = async () => {
     try {
@@ -100,6 +107,7 @@ const MainApp: React.FC = () => {
             onNavigate={(tab) => setCurrentTab(tab)}
             onOpenNotifications={() => setShowNotifications(true)}
             unreadNotifsCount={unreadCount}
+            onOpenDrawer={() => setShowLeftDrawer(true)}
           />
         )}
         {currentTab === 'rooms' && (
@@ -149,6 +157,29 @@ const MainApp: React.FC = () => {
       </View>
 
       <TabBar currentTab={currentTab} onSelectTab={(tab) => setCurrentTab(tab)} />
+
+      <LeftDrawerModal
+        visible={showLeftDrawer}
+        onClose={() => setShowLeftDrawer(false)}
+        onOpenProfile={() => setCurrentTab('profile')}
+        onOpenHelpdesk={() => setCurrentTab('tickets')}
+        onOpenStaff={() => setCurrentTab('staff')}
+        onOpenInvoices={() => setCurrentTab('invoices')}
+        onOpenQuota={() => setCurrentTab('allowance')}
+        onOpenLegal={() => setShowLegalModal(true)}
+        onOpenSupport={() => setShowSupportModal(true)}
+      />
+
+      <LegalModal
+        visible={showLegalModal}
+        onClose={() => setShowLegalModal(false)}
+      />
+
+      <SupportModal
+        visible={showSupportModal}
+        onClose={() => setShowSupportModal(false)}
+        onOpenTickets={() => setCurrentTab('tickets')}
+      />
     </SafeAreaView>
   );
 };

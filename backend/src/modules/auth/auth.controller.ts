@@ -6,6 +6,7 @@ import { CoworkingOrganization } from '../organizations/organization.model.js';
 import { Company } from '../companies/company.model.js';
 import bcrypt from 'bcryptjs';
 import { AppError } from '../../middleware/errorHandler.js';
+import { UserRole } from '../../types/index.js';
 
 export async function loginHandler(req: Request, res: Response, next: NextFunction) {
   try {
@@ -111,6 +112,7 @@ export async function meHandler(req: Request, res: Response, next: NextFunction)
       organization,
       company,
       avatarUrl: user.avatarUrl,
+      favoriteRoomIds: (user.favoriteRoomIds || []).map((id) => id.toString()),
       isActive: user.isActive
     };
 
@@ -120,6 +122,76 @@ export async function meHandler(req: Request, res: Response, next: NextFunction)
       organization,
       company
     }, 'Current user profile');
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateProfileHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user?.userId;
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    const { name, phone, designation, avatarUrl } = req.body;
+
+    const isRestrictedStaff =
+      user.role === UserRole.COMPANY_STAFF ||
+      user.role === UserRole.COWORKING_ADMIN_STAFF;
+
+    if (isRestrictedStaff) {
+      if ((name !== undefined && name !== user.name) || (phone !== undefined && phone !== user.phone)) {
+        throw new AppError('Enterprise staff accounts are managed by your administrator. You can only update your profile picture.', 403);
+      }
+      if (avatarUrl !== undefined) {
+        user.avatarUrl = avatarUrl;
+      }
+    } else {
+      if (name !== undefined) user.name = name.trim();
+      if (phone !== undefined) user.phone = phone.trim();
+      if (designation !== undefined) user.designation = designation.trim();
+      if (avatarUrl !== undefined) user.avatarUrl = avatarUrl;
+    }
+
+    await user.save();
+
+    const updatedUser = {
+      id: user._id.toString(),
+      _id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      designation: user.designation,
+      permissions: user.permissions || [],
+      avatarUrl: user.avatarUrl,
+      favoriteRoomIds: (user.favoriteRoomIds || []).map((id) => id.toString()),
+      isActive: user.isActive
+    };
+
+    return apiSuccess(res, updatedUser, 'Profile updated successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteAccountHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user?.userId;
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    user.isActive = false;
+    await user.save();
+
+    res.clearCookie('accessToken');
+    res.clearCookie('refreshToken');
+
+    return apiSuccess(res, null, 'Account has been deactivated successfully');
   } catch (error) {
     next(error);
   }

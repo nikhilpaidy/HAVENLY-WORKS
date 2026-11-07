@@ -1,9 +1,3 @@
-/**
- * User Model for Coworking Monolith.
- * Supports platform super admins, coworking facility admins, enterprise company owners,
- * and sub-staff with dynamic, fine-grained access permissions.
- */
-
 import mongoose, { Document, Schema, Types } from 'mongoose';
 import { UserRole } from '../../types/index.js';
 
@@ -20,6 +14,7 @@ export interface IUser extends Document {
   companyId?: Types.ObjectId;
   isActive: boolean;
   avatarUrl?: string;
+  favoriteRoomIds?: Types.ObjectId[];
   lastLoginAt?: Date;
   passwordResetToken?: string;
   passwordResetExpires?: Date;
@@ -86,6 +81,12 @@ const UserSchema = new Schema<IUser>(
     avatarUrl: {
       type: String
     },
+    favoriteRoomIds: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'MeetingRoom'
+      }
+    ],
     lastLoginAt: {
       type: Date
     },

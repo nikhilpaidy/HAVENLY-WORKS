@@ -4,6 +4,8 @@ import {
   refreshHandler,
   logoutHandler,
   meHandler,
+  updateProfileHandler,
+  deleteAccountHandler,
   changePasswordHandler
 } from './auth.controller.js';
 import { authenticateJwt } from '../../middleware/auth.js';
@@ -32,6 +34,8 @@ router.post('/login', authLimiter, validate(loginSchema), loginHandler);
 router.post('/refresh', refreshHandler);
 router.post('/logout', logoutHandler);
 router.get('/me', authenticateJwt, meHandler);
+router.put('/profile', authenticateJwt, updateProfileHandler);
+router.delete('/account', authenticateJwt, deleteAccountHandler);
 router.post(
   '/change-password',
   authenticateJwt,

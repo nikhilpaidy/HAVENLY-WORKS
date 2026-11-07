@@ -27,6 +27,7 @@ interface DashboardScreenProps {
   onNavigate: (tab: TabKey) => void;
   onOpenNotifications: () => void;
   unreadNotifsCount: number;
+  onOpenDrawer?: () => void;
 }
 
 const { width } = Dimensions.get('window');
@@ -34,7 +35,8 @@ const { width } = Dimensions.get('window');
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   onNavigate,
   onOpenNotifications,
-  unreadNotifsCount
+  unreadNotifsCount,
+  onOpenDrawer
 }) => {
   const { user } = useAuth();
   const { theme, isDark } = useTheme();
@@ -50,16 +52,13 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Pass Type dropdown: Hourly, Day Pass, Week Pass, Monthly Pass
   const [passType, setPassType] = useState<string>('Day Pass');
   const [showPassPicker, setShowPassPicker] = useState(false);
 
-  // Person Count dropdown: 1, 2, 4, 6, 8, 12, 16+ or custom
   const [personCount, setPersonCount] = useState<number | string>(1);
   const [showPersonPicker, setShowPersonPicker] = useState(false);
   const [customPersonInput, setCustomPersonInput] = useState('');
 
-  // Desk Type dropdown: Desk, Flex Desk, Fixed Desk, Meeting Room, Boardroom, Private Office, Day Pass, Podcast Studio
   const [deskType, setDeskType] = useState<string>('Desk');
   const [showDeskPicker, setShowDeskPicker] = useState(false);
 
@@ -67,31 +66,46 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [selectedRadiusKm, setSelectedRadiusKm] = useState(2);
 
   const [workspaces, setWorkspaces] = useState<any[]>([]);
+  const [workspaceTypes, setWorkspaceTypes] = useState<any[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(user?.favoriteRoomIds || []);
   const [nearbyLocations, setNearbyLocations] = useState<any[]>([]);
   const [allowance, setAllowance] = useState<any>(null);
   const [upcomingBookings, setUpcomingBookings] = useState<any[]>([]);
   const [pendingGuestCount, setPendingGuestCount] = useState(0);
 
-  // Super Admin view
   const [superAdminAdmins, setSuperAdminAdmins] = useState<any[]>([]);
   const [expandedAdminId, setExpandedAdminId] = useState<string | null>(null);
 
-  // Pagination / infinite scroll (20 per page)
   const [displayLimit, setDisplayLimit] = useState(20);
 
   const [selectedSpace, setSelectedSpace] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
 
+  const handleToggleRoomLike = async (roomId: string) => {
+    try {
+      const res = await mobileApi.toggleRoomLike(roomId);
+      setFavoriteIds(res.favoriteRoomIds || []);
+    } catch {
+      setFavoriteIds((prev) =>
+        prev.includes(roomId) ? prev.filter((id) => id !== roomId) : [...prev, roomId]
+      );
+    }
+  };
+
   const loadData = async () => {
     try {
-      const [roomsData, nearbyData] = await Promise.all([
+      const [roomsData, nearbyData, typesData] = await Promise.all([
         mobileApi.getPublicRooms({ workspaceType: spaceTypeFilter !== 'ALL' ? spaceTypeFilter : undefined }),
-        mobileApi.getNearbyLocations(selectedLocation.lat, selectedLocation.lng, selectedRadiusKm)
+        mobileApi.getNearbyLocations(selectedLocation.lat, selectedLocation.lng, selectedRadiusKm),
+        mobileApi.getWorkspaceTypes()
       ]);
 
       setWorkspaces(roomsData || []);
       setNearbyLocations(nearbyData?.locations || []);
+      if (Array.isArray(typesData) && typesData.length > 0) {
+        setWorkspaceTypes(typesData);
+      }
 
       if (user) {
         if (isSuperAdmin) {
@@ -146,15 +160,17 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     setShowDetailModal(true);
   };
 
-  const categories = [
-    { label: 'All', value: 'ALL' },
-    { label: 'Hot Desk', value: 'HOT_DESK' },
-    { label: 'Dedicated Desk', value: 'DEDICATED_DESK' },
-    { label: 'Private Office', value: 'PRIVATE_OFFICE' },
-    { label: 'Conference', value: 'MEETING_ROOM' },
-    { label: 'Boardroom', value: 'BOARDROOM' },
-    { label: 'Day Pass', value: 'DAY_PASS' }
-  ];
+  const categories = workspaceTypes.length > 0
+    ? [{ label: 'All', value: 'ALL' }, ...workspaceTypes.map((t) => ({ label: t.name, value: t.code }))]
+    : [
+        { label: 'All', value: 'ALL' },
+        { label: 'Hot Desk', value: 'HOT_DESK' },
+        { label: 'Dedicated Desk', value: 'DEDICATED_DESK' },
+        { label: 'Private Office', value: 'PRIVATE_OFFICE' },
+        { label: 'Conference', value: 'MEETING_ROOM' },
+        { label: 'Boardroom', value: 'BOARDROOM' },
+        { label: 'Day Pass', value: 'DAY_PASS' }
+      ];
 
   const filteredWorkspaces = workspaces.filter((w) => {
     if (!searchQuery.trim()) return true;
@@ -168,13 +184,17 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       <View style={[styles.headerBanner, { backgroundColor: '#00A859' }]}>
         <View style={styles.headerTopRow}>
           <View style={styles.headerProfileRow}>
-            <View style={styles.avatarBorder}>
+            <TouchableOpacity
+              style={styles.avatarBorder}
+              onPress={onOpenDrawer}
+              activeOpacity={0.8}
+            >
               <SafeImage
                 uri={(user as any)?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80'}
                 style={styles.avatarImage}
                 borderRadius={20}
               />
-            </View>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setShowLocationPicker(true)}
               style={styles.locationPill}
@@ -442,6 +462,20 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 >
                   <View style={styles.popularImageWrapper}>
                     <SafeImage uri={photo} style={styles.popularImage} borderRadius={18} />
+                    <TouchableOpacity
+                      style={styles.cardHeartBtn}
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        handleToggleRoomLike(item._id);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name={favoriteIds.includes(item._id) ? 'heart' : 'heart-outline'}
+                        size={18}
+                        color={favoriteIds.includes(item._id) ? '#EF4444' : '#FFFFFF'}
+                      />
+                    </TouchableOpacity>
                     <View style={styles.ratingBadgePill}>
                       <Ionicons name="star" size={13} color="#F59E0B" />
                       <Text style={styles.ratingBadgeText}>{item.rating || 4.9}</Text>
@@ -599,7 +633,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         }}
       />
 
-      {/* Pass Type Picker Modal */}
       <Modal visible={showPassPicker} transparent animationType="fade" onRequestClose={() => setShowPassPicker(false)}>
         <TouchableOpacity
           style={styles.pickerBackdrop}
@@ -627,7 +660,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         </TouchableOpacity>
       </Modal>
 
-      {/* Person Count Picker Modal */}
       <Modal visible={showPersonPicker} transparent animationType="fade" onRequestClose={() => setShowPersonPicker(false)}>
         <TouchableOpacity
           style={styles.pickerBackdrop}
@@ -679,7 +711,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         </TouchableOpacity>
       </Modal>
 
-      {/* Desk Type Picker Modal */}
       <Modal visible={showDeskPicker} transparent animationType="fade" onRequestClose={() => setShowDeskPicker(false)}>
         <TouchableOpacity
           style={styles.pickerBackdrop}
@@ -924,6 +955,18 @@ const styles = StyleSheet.create({
   popularImageWrapper: {
     height: 160,
     position: 'relative'
+  },
+  cardHeartBtn: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10
   },
   popularImage: {
     width: '100%',

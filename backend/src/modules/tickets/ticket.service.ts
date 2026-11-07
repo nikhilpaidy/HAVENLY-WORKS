@@ -1,9 +1,3 @@
-/**
- * Helpdesk & Facility Complaint Ticket Service.
- * Orchestrates ticket creation, hub notification, priority escalation,
- * and status transitions between client teams and coworking staff.
- */
-
 import { Types } from 'mongoose';
 import { Ticket, ITicket } from './ticket.model.js';
 import { TicketCategory, TicketPriority, TicketStatus, NotificationType } from '../../types/index.js';
@@ -150,6 +144,17 @@ export async function addTicketComment(
     createdAt: new Date()
   });
 
+  await ticket.save();
+  return ticket;
+}
+
+export async function clearTicketComments(ticketId: string): Promise<ITicket> {
+  const ticket = await Ticket.findById(ticketId);
+  if (!ticket) {
+    throw new AppError('Ticket not found', 404);
+  }
+
+  ticket.comments = [];
   await ticket.save();
   return ticket;
 }

@@ -33,6 +33,7 @@ interface TicketItem {
   description: string;
   status: string;
   resolutionNotes?: string;
+  locationId?: { _id: string; name: string; address?: string };
   companyId?: { _id: string; name: string };
   raisedByUserId?: { _id: string; name: string; email: string };
   comments?: TicketComment[];
@@ -40,19 +41,19 @@ interface TicketItem {
 }
 
 const CATEGORIES = [
-  { key: 'ALL', label: 'All' },
+  { key: 'ALL', label: 'All', icon: 'apps-outline' },
   { key: 'WIFI_NETWORK', label: 'Wi-Fi & Network', icon: 'wifi-outline' },
-  { key: 'AIR_CONDITIONING', label: 'Air Conditioning', icon: 'snow-outline' },
-  { key: 'WATER_REFRESHMENTS', label: 'Water & Pantry', icon: 'cafe-outline' },
-  { key: 'WASHROOM_HYGIENE', label: 'Washroom Hygiene', icon: 'water-outline' },
-  { key: 'DISPLAY_AV', label: 'Display & AV', icon: 'tv-outline' },
+  { key: 'AIR_CONDITIONING', label: 'HVAC & Climate', icon: 'snow-outline' },
+  { key: 'WATER_REFRESHMENTS', label: 'Pantry & Coffee', icon: 'cafe-outline' },
+  { key: 'WASHROOM_HYGIENE', label: 'Hygiene & Housekeeping', icon: 'water-outline' },
+  { key: 'DISPLAY_AV', label: 'Meeting AV & Screens', icon: 'tv-outline' },
   { key: 'POWER_ELECTRICAL', label: 'Power & Sockets', icon: 'flash-outline' },
-  { key: 'OTHER', label: 'Other Facilities', icon: 'build-outline' }
+  { key: 'OTHER', label: 'General Facilities', icon: 'build-outline' }
 ];
 
 const PRIORITIES = [
   { key: 'LOW', label: 'Low', color: '#10B981' },
-  { key: 'MEDIUM', label: 'Medium', color: '#3B82F6' },
+  { key: 'MEDIUM', label: 'Medium', color: '#0284C7' },
   { key: 'HIGH', label: 'High', color: '#F59E0B' },
   { key: 'URGENT', label: 'Urgent', color: '#EF4444' }
 ];
@@ -92,7 +93,7 @@ export const TicketsScreen: React.FC<{
 
   const canRaiseTickets =
     user?.role === 'COMPANY_OWNER' ||
-    user?.role === 'COMPANY_BOOKING_MANAGER' ||
+    user?.role === 'COMPANY_STAFF' ||
     hasPermission('raise_tickets');
 
   const fetchTickets = async () => {
@@ -116,7 +117,7 @@ export const TicketsScreen: React.FC<{
 
   const handleCreateTicket = async () => {
     if (!newTitle.trim() || !newDescription.trim()) {
-      Alert.alert('Required Fields', 'Please enter a ticket title and description.');
+      Alert.alert('Required Fields', 'Please enter a ticket subject and description.');
       return;
     }
     try {
@@ -133,7 +134,7 @@ export const TicketsScreen: React.FC<{
       setNewPriority('HIGH');
       setNewCategory('WIFI_NETWORK');
       fetchTickets();
-      Alert.alert('Ticket Raised', 'Your helpdesk ticket has been submitted to facilities administration.');
+      Alert.alert('Ticket Submitted', 'Your ticket has been sent to hub facilities administration.');
     } catch (err: any) {
       Alert.alert('Submission Failed', err.message || 'Unable to submit ticket.');
     } finally {
@@ -151,10 +152,35 @@ export const TicketsScreen: React.FC<{
       );
       setReplyMessage('');
     } catch (err: any) {
-      Alert.alert('Comment Error', err.message || 'Failed to submit comment');
+      Alert.alert('Message Error', err.message || 'Failed to send message');
     } finally {
       setReplying(false);
     }
+  };
+
+  const handleClearChat = (ticketId: string, ticketNum: string) => {
+    Alert.alert(
+      'Clear Entire Chat',
+      `This action will permanently delete all messages for ${ticketNum} from the database for both client and facility administrators. Do you want to proceed?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete All Messages',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await mobileApi.clearTicketComments(ticketId);
+              setTickets((prev) =>
+                prev.map((t) => (t._id === ticketId ? { ...t, comments: [] } : t))
+              );
+              Alert.alert('Chat Cleared', 'Discussion thread deleted completely from database.');
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'Failed to delete discussion thread');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleUpdateStatus = async (ticketId: string, status: string, notes?: string) => {
@@ -179,9 +205,9 @@ export const TicketsScreen: React.FC<{
   };
 
   const getStatusBadge = (s: string) => {
-    let color = '#3B82F6';
+    let color = '#0284C7';
     if (s === 'OPEN') color = '#F59E0B';
-    if (s === 'IN_PROGRESS') color = '#6366F1';
+    if (s === 'IN_PROGRESS') color = '#00A859';
     if (s === 'RESOLVED') color = '#10B981';
     if (s === 'CLOSED') color = '#64748B';
 
@@ -196,7 +222,7 @@ export const TicketsScreen: React.FC<{
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header
         title="Helpdesk & Complaints"
-        subtitle={isAdmin ? 'Hub Facilities & Operations Service Desk' : 'Facilities Support & Service Desk'}
+        subtitle={isAdmin ? 'Facility Operations Desk' : '24/7 Workplace Support Desk'}
         unreadNotifsCount={unreadNotifsCount}
         onOpenNotifications={onOpenNotifications}
       />
@@ -208,17 +234,20 @@ export const TicketsScreen: React.FC<{
               key={statusKey}
               style={[
                 styles.filterTab,
-                { backgroundColor: selectedStatus === statusKey ? theme.gold : theme.card, borderColor: theme.cardBorder }
+                {
+                  backgroundColor: selectedStatus === statusKey ? '#00A859' : theme.card,
+                  borderColor: theme.cardBorder
+                }
               ]}
               onPress={() => setSelectedStatus(statusKey)}
             >
               <Text
                 style={[
                   styles.filterTabText,
-                  { color: selectedStatus === statusKey ? '#050814' : theme.textSecondary }
+                  { color: selectedStatus === statusKey ? '#FFFFFF' : theme.textSecondary }
                 ]}
               >
-                {statusKey.replace('_', ' ')}
+                {statusKey === 'ALL' ? 'All Tickets' : statusKey.replace('_', ' ')}
               </Text>
             </TouchableOpacity>
           ))}
@@ -226,33 +255,40 @@ export const TicketsScreen: React.FC<{
 
         {canRaiseTickets && (
           <TouchableOpacity
-            style={[styles.raiseButton, { backgroundColor: theme.gold }]}
+            style={styles.raiseButton}
             onPress={() => setShowCreateModal(true)}
+            activeOpacity={0.8}
           >
-            <Ionicons name="add" size={18} color="#050814" />
+            <Ionicons name="add" size={18} color="#FFFFFF" />
             <Text style={styles.raiseButtonText}>Raise Ticket</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      <View style={styles.categoriesBar}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
+      <View style={styles.categoryFilterRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
           {CATEGORIES.map((cat) => (
             <TouchableOpacity
               key={cat.key}
               style={[
-                styles.catPill,
+                styles.categoryChip,
                 {
-                  backgroundColor: selectedCategory === cat.key ? (isDark ? '#1E293B' : '#E2E8F0') : 'transparent',
-                  borderColor: selectedCategory === cat.key ? theme.gold : theme.cardBorder
+                  backgroundColor: selectedCategory === cat.key ? '#00A859' : theme.surface,
+                  borderColor: selectedCategory === cat.key ? '#00A859' : theme.cardBorder
                 }
               ]}
               onPress={() => setSelectedCategory(cat.key)}
             >
+              <Ionicons
+                name={cat.icon as any}
+                size={14}
+                color={selectedCategory === cat.key ? '#FFFFFF' : theme.textSecondary}
+                style={{ marginRight: 4 }}
+              />
               <Text
                 style={[
-                  styles.catPillText,
-                  { color: selectedCategory === cat.key ? theme.gold : theme.textMuted }
+                  styles.categoryChipText,
+                  { color: selectedCategory === cat.key ? '#FFFFFF' : theme.textPrimary }
                 ]}
               >
                 {cat.label}
@@ -264,15 +300,15 @@ export const TicketsScreen: React.FC<{
 
       {loading ? (
         <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color={theme.gold} />
-          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading service tickets...</Text>
+          <ActivityIndicator size="large" color="#00A859" />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading support tickets...</Text>
         </View>
       ) : tickets.length === 0 ? (
         <View style={styles.emptyBox}>
-          <Ionicons name="checkmark-done-circle-outline" size={54} color={theme.textMuted} />
+          <Ionicons name="shield-checkmark-outline" size={54} color="#00A859" />
           <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>No Tickets Found</Text>
           <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-            All operational systems and facilities are running seamlessly.
+            All workplace infrastructure and facilities are operating smoothly.
           </Text>
         </View>
       ) : (
@@ -290,7 +326,7 @@ export const TicketsScreen: React.FC<{
                 >
                   <View style={styles.cardHeader}>
                     <View style={styles.ticketNumBox}>
-                      <Text style={[styles.ticketNumText, { color: theme.gold }]}>{t.ticketNumber}</Text>
+                      <Text style={[styles.ticketNumText, { color: '#00A859' }]}>{t.ticketNumber}</Text>
                       {t.companyId?.name && (
                         <Text style={[styles.companyLabel, { color: theme.textMuted }]}>
                           • {t.companyId.name}
@@ -319,18 +355,18 @@ export const TicketsScreen: React.FC<{
                     </Text>
                     <View style={styles.expandRow}>
                       <Ionicons
-                        name="chatbox-outline"
-                        size={14}
-                        color={theme.textMuted}
+                        name="chatbubbles-outline"
+                        size={15}
+                        color="#00A859"
                         style={{ marginRight: 4 }}
                       />
-                      <Text style={[styles.commentCount, { color: theme.textMuted }]}>
-                        {t.comments?.length || 0}
+                      <Text style={[styles.commentCount, { color: '#00A859', fontWeight: '700' }]}>
+                        {t.comments?.length || 0} messages
                       </Text>
                       <Ionicons
                         name={isExpanded ? 'chevron-up' : 'chevron-down'}
                         size={16}
-                        color={theme.gold}
+                        color="#00A859"
                         style={{ marginLeft: 8 }}
                       />
                     </View>
@@ -339,10 +375,42 @@ export const TicketsScreen: React.FC<{
 
                 {isExpanded && (
                   <View style={[styles.expandedContent, { borderTopColor: theme.cardBorder }]}>
+                    <View style={[styles.contextProductCard, { backgroundColor: isDark ? '#0F172A' : '#F0FDF4', borderColor: '#00A859' }]}>
+                      <View style={styles.contextHeaderTop}>
+                        <View style={styles.contextIconWrap}>
+                          <Ionicons name="chatbubbles" size={16} color="#00A859" />
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 8 }}>
+                          <Text style={styles.contextSubheader}>DISCUSSION CONTEXT</Text>
+                          <Text style={[styles.contextTitle, { color: theme.textPrimary }]} numberOfLines={1}>
+                            {t.title}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.clearChatBtn}
+                          onPress={() => handleClearChat(t._id, t.ticketNumber)}
+                        >
+                          <Ionicons name="trash-outline" size={14} color="#DC2626" />
+                          <Text style={styles.clearChatBtnText}>Clear Thread</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <View style={styles.contextMetaRow}>
+                        <Text style={[styles.contextMetaItem, { color: theme.textMuted }]}>
+                          Ref: <Text style={{ color: '#00A859', fontWeight: '700' }}>{t.ticketNumber}</Text>
+                        </Text>
+                        <Text style={[styles.contextMetaItem, { color: theme.textMuted }]}>
+                          • Campus: <Text style={{ color: theme.textPrimary, fontWeight: '600' }}>{t.locationId?.name || 'Madhapur Apex Hub'}</Text>
+                        </Text>
+                        <Text style={[styles.contextMetaItem, { color: theme.textMuted }]}>
+                          • Status: <Text style={{ color: '#00A859', fontWeight: '700' }}>{t.status}</Text>
+                        </Text>
+                      </View>
+                    </View>
+
                     {t.resolutionNotes && (
-                      <View style={[styles.resolutionBox, { backgroundColor: `${theme.success}12`, borderColor: theme.success }]}>
-                        <Text style={[styles.resolutionHeader, { color: theme.success }]}>Resolution Summary</Text>
-                        <Text style={[styles.resolutionText, { color: theme.textPrimary }]}>
+                      <View style={[styles.resolutionBox, { backgroundColor: '#ECFDF5', borderColor: '#10B981' }]}>
+                        <Text style={[styles.resolutionHeader, { color: '#059669' }]}>Resolution Summary</Text>
+                        <Text style={[styles.resolutionText, { color: '#064E3B' }]}>
                           {t.resolutionNotes}
                         </Text>
                       </View>
@@ -352,67 +420,107 @@ export const TicketsScreen: React.FC<{
                       <View style={styles.adminActionRow}>
                         {t.status === 'OPEN' && (
                           <TouchableOpacity
-                            style={[styles.actionBtn, { borderColor: theme.info, backgroundColor: `${theme.info}18` }]}
+                            style={[styles.actionBtn, { borderColor: '#0284C7', backgroundColor: '#E0F2FE' }]}
                             onPress={() => handleUpdateStatus(t._id, 'IN_PROGRESS')}
                           >
-                            <Text style={[styles.actionBtnText, { color: theme.info }]}>Mark In Progress</Text>
+                            <Text style={[styles.actionBtnText, { color: '#0284C7' }]}>Mark In Progress</Text>
                           </TouchableOpacity>
                         )}
                         <TouchableOpacity
-                          style={[styles.actionBtn, { borderColor: theme.success, backgroundColor: `${theme.success}18` }]}
+                          style={[styles.actionBtn, { borderColor: '#00A859', backgroundColor: '#E8F5E9' }]}
                           onPress={() => {
                             setResolvingTicketId(t._id);
                             setShowResolveModal(true);
                           }}
                         >
-                          <Text style={[styles.actionBtnText, { color: theme.success }]}>Resolve Ticket</Text>
+                          <Text style={[styles.actionBtnText, { color: '#00A859' }]}>Resolve Ticket</Text>
                         </TouchableOpacity>
                       </View>
                     )}
 
                     <Text style={[styles.threadHeader, { color: theme.textSecondary }]}>Conversation Thread</Text>
                     {t.comments && t.comments.length > 0 ? (
-                      t.comments.map((c, i) => (
-                        <View
-                          key={i}
-                          style={[
-                            styles.commentBubble,
-                            {
-                              backgroundColor: c.authorRole.includes('ADMIN') ? (isDark ? '#1E293B' : '#E2E8F0') : (isDark ? '#0F172A' : '#F1F5F9'),
-                              borderColor: theme.cardBorder
-                            }
-                          ]}
-                        >
-                          <View style={styles.commentMeta}>
-                            <Text style={[styles.commentAuthor, { color: theme.gold }]}>{c.authorName}</Text>
-                            <Text style={[styles.commentRole, { color: theme.textMuted }]}>• {c.authorRole}</Text>
+                      t.comments.map((c, i) => {
+                        const isOwn = c.authorId === user?.id;
+                        const isStaff = c.authorRole.includes('ADMIN') || c.authorRole.includes('STAFF');
+                        return (
+                          <View
+                            key={i}
+                            style={[
+                              styles.commentBubble,
+                              isOwn ? styles.commentBubbleRight : styles.commentBubbleLeft,
+                              {
+                                backgroundColor: isOwn
+                                  ? '#00A859'
+                                  : isDark
+                                  ? '#1E293B'
+                                  : '#F1F5F9',
+                                borderColor: isOwn ? '#00A859' : theme.cardBorder
+                              }
+                            ]}
+                          >
+                            <View style={styles.commentMeta}>
+                              <Text
+                                style={[
+                                  styles.commentAuthor,
+                                  { color: isOwn ? '#FFFFFF' : (isStaff ? '#0284C7' : '#00A859') }
+                                ]}
+                              >
+                                {c.authorName}
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.commentRole,
+                                  { color: isOwn ? 'rgba(255,255,255,0.7)' : theme.textMuted }
+                                ]}
+                              >
+                                {isStaff ? '• Operations Staff' : '• Client'}
+                              </Text>
+                            </View>
+                            <Text
+                              style={[
+                                styles.commentMsg,
+                                { color: isOwn ? '#FFFFFF' : theme.textPrimary }
+                              ]}
+                            >
+                              {c.message}
+                            </Text>
                           </View>
-                          <Text style={[styles.commentMsg, { color: theme.textPrimary }]}>{c.message}</Text>
-                        </View>
-                      ))
+                        );
+                      })
                     ) : (
-                      <Text style={[styles.noCommentsText, { color: theme.textMuted }]}>
-                        No replies recorded yet.
-                      </Text>
+                      <View style={styles.noCommentsBox}>
+                        <Ionicons name="chatbubble-ellipses-outline" size={28} color={theme.textMuted} />
+                        <Text style={[styles.noCommentsText, { color: theme.textMuted }]}>
+                          No replies in thread. Post a message to discuss with hub facility staff.
+                        </Text>
+                      </View>
                     )}
 
                     <View style={styles.replyBox}>
                       <TextInput
-                        style={[styles.replyInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
-                        placeholder="Type reply or update message..."
+                        style={[
+                          styles.replyInput,
+                          {
+                            backgroundColor: theme.inputBg,
+                            borderColor: theme.inputBorder,
+                            color: theme.textPrimary
+                          }
+                        ]}
+                        placeholder="Type a message or issue update..."
                         placeholderTextColor={theme.textMuted}
                         value={replyMessage}
                         onChangeText={setReplyMessage}
                       />
                       <TouchableOpacity
-                        style={[styles.replySendBtn, { backgroundColor: theme.gold }]}
+                        style={[styles.replySendBtn, { backgroundColor: '#00A859' }]}
                         onPress={() => handleSendComment(t._id)}
                         disabled={replying}
                       >
                         {replying ? (
-                          <ActivityIndicator size="small" color="#050814" />
+                          <ActivityIndicator size="small" color="#FFFFFF" />
                         ) : (
-                          <Ionicons name="send" size={16} color="#050814" />
+                          <Ionicons name="send" size={16} color="#FFFFFF" />
                         )}
                       </TouchableOpacity>
                     </View>
@@ -424,7 +532,6 @@ export const TicketsScreen: React.FC<{
         </ScrollView>
       )}
 
-      {/* CREATE TICKET MODAL */}
       <Modal visible={showCreateModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
@@ -444,16 +551,22 @@ export const TicketsScreen: React.FC<{
                     style={[
                       styles.modalOptionPill,
                       {
-                        backgroundColor: newCategory === cat.key ? theme.gold : theme.card,
+                        backgroundColor: newCategory === cat.key ? '#00A859' : theme.card,
                         borderColor: theme.cardBorder
                       }
                     ]}
                     onPress={() => setNewCategory(cat.key)}
                   >
+                    <Ionicons
+                      name={cat.icon as any}
+                      size={14}
+                      color={newCategory === cat.key ? '#FFFFFF' : theme.textPrimary}
+                      style={{ marginRight: 4 }}
+                    />
                     <Text
                       style={[
-                        styles.modalOptionText,
-                        { color: newCategory === cat.key ? '#050814' : theme.textSecondary }
+                        styles.modalOptionPillText,
+                        { color: newCategory === cat.key ? '#FFFFFF' : theme.textPrimary }
                       ]}
                     >
                       {cat.label}
@@ -462,13 +575,13 @@ export const TicketsScreen: React.FC<{
                 ))}
               </ScrollView>
 
-              <Text style={[styles.label, { color: theme.textSecondary }]}>Urgency Level</Text>
-              <View style={styles.priorityRow}>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Priority Level</Text>
+              <View style={styles.prioritySelectorRow}>
                 {PRIORITIES.map((p) => (
                   <TouchableOpacity
                     key={p.key}
                     style={[
-                      styles.modalPriorityPill,
+                      styles.prioritySelectorPill,
                       {
                         backgroundColor: newPriority === p.key ? p.color : theme.card,
                         borderColor: theme.cardBorder
@@ -478,7 +591,7 @@ export const TicketsScreen: React.FC<{
                   >
                     <Text
                       style={[
-                        styles.modalOptionText,
+                        styles.prioritySelectorText,
                         { color: newPriority === p.key ? '#FFFFFF' : theme.textSecondary }
                       ]}
                     >
@@ -491,7 +604,7 @@ export const TicketsScreen: React.FC<{
               <Text style={[styles.label, { color: theme.textSecondary }]}>Issue Subject</Text>
               <TextInput
                 style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
-                placeholder="e.g. WiFi 5GHz connection drop in Boardroom"
+                placeholder="e.g., High-Speed WiFi down in Conference Room A"
                 placeholderTextColor={theme.textMuted}
                 value={newTitle}
                 onChangeText={setNewTitle}
@@ -499,8 +612,12 @@ export const TicketsScreen: React.FC<{
 
               <Text style={[styles.label, { color: theme.textSecondary }]}>Detailed Description</Text>
               <TextInput
-                style={[styles.textArea, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
-                placeholder="Describe the issue, room number, or assistance required..."
+                style={[
+                  styles.input,
+                  styles.textArea,
+                  { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }
+                ]}
+                placeholder="Describe what occurred, impacted rooms, and urgent requirements..."
                 placeholderTextColor={theme.textMuted}
                 value={newDescription}
                 onChangeText={setNewDescription}
@@ -509,14 +626,14 @@ export const TicketsScreen: React.FC<{
               />
 
               <TouchableOpacity
-                style={[styles.submitBtn, { backgroundColor: theme.gold }]}
+                style={[styles.submitButton, submitting && { opacity: 0.7 }]}
                 onPress={handleCreateTicket}
                 disabled={submitting}
               >
                 {submitting ? (
-                  <ActivityIndicator color="#050814" />
+                  <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.submitBtnText}>Submit Facilities Ticket</Text>
+                  <Text style={styles.submitButtonText}>Submit Ticket</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -524,21 +641,24 @@ export const TicketsScreen: React.FC<{
         </View>
       </Modal>
 
-      {/* RESOLVE TICKET MODAL */}
       <Modal visible={showResolveModal} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Resolve Service Ticket</Text>
+              <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Resolve Support Ticket</Text>
               <TouchableOpacity onPress={() => setShowResolveModal(false)}>
                 <Ionicons name="close" size={24} color={theme.textMuted} />
               </TouchableOpacity>
             </View>
 
-            <Text style={[styles.label, { color: theme.textSecondary }]}>Resolution Summary & Actions Taken</Text>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>Resolution Summary Notes</Text>
             <TextInput
-              style={[styles.textArea, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
-              placeholder="e.g. Channel reconfigured to 5GHz DFS clean band. Symmetrical speeds verified."
+              style={[
+                styles.input,
+                styles.textArea,
+                { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }
+              ]}
+              placeholder="State the resolution steps taken by the operations team..."
               placeholderTextColor={theme.textMuted}
               value={resolutionNotes}
               onChangeText={setResolutionNotes}
@@ -547,14 +667,10 @@ export const TicketsScreen: React.FC<{
             />
 
             <TouchableOpacity
-              style={[styles.submitBtn, { backgroundColor: theme.success }]}
-              onPress={() => {
-                if (resolvingTicketId) {
-                  handleUpdateStatus(resolvingTicketId, 'RESOLVED', resolutionNotes);
-                }
-              }}
+              style={[styles.submitButton, { backgroundColor: '#10B981' }]}
+              onPress={() => resolvingTicketId && handleUpdateStatus(resolvingTicketId, 'RESOLVED', resolutionNotes)}
             >
-              <Text style={[styles.submitBtnText, { color: '#FFFFFF' }]}>Confirm Resolution</Text>
+              <Text style={styles.submitButtonText}>Confirm Resolution</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -570,18 +686,18 @@ const styles = StyleSheet.create({
   topActionsBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8
+    paddingVertical: 10
   },
   filterScroll: {
     flexDirection: 'row',
-    gap: 6
+    gap: 8
   },
   filterTab: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 14,
     borderWidth: 1
   },
   filterTabText: {
@@ -591,66 +707,72 @@ const styles = StyleSheet.create({
   raiseButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#00A859',
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 8,
-    gap: 4
+    borderRadius: 14,
+    marginLeft: 8
   },
   raiseButtonText: {
-    color: '#050814',
+    color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '700'
+    fontWeight: '700',
+    marginLeft: 4
   },
-  categoriesBar: {
+  categoryFilterRow: {
     paddingHorizontal: 16,
-    paddingBottom: 8
+    marginBottom: 8
   },
-  catScroll: {
+  categoryScroll: {
+    flexDirection: 'row',
     gap: 6
   },
-  catPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
     borderWidth: 1
   },
-  catPillText: {
+  categoryChipText: {
     fontSize: 11,
     fontWeight: '600'
   },
   centerBox: {
     flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center'
+    padding: 30
   },
   loadingText: {
-    fontSize: 13,
-    marginTop: 10
+    marginTop: 12,
+    fontSize: 13
   },
   emptyBox: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32
+    justifyContent: 'center',
+    padding: 40
   },
   emptyTitle: {
     fontSize: 16,
     fontWeight: '700',
-    marginTop: 12
+    marginTop: 14,
+    marginBottom: 6
   },
   emptySubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     textAlign: 'center',
-    marginTop: 6
+    lineHeight: 18
   },
   scrollList: {
-    flex: 1,
     paddingHorizontal: 16
   },
   ticketCard: {
-    padding: 16,
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
+    padding: 16,
     marginBottom: 12
   },
   cardHeader: {
@@ -665,10 +787,10 @@ const styles = StyleSheet.create({
   },
   ticketNumText: {
     fontSize: 13,
-    fontWeight: '700'
+    fontWeight: '800'
   },
   companyLabel: {
-    fontSize: 12,
+    fontSize: 11,
     marginLeft: 6
   },
   badgesRow: {
@@ -677,8 +799,8 @@ const styles = StyleSheet.create({
   },
   priorityPill: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
     borderWidth: 1
   },
   priorityPillText: {
@@ -687,8 +809,8 @@ const styles = StyleSheet.create({
   },
   statusPill: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
     borderWidth: 1
   },
   statusPillText: {
@@ -701,14 +823,15 @@ const styles = StyleSheet.create({
     marginBottom: 4
   },
   ticketDesc: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 17,
     marginBottom: 10
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center'
+    alignItems: 'center',
+    marginTop: 4
   },
   dateText: {
     fontSize: 11
@@ -718,17 +841,70 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   commentCount: {
-    fontSize: 12,
-    fontWeight: '600'
+    fontSize: 11
   },
   expandedContent: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1
   },
+  contextProductCard: {
+    borderRadius: 14,
+    borderWidth: 1.5,
+    padding: 12,
+    marginBottom: 12
+  },
+  contextHeaderTop: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  contextIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  contextSubheader: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    color: '#00A859'
+  },
+  contextTitle: {
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  clearChatBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8
+  },
+  clearChatBtnText: {
+    fontSize: 10,
+    color: '#DC2626',
+    fontWeight: '700',
+    marginLeft: 3
+  },
+  contextMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 168, 89, 0.2)'
+  },
+  contextMetaItem: {
+    fontSize: 11
+  },
   resolutionBox: {
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     marginBottom: 12
   },
@@ -743,17 +919,18 @@ const styles = StyleSheet.create({
   },
   adminActionRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     marginBottom: 12
   },
   actionBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center'
   },
   actionBtnText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700'
   },
   threadHeader: {
@@ -764,15 +941,24 @@ const styles = StyleSheet.create({
     marginBottom: 8
   },
   commentBubble: {
-    padding: 10,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
-    marginBottom: 8
+    padding: 10,
+    marginBottom: 8,
+    maxWidth: '85%'
+  },
+  commentBubbleLeft: {
+    alignSelf: 'flex-start',
+    borderBottomLeftRadius: 2
+  },
+  commentBubbleRight: {
+    alignSelf: 'flex-end',
+    borderBottomRightRadius: 2
   },
   commentMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4
+    marginBottom: 3
   },
   commentAuthor: {
     fontSize: 11,
@@ -783,45 +969,52 @@ const styles = StyleSheet.create({
     marginLeft: 4
   },
   commentMsg: {
-    fontSize: 12,
-    lineHeight: 16
+    fontSize: 13,
+    lineHeight: 18
+  },
+  noCommentsBox: {
+    alignItems: 'center',
+    paddingVertical: 14
   },
   noCommentsText: {
     fontSize: 12,
-    fontStyle: 'italic',
-    marginBottom: 8
+    textAlign: 'center',
+    marginTop: 6
   },
   replyBox: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 6
+    alignItems: 'center',
+    marginTop: 10
   },
   replyInput: {
     flex: 1,
-    height: 40,
+    height: 42,
+    borderRadius: 12,
     borderWidth: 1,
-    borderRadius: 8,
     paddingHorizontal: 12,
-    fontSize: 12
+    fontSize: 13
   },
   replySendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center'
+    marginLeft: 8
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'flex-end'
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
   },
   modalCard: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    width: '100%',
+    maxHeight: '85%',
+    borderRadius: 22,
     borderWidth: 1,
-    padding: 20,
-    maxHeight: '85%'
+    padding: 20
   },
   modalHeader: {
     flexDirection: 'row',
@@ -830,8 +1023,8 @@ const styles = StyleSheet.create({
     marginBottom: 16
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700'
+    fontSize: 17,
+    fontWeight: '800'
   },
   label: {
     fontSize: 12,
@@ -839,53 +1032,57 @@ const styles = StyleSheet.create({
     marginBottom: 6
   },
   modalOptionPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginRight: 6
-  },
-  modalOptionText: {
-    fontSize: 12,
-    fontWeight: '700'
-  },
-  priorityRow: {
     flexDirection: 'row',
-    gap: 6,
-    marginBottom: 12
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginRight: 8
   },
-  modalPriorityPill: {
+  modalOptionPillText: {
+    fontSize: 11,
+    fontWeight: '600'
+  },
+  prioritySelectorRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14
+  },
+  prioritySelectorPill: {
     flex: 1,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center'
   },
+  prioritySelectorText: {
+    fontSize: 11,
+    fontWeight: '700'
+  },
   input: {
+    height: 44,
+    borderRadius: 12,
     borderWidth: 1,
-    borderRadius: 8,
     paddingHorizontal: 12,
-    height: 42,
     fontSize: 13,
-    marginBottom: 12
+    marginBottom: 14
   },
   textArea: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    height: 80,
-    fontSize: 13,
-    marginBottom: 16,
+    height: 90,
+    paddingTop: 10,
     textAlignVertical: 'top'
   },
-  submitBtn: {
-    paddingVertical: 12,
-    borderRadius: 10,
+  submitButton: {
+    backgroundColor: '#00A859',
+    height: 46,
+    borderRadius: 14,
     alignItems: 'center',
-    marginBottom: 20
+    justifyContent: 'center',
+    marginTop: 8
   },
-  submitBtnText: {
-    color: '#050814',
+  submitButtonText: {
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700'
   }

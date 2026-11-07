@@ -1,10 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { MeetingRoom } from './room.model.js';
+import { RoomReview } from './room-review.model.js';
 import { Company } from '../companies/company.model.js';
+import { User } from '../users/user.model.js';
 import { apiSuccess } from '../../utils/response.js';
 import { AppError } from '../../middleware/errorHandler.js';
 import { UserRole } from '../../types/index.js';
 import { createAuditLog } from '../audit-logs/audit-log.service.js';
+import { Types } from 'mongoose';
 
 export async function getPublicRooms(req: Request, res: Response, next: NextFunction) {
   try {
@@ -236,6 +239,90 @@ export async function addMaintenanceBlock(req: Request, res: Response, next: Nex
     });
 
     return apiSuccess(res, room, 'Maintenance block added successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function addRoomReview(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const { rating, comment, bookingId } = req.body;
+    const user = req.user!;
+
+    if (!rating || rating < 1 || rating > 5) {
+      throw new AppError('Rating must be between 1 and 5', 400);
+    }
+    if (!comment || !comment.trim()) {
+      throw new AppError('Review comment is required', 400);
+    }
+
+    const room = await MeetingRoom.findById(id);
+    if (!room) {
+      throw new AppError('Room not found', 404);
+    }
+
+    const review = await RoomReview.create({
+      roomId: room._id,
+      userId: new Types.ObjectId(user.userId),
+      userName: user.email.split('@')[0],
+      rating: Number(rating),
+      comment: comment.trim(),
+      bookingId: bookingId ? new Types.ObjectId(bookingId) : undefined
+    });
+
+    const allReviews = await RoomReview.find({ roomId: room._id });
+    const avgRating = allReviews.reduce((acc, r) => acc + r.rating, 0) / allReviews.length;
+    room.rating = parseFloat(avgRating.toFixed(1));
+    room.reviewCount = allReviews.length;
+    await room.save();
+
+    return apiSuccess(res, { review, rating: room.rating, reviewCount: room.reviewCount }, 'Review submitted successfully', 201);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getRoomReviews(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const reviews = await RoomReview.find({ roomId: id })
+      .sort({ createdAt: -1 })
+      .limit(50);
+    return apiSuccess(res, reviews);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function toggleRoomLike(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = req.params.id as string;
+    const userId = req.user?.userId;
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    const roomObjectId = new Types.ObjectId(id);
+    user.favoriteRoomIds = user.favoriteRoomIds || [];
+    const existingIndex = user.favoriteRoomIds.findIndex((favId) => favId.toString() === id);
+
+    let isLiked = false;
+    if (existingIndex > -1) {
+      user.favoriteRoomIds.splice(existingIndex, 1);
+      isLiked = false;
+    } else {
+      user.favoriteRoomIds.push(roomObjectId);
+      isLiked = true;
+    }
+
+    await user.save();
+
+    return apiSuccess(res, {
+      liked: isLiked,
+      favoriteRoomIds: user.favoriteRoomIds.map((f) => f.toString())
+    }, isLiked ? 'Workspace saved to favorites' : 'Workspace removed from favorites');
   } catch (error) {
     next(error);
   }

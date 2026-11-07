@@ -6,8 +6,11 @@ export interface MobileUser {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   role: string;
   designation?: string;
+  avatarUrl?: string;
+  favoriteRoomIds?: string[];
   permissions: string[];
   parentUserId?: string;
   organizationId?: string;
@@ -36,6 +39,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isGuest: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -57,8 +61,11 @@ const normalizeUser = (raw: any): MobileUser | null => {
     id: u.id || u._id || raw.id || raw._id || '',
     name: u.name || raw.name || '',
     email: u.email || raw.email || '',
+    phone: u.phone || raw.phone || '',
     role: u.role || raw.role || '',
     designation: u.designation || raw.designation || '',
+    avatarUrl: u.avatarUrl || raw.avatarUrl || '',
+    favoriteRoomIds: u.favoriteRoomIds || raw.favoriteRoomIds || [],
     permissions: perms,
     parentUserId: u.parentUserId || raw.parentUserId,
     organizationId: u.organizationId || raw.organizationId,
@@ -105,12 +112,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const profile = await mobileApi.getProfile();
           await updateUser(profile);
-        } catch (fetchErr) {
-          console.warn('Background profile refresh offline, using cached profile:', fetchErr);
-        }
+        } catch {}
       }
-    } catch (err) {
-      console.warn('Auto-login session expired or offline:', err);
+    } catch {
       await AsyncStorage.removeItem('aura_auth_token');
       await AsyncStorage.removeItem('aura_cached_user');
       setToken(null);
@@ -141,9 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const profile = await mobileApi.getProfile();
       await updateUser(profile);
-    } catch (err) {
-      console.error('Failed to refresh profile:', err);
-    }
+    } catch {}
   };
 
   useEffect(() => {
@@ -173,6 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         token,
         isLoading,
         isAuthenticated: !!token && !!user,
+        isGuest: !token || !user,
         login,
         logout,
         refreshProfile,

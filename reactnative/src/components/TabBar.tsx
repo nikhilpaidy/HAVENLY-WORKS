@@ -1,8 +1,7 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../context/AuthContext';
 
 export type TabKey =
   | 'dashboard'
@@ -19,150 +18,165 @@ interface TabBarProps {
   onSelectTab: (tab: TabKey) => void;
 }
 
+interface NavTabItem {
+  key: TabKey;
+  label: string;
+  icon: any;
+  iconActive: any;
+}
+
+const NAV_TABS: NavTabItem[] = [
+  { key: 'dashboard', label: 'Explore', icon: 'compass-outline', iconActive: 'compass' },
+  { key: 'rooms', label: 'Rooms', icon: 'business-outline', iconActive: 'business' },
+  { key: 'bookings', label: 'Bookings', icon: 'calendar-outline', iconActive: 'calendar' },
+  { key: 'allowance', label: 'Quota', icon: 'pie-chart-outline', iconActive: 'pie-chart' }
+];
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const BAR_HORIZONTAL_PADDING = 16;
+const AVAILABLE_WIDTH = SCREEN_WIDTH - BAR_HORIZONTAL_PADDING * 2;
+const TAB_WIDTH = AVAILABLE_WIDTH / NAV_TABS.length;
+
 export const TabBar: React.FC<TabBarProps> = ({ currentTab, onSelectTab }) => {
-  const { user, hasPermission } = useAuth();
   const { theme, isDark } = useTheme();
-  const role = user?.role;
 
-  let tabs: Array<{ key: TabKey; label: string; icon: any; iconActive: any }> = [];
+  const activeIndex = NAV_TABS.findIndex((t) => t.key === currentTab);
+  const safeIndex = activeIndex >= 0 ? activeIndex : 0;
 
-  if (role === 'SUPER_ADMIN') {
-    tabs = [
-      { key: 'dashboard', label: 'Platform', icon: 'shield-checkmark-outline', iconActive: 'shield-checkmark' },
-      { key: 'rooms', label: 'Hubs', icon: 'business-outline', iconActive: 'business' },
-      { key: 'staff', label: 'Staff', icon: 'people-outline', iconActive: 'people' },
-      { key: 'invoices', label: 'Billing', icon: 'receipt-outline', iconActive: 'receipt' },
-      { key: 'profile', label: 'Admin', icon: 'person-outline', iconActive: 'person' }
-    ];
-  } else if (role === 'SUPER_ADMIN_STAFF') {
-    tabs = [
-      { key: 'dashboard', label: 'Platform', icon: 'shield-checkmark-outline', iconActive: 'shield-checkmark' },
-      ...(hasPermission('view_spaces')
-        ? [{ key: 'rooms' as TabKey, label: 'Hubs', icon: 'business-outline', iconActive: 'business' }]
-        : []),
-      { key: 'profile', label: 'Profile', icon: 'person-outline', iconActive: 'person' }
-    ];
-  } else if (role === 'COWORKING_ADMIN') {
-    tabs = [
-      { key: 'dashboard', label: 'Hub Ops', icon: 'grid-outline', iconActive: 'grid' },
-      { key: 'rooms', label: 'Rooms', icon: 'business-outline', iconActive: 'business' },
-      { key: 'bookings', label: 'Bookings', icon: 'calendar-outline', iconActive: 'calendar' },
-      { key: 'tickets', label: 'Helpdesk', icon: 'help-buoy-outline', iconActive: 'help-buoy' },
-      { key: 'staff', label: 'Staff', icon: 'people-outline', iconActive: 'people' },
-      { key: 'profile', label: 'Profile', icon: 'person-outline', iconActive: 'person' }
-    ];
-  } else if (role === 'COWORKING_ADMIN_STAFF') {
-    tabs = [
-      { key: 'dashboard', label: 'Hub Ops', icon: 'grid-outline', iconActive: 'grid' },
-      ...(hasPermission('manage_rooms')
-        ? [{ key: 'rooms' as TabKey, label: 'Rooms', icon: 'business-outline', iconActive: 'business' }]
-        : []),
-      ...(hasPermission('manage_bookings')
-        ? [{ key: 'bookings' as TabKey, label: 'Bookings', icon: 'calendar-outline', iconActive: 'calendar' }]
-        : []),
-      ...(hasPermission('manage_tickets')
-        ? [{ key: 'tickets' as TabKey, label: 'Helpdesk', icon: 'help-buoy-outline', iconActive: 'help-buoy' }]
-        : []),
-      { key: 'profile', label: 'Profile', icon: 'person-outline', iconActive: 'person' }
-    ];
-  } else if (role === 'COMPANY_OWNER') {
-    tabs = [
-      { key: 'dashboard', label: 'Explore', icon: 'compass-outline', iconActive: 'compass' },
-      { key: 'rooms', label: 'Rooms', icon: 'business-outline', iconActive: 'business' },
-      { key: 'bookings', label: 'Bookings', icon: 'calendar-outline', iconActive: 'calendar' },
-      { key: 'allowance', label: 'Quota', icon: 'pie-chart-outline', iconActive: 'pie-chart' },
-      { key: 'tickets', label: 'Helpdesk', icon: 'help-buoy-outline', iconActive: 'help-buoy' },
-      { key: 'staff', label: 'Staff', icon: 'people-outline', iconActive: 'people' },
-      { key: 'profile', label: 'Profile', icon: 'person-outline', iconActive: 'person' }
-    ];
-  } else {
-    // Guest or Employee
-    tabs = [
-      { key: 'dashboard', label: 'Explore', icon: 'compass-outline', iconActive: 'compass' },
-      { key: 'rooms', label: 'Workspaces', icon: 'business-outline', iconActive: 'business' },
-      { key: 'bookings', label: 'Bookings', icon: 'calendar-outline', iconActive: 'calendar' },
-      { key: 'profile', label: 'Account', icon: 'person-outline', iconActive: 'person' }
-    ];
-  }
+  const slideAnim = useRef(new Animated.Value(safeIndex * TAB_WIDTH)).current;
+  const scaleAnims = useRef(NAV_TABS.map(() => new Animated.Value(1))).current;
+
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: safeIndex * TAB_WIDTH,
+      useNativeDriver: true,
+      friction: 7,
+      tension: 65
+    }).start();
+  }, [safeIndex]);
+
+  const handleTabPress = (tab: NavTabItem, index: number) => {
+    Animated.sequence([
+      Animated.timing(scaleAnims[index], {
+        toValue: 0.88,
+        duration: 80,
+        useNativeDriver: true
+      }),
+      Animated.spring(scaleAnims[index], {
+        toValue: 1,
+        friction: 4,
+        tension: 80,
+        useNativeDriver: true
+      })
+    ]).start();
+
+    onSelectTab(tab.key);
+  };
 
   return (
     <View
       style={[
-        styles.container,
+        styles.wrapper,
         {
           backgroundColor: isDark ? '#0A0F1D' : '#FFFFFF',
-          borderTopColor: theme.cardBorder
+          borderTopColor: isDark ? '#1E293B' : '#E2E8F0'
         }
       ]}
     >
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollRow}
-      >
-        {tabs.map((tab) => {
+      <View style={styles.container}>
+        <Animated.View
+          style={[
+            styles.activePillIndicator,
+            {
+              width: TAB_WIDTH - 8,
+              transform: [{ translateX: slideAnim }]
+            }
+          ]}
+        />
+
+        {NAV_TABS.map((tab, idx) => {
           const isActive = currentTab === tab.key;
           return (
             <TouchableOpacity
               key={tab.key}
-              onPress={() => onSelectTab(tab.key)}
-              style={[
-                styles.tabButton,
-                isActive && styles.tabButtonActive
-              ]}
+              onPress={() => handleTabPress(tab, idx)}
+              style={styles.tabItem}
               activeOpacity={0.8}
             >
-              <Ionicons
-                name={isActive ? tab.iconActive : tab.icon}
-                size={20}
-                color={isActive ? '#FFFFFF' : theme.textMuted}
-              />
-              <Text
+              <Animated.View
                 style={[
-                  styles.label,
-                  { color: isActive ? '#FFFFFF' : theme.textMuted },
-                  isActive && styles.labelActive
+                  styles.tabInner,
+                  { transform: [{ scale: scaleAnims[idx] }] }
                 ]}
               >
-                {tab.label}
-              </Text>
+                <Ionicons
+                  name={isActive ? tab.iconActive : tab.icon}
+                  size={20}
+                  color={isActive ? '#FFFFFF' : (isDark ? '#94A3B8' : '#64748B')}
+                />
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    {
+                      color: isActive
+                        ? '#FFFFFF'
+                        : isDark
+                        ? '#94A3B8'
+                        : '#64748B',
+                      fontWeight: isActive ? '700' : '500'
+                    }
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+              </Animated.View>
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  wrapper: {
     borderTopWidth: 1,
     paddingTop: 8,
-    paddingBottom: 14
+    paddingBottom: 16,
+    paddingHorizontal: BAR_HORIZONTAL_PADDING
   },
-  scrollRow: {
+  container: {
     flexDirection: 'row',
+    position: 'relative',
     alignItems: 'center',
-    justifyContent: 'space-around',
-    minWidth: '100%',
-    paddingHorizontal: 8
+    height: 52
   },
-  tabButton: {
+  activePillIndicator: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#00A859',
+    shadowColor: '#00A859',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 5
+  },
+  tabItem: {
+    width: TAB_WIDTH,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16
+    zIndex: 2
   },
-  tabButtonActive: {
-    backgroundColor: '#00A859'
+  tabInner: {
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  label: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 2
-  },
-  labelActive: {
-    fontWeight: '800'
+  tabLabel: {
+    fontSize: 11,
+    marginTop: 3
   }
 });

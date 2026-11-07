@@ -1,16 +1,11 @@
-/**
- * Ticket Controller.
- * Exposes API routes for raising complaints, fetching ticket lists scoped by tenant,
- * updating status, and adding discussion comments.
- */
-
 import { Request, Response, NextFunction } from 'express';
 import {
   createTicket,
   getTickets,
   getTicketById,
   updateTicketStatus,
-  addTicketComment
+  addTicketComment,
+  clearTicketComments
 } from './ticket.service.js';
 import { apiSuccess } from '../../utils/response.js';
 import { AppError } from '../../middleware/errorHandler.js';
@@ -135,6 +130,16 @@ export async function addTicketCommentHandler(req: Request, res: Response, next:
     });
 
     return apiSuccess(res, ticket, 'Comment added successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function clearTicketCommentsHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const ticket = await clearTicketComments(id as string);
+    return apiSuccess(res, ticket, 'All ticket comments cleared from database');
   } catch (error) {
     next(error);
   }
