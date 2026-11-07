@@ -29,7 +29,7 @@ const NAV_TABS: NavTabItem[] = [
   { key: 'dashboard', label: 'Explore', iconOutline: 'home-outline', iconFilled: 'home' },
   { key: 'rooms', label: 'Workspaces', iconOutline: 'grid-outline', iconFilled: 'grid' },
   { key: 'bookings', label: 'Bookings', iconOutline: 'bookmark-outline', iconFilled: 'bookmark' },
-  { key: 'allowance', label: 'Quota', iconOutline: 'pie-chart-outline', iconFilled: 'pie-chart' }
+  { key: 'allowance', label: 'Quota', iconOutline: 'layers-outline', iconFilled: 'layers' }
 ];
 
 export const TabBar: React.FC<TabBarProps> = ({ currentTab, onSelectTab }) => {

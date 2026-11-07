@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Image, StyleSheet, ImageProps, ImageStyle, StyleProp } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
+import { resolveImageUrl } from '../services/api';
 
 interface SafeImageProps extends Omit<ImageProps, 'source'> {
   uri?: string;
@@ -21,9 +22,10 @@ export const SafeImage: React.FC<SafeImageProps> = ({
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const finalUri = resolveImageUrl(uri);
   const placeholderBg = isDark ? '#1E293B' : '#E2E8F0';
 
-  if (!uri || hasError) {
+  if (!finalUri || hasError) {
     return (
       <View
         style={[
@@ -51,7 +53,7 @@ export const SafeImage: React.FC<SafeImageProps> = ({
         </View>
       )}
       <Image
-        source={{ uri }}
+        source={{ uri: finalUri }}
         onLoadStart={() => setIsLoading(true)}
         onLoadEnd={() => setIsLoading(false)}
         onError={() => {

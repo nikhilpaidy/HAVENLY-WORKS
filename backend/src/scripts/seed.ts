@@ -384,7 +384,6 @@ async function runSeed() {
       dailyRate: 699,
       rating: 4.9,
       reviewCount: 520,
-      saveBadge: 'Save 15%',
       photos: [
         'https://images.unsplash.com/photo-1497215842964-222b430dc094?w=800&q=80',
         'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800&q=80'
@@ -407,7 +406,6 @@ async function runSeed() {
       dailyRate: 899,
       rating: 4.8,
       reviewCount: 340,
-      saveBadge: 'Save 10%',
       photos: [
         'https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?w=800&q=80'
       ],
@@ -429,7 +427,6 @@ async function runSeed() {
       dailyRate: 650,
       rating: 4.8,
       reviewCount: 280,
-      saveBadge: 'Best Value',
       photos: [
         'https://images.unsplash.com/photo-1497215842964-222b430dc094?w=800&q=80'
       ],
@@ -451,7 +448,6 @@ async function runSeed() {
       dailyRate: 850,
       rating: 4.9,
       reviewCount: 310,
-      saveBadge: 'Popular',
       photos: [
         'https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?w=800&q=80'
       ],
@@ -473,7 +469,6 @@ async function runSeed() {
       dailyRate: 4900,
       rating: 5.0,
       reviewCount: 140,
-      saveBadge: 'Creator Pick',
       photos: [
         'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800&q=80'
       ],
@@ -495,7 +490,6 @@ async function runSeed() {
       dailyRate: 3800,
       rating: 4.9,
       reviewCount: 310,
-      saveBadge: 'Save 10%',
       photos: [
         'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80',
         'https://images.unsplash.com/photo-1517502884422-41eaead166d4?w=800&q=80'
@@ -518,7 +512,6 @@ async function runSeed() {
       dailyRate: 7500,
       rating: 5.0,
       reviewCount: 220,
-      saveBadge: 'Save 20%',
       photos: [
         'https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1200&q=80'
       ],
@@ -540,7 +533,6 @@ async function runSeed() {
       dailyRate: 5400,
       rating: 4.9,
       reviewCount: 160,
-      saveBadge: 'Save 10%',
       photos: [
         'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800&q=80'
       ],
@@ -562,7 +554,6 @@ async function runSeed() {
       dailyRate: 4200,
       rating: 4.8,
       reviewCount: 190,
-      saveBadge: 'Save 15%',
       photos: [
         'https://images.unsplash.com/photo-1517502884422-41eaead166d4?w=800&q=80'
       ],

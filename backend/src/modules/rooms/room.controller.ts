@@ -1,7 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { MeetingRoom } from './room.model.js';
 import { RoomReview } from './room-review.model.js';
 import { Company } from '../companies/company.model.js';
+import { Location } from '../locations/location.model.js';
 import { User } from '../users/user.model.js';
 import { apiSuccess } from '../../utils/response.js';
 import { AppError } from '../../middleware/errorHandler.js';
@@ -133,10 +136,24 @@ export async function getRoomById(req: Request, res: Response, next: NextFunctio
 
 export async function createRoom(req: Request, res: Response, next: NextFunction) {
   try {
-    const organizationId =
+    let organizationId =
       req.user?.role === UserRole.SUPER_ADMIN && req.body.organizationId
         ? req.body.organizationId
         : req.user?.organizationId;
+
+    if (!organizationId && req.body.locationId) {
+      const loc = await Location.findById(req.body.locationId).select('organizationId');
+      if (loc?.organizationId) {
+        organizationId = loc.organizationId.toString();
+      }
+    }
+
+    if (!organizationId) {
+      const firstLoc = await Location.findOne().select('organizationId');
+      if (firstLoc?.organizationId) {
+        organizationId = firstLoc.organizationId.toString();
+      }
+    }
 
     if (!organizationId) {
       throw new AppError('organizationId is required', 400);
@@ -327,3 +344,50 @@ export async function toggleRoomLike(req: Request, res: Response, next: NextFunc
     next(error);
   }
 }
+
+export async function uploadRoomPhotoHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { image, images } = req.body;
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    const itemsToSave: string[] = [];
+    if (Array.isArray(images) && images.length > 0) {
+      itemsToSave.push(...images);
+    } else if (image && typeof image === 'string') {
+      itemsToSave.push(image);
+    }
+
+    if (itemsToSave.length === 0) {
+      throw new AppError('No image data provided', 400);
+    }
+
+    const uploadedUrls: string[] = [];
+    for (let i = 0; i < itemsToSave.length; i++) {
+      const raw = itemsToSave[i];
+      const match = raw.match(/^data:image\/(\w+);base64,/);
+      const ext = match ? match[1] : 'jpg';
+      const base64Data = raw.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      const uniqueName = `room-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+      const destPath = path.join(uploadsDir, uniqueName);
+      await fs.promises.writeFile(destPath, buffer);
+      uploadedUrls.push(`/uploads/${uniqueName}`);
+    }
+
+    return apiSuccess(
+      res,
+      {
+        url: uploadedUrls[0],
+        urls: uploadedUrls
+      },
+      'Photos uploaded successfully',
+      201
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+

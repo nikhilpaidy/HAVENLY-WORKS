@@ -64,11 +64,17 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
 
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [locations, setLocations] = useState<any[]>([]);
+  const [selectedHubId, setSelectedHubId] = useState('');
+
   const [showOnboardModal, setShowOnboardModal] = useState(false);
   const [compName, setCompName] = useState('');
+  const [compDomain, setCompDomain] = useState('');
+  const [compOwnerName, setCompOwnerName] = useState('');
   const [compEmail, setCompEmail] = useState('');
   const [compPhone, setCompPhone] = useState('');
   const [compGstin, setCompGstin] = useState('');
+  const [compPan, setCompPan] = useState('');
   const [compFreeHours, setCompFreeHours] = useState('240');
   const [onboarding, setOnboarding] = useState(false);
 
@@ -76,13 +82,37 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
   const [hubName, setHubName] = useState('');
   const [hubStreet, setHubStreet] = useState('');
   const [hubCity, setHubCity] = useState('Hyderabad');
+  const [hubState, setHubState] = useState('Telangana');
+  const [hubPostalCode, setHubPostalCode] = useState('500081');
+  const [hubCountry, setHubCountry] = useState('India');
   const [hubManager, setHubManager] = useState('');
   const [hubPhone, setHubPhone] = useState('');
   const [hubUpi, setHubUpi] = useState('');
   const [addingHub, setAddingHub] = useState(false);
 
+  const [showAddTypeModal, setShowAddTypeModal] = useState(false);
+  const [typeName, setTypeName] = useState('');
+  const [typeCode, setTypeCode] = useState('');
+  const [typeCapacity, setTypeCapacity] = useState('4');
+  const [typeRate, setTypeRate] = useState('450');
+  const [typeDesc, setTypeDesc] = useState('');
+  const [addingType, setAddingType] = useState(false);
+
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible && isManagerRole) {
+      mobileApi.getPublicLocations().then((locs) => {
+        if (Array.isArray(locs) && locs.length > 0) {
+          setLocations(locs);
+          if (!selectedHubId) {
+            setSelectedHubId(locs[0]._id);
+          }
+        }
+      }).catch(() => {});
+    }
+  }, [visible, isManagerRole]);
 
   useEffect(() => {
     if (visible) {
@@ -129,18 +159,26 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
     try {
       await mobileApi.createCompany({
         name: compName.trim(),
+        domain: compDomain.trim().toLowerCase() || undefined,
         billingEmail: compEmail.trim().toLowerCase(),
+        ownerName: compOwnerName.trim() || undefined,
+        ownerEmail: compEmail.trim().toLowerCase(),
         phone: compPhone.trim() || undefined,
+        locationId: selectedHubId || undefined,
         gstin: compGstin.trim() || undefined,
+        pan: compPan.trim() || undefined,
         allowanceConfig: {
           annualFreeHours: parseInt(compFreeHours, 10) || 240
         }
       });
       setShowOnboardModal(false);
       setCompName('');
+      setCompDomain('');
+      setCompOwnerName('');
       setCompEmail('');
       setCompPhone('');
       setCompGstin('');
+      setCompPan('');
       Alert.alert('Company Registered', `Client company "${compName.trim()}" onboarded with ${compFreeHours} annual free hours.`);
     } catch (err: any) {
       Alert.alert('Registration Error', err.message || 'Could not onboard company.');
@@ -161,7 +199,9 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
         address: {
           street: hubStreet.trim(),
           city: hubCity.trim() || 'Hyderabad',
-          country: 'India'
+          state: hubState.trim() || 'Telangana',
+          postalCode: hubPostalCode.trim() || '500081',
+          country: hubCountry.trim() || 'India'
         },
         timezone: 'Asia/Kolkata',
         managerName: hubManager.trim() || undefined,
@@ -179,6 +219,33 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
       Alert.alert('Create Error', err.message || 'Could not add coworking hub.');
     } finally {
       setAddingHub(false);
+    }
+  };
+
+  const handleCreateType = async () => {
+    if (!typeName.trim()) {
+      Alert.alert('Validation Error', 'Workspace type name is required.');
+      return;
+    }
+    setAddingType(true);
+    try {
+      const code = (typeCode || typeName).trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+      await mobileApi.createWorkspaceType({
+        name: typeName.trim(),
+        code,
+        capacityDefault: parseInt(typeCapacity, 10) || 4,
+        hourlyRateDefault: parseFloat(typeRate) || 450,
+        description: typeDesc.trim() || undefined
+      });
+      setShowAddTypeModal(false);
+      setTypeName('');
+      setTypeCode('');
+      setTypeDesc('');
+      Alert.alert('Workspace Type Created', `Type "${typeName.trim()}" published successfully.`);
+    } catch (err: any) {
+      Alert.alert('Create Error', err.message || 'Could not add workspace type.');
+    } finally {
+      setAddingType(false);
     }
   };
 
@@ -355,7 +422,7 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
                 onPress={() => handleAction(onOpenQuota)}
                 activeOpacity={0.7}
               >
-                <Ionicons name="pie-chart-outline" size={20} color={isDark ? '#94A3B8' : '#475569'} style={styles.itemIcon} />
+                <Ionicons name="layers-outline" size={20} color={isDark ? '#94A3B8' : '#475569'} style={styles.itemIcon} />
                 <Text style={[styles.itemLabel, { color: theme.textPrimary }]}>
                   {isSuperAdmin ? 'Platform Quotas' : isCoworkingAdmin ? 'Client Quotas' : 'Allowance & Quota'}
                 </Text>
@@ -392,6 +459,19 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
                 <Ionicons name="map-outline" size={20} color="#0284C7" style={styles.itemIcon} />
                 <Text style={[styles.itemLabel, { color: '#0284C7', fontWeight: '700' }]}>
                   + Add Coworking Hub
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {isManagerRole && filterMatches('Add Workspace Type Category') && (
+              <TouchableOpacity
+                style={styles.navItem}
+                onPress={() => setShowAddTypeModal(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="pricetags-outline" size={20} color="#8B5CF6" style={styles.itemIcon} />
+                <Text style={[styles.itemLabel, { color: '#8B5CF6', fontWeight: '700' }]}>
+                  + Add Workspace Type
                 </Text>
               </TouchableOpacity>
             )}
@@ -590,13 +670,59 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 460 }}>
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Assigned Coworking Hub</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                {locations.map((loc) => {
+                  const isSelected = selectedHubId === loc._id;
+                  return (
+                    <TouchableOpacity
+                      key={loc._id}
+                      style={[
+                        styles.hubOptionChip,
+                        isSelected && styles.hubOptionActive,
+                        { borderColor: theme.cardBorder }
+                      ]}
+                      onPress={() => setSelectedHubId(loc._id)}
+                    >
+                      <Text
+                        style={[
+                          styles.hubOptionText,
+                          { color: isSelected ? '#FFFFFF' : theme.textPrimary }
+                        ]}
+                      >
+                        {loc.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Company Legal Name</Text>
               <TextInput
                 style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
                 value={compName}
                 onChangeText={setCompName}
                 placeholder="e.g. Acme Technologies Pvt Ltd"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Company Domain (Optional)</Text>
+              <TextInput
+                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={compDomain}
+                onChangeText={setCompDomain}
+                placeholder="acme.com"
+                autoCapitalize="none"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Primary Owner / Contact Name</Text>
+              <TextInput
+                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={compOwnerName}
+                onChangeText={setCompOwnerName}
+                placeholder="Colton Shierdan"
                 placeholderTextColor={theme.textMuted}
               />
 
@@ -621,15 +747,30 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
                 placeholderTextColor={theme.textMuted}
               />
 
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>GSTIN (Optional)</Text>
-              <TextInput
-                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
-                value={compGstin}
-                onChangeText={setCompGstin}
-                placeholder="36AABCB1234F1Z8"
-                autoCapitalize="characters"
-                placeholderTextColor={theme.textMuted}
-              />
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>GSTIN (Optional)</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={compGstin}
+                    onChangeText={setCompGstin}
+                    placeholder="36AABCB1234F1Z8"
+                    autoCapitalize="characters"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>PAN Number (Optional)</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={compPan}
+                    onChangeText={setCompPan}
+                    placeholder="AABCB1234F"
+                    autoCapitalize="characters"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+              </View>
 
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Annual Free Quota (Hours / Year)</Text>
               <TextInput
@@ -678,7 +819,7 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 460 }}>
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Hub / Facility Name</Text>
               <TextInput
                 style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
@@ -697,14 +838,51 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
                 placeholderTextColor={theme.textMuted}
               />
 
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>City</Text>
-              <TextInput
-                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
-                value={hubCity}
-                onChangeText={setHubCity}
-                placeholder="Hyderabad"
-                placeholderTextColor={theme.textMuted}
-              />
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>City</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={hubCity}
+                    onChangeText={setHubCity}
+                    placeholder="Hyderabad"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>State</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={hubState}
+                    onChangeText={setHubState}
+                    placeholder="Telangana"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>PIN / Postal Code</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={hubPostalCode}
+                    onChangeText={setHubPostalCode}
+                    placeholder="500081"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Country</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={hubCountry}
+                    onChangeText={setHubCountry}
+                    placeholder="India"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+              </View>
 
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>On-Site Manager Name</Text>
               <TextInput
@@ -745,6 +923,98 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <Text style={styles.modalSubmitText}>Publish Coworking Hub</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showAddTypeModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddTypeModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Add Workspace Type</Text>
+                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                  Register new category like Podcast Room, Studio, etc.
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowAddTypeModal(false)}>
+                <Ionicons name="close" size={24} color={theme.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 460 }}>
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Type Name</Text>
+              <TextInput
+                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={typeName}
+                onChangeText={setTypeName}
+                placeholder="e.g. Podcast Room"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Type Code (Optional)</Text>
+              <TextInput
+                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={typeCode}
+                onChangeText={setTypeCode}
+                placeholder="PODCAST_ROOM"
+                autoCapitalize="characters"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Default Capacity</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={typeCapacity}
+                    onChangeText={setTypeCapacity}
+                    placeholder="4"
+                    keyboardType="number-pad"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Default Rate (₹/hr)</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={typeRate}
+                    onChangeText={setTypeRate}
+                    placeholder="450"
+                    keyboardType="number-pad"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+              </View>
+
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Description</Text>
+              <TextInput
+                style={[styles.inputField, { height: 70, textAlignVertical: 'top', backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={typeDesc}
+                onChangeText={setTypeDesc}
+                placeholder="Description of this workspace configuration..."
+                placeholderTextColor={theme.textMuted}
+                multiline
+              />
+
+              <TouchableOpacity
+                style={[styles.modalSubmitBtn, { backgroundColor: '#8B5CF6' }]}
+                onPress={handleCreateType}
+                disabled={addingType}
+                activeOpacity={0.85}
+              >
+                {addingType ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.modalSubmitText}>Save Workspace Type</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -951,5 +1221,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700'
+  },
+  hubOptionChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginRight: 8
+  },
+  hubOptionActive: {
+    backgroundColor: '#00A859',
+    borderColor: '#00A859'
+  },
+  hubOptionText: {
+    fontSize: 12,
+    fontWeight: '600'
   }
 });

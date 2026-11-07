@@ -20,6 +20,7 @@ import { WorkspaceCardSkeleton } from '../components/SkeletonLoader';
 import { WorkspaceDetailModal } from './WorkspaceDetailModal';
 import { Header } from '../components/Header';
 import { useAuth } from '../context/AuthContext';
+import * as ImagePicker from 'expo-image-picker';
 
 interface RoomsScreenProps {
   onOpenNotifications: () => void;
@@ -39,6 +40,8 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
 
   const [rooms, setRooms] = useState<any[]>([]);
   const [workspaceTypes, setWorkspaceTypes] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
+  const [selectedHubId, setSelectedHubId] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('ALL');
@@ -53,7 +56,19 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
   const [roomCapacity, setRoomCapacity] = useState('4');
   const [roomHourlyRate, setRoomHourlyRate] = useState('450');
   const [roomDesc, setRoomDesc] = useState('');
+  const [roomPhotos, setRoomPhotos] = useState<string[]>([]);
   const [creatingRoom, setCreatingRoom] = useState(false);
+
+  const [showEditRoomModal, setShowEditRoomModal] = useState(false);
+  const [editingRoom, setEditingRoom] = useState<any | null>(null);
+  const [editRoomName, setEditRoomName] = useState('');
+  const [editRoomType, setEditRoomType] = useState('HOT_DESK');
+  const [editHubId, setEditHubId] = useState('');
+  const [editCapacity, setEditCapacity] = useState('4');
+  const [editHourlyRate, setEditHourlyRate] = useState('450');
+  const [editDesc, setEditDesc] = useState('');
+  const [editPhotos, setEditPhotos] = useState<string[]>([]);
+  const [updatingRoom, setUpdatingRoom] = useState(false);
 
   const [showAddTypeModal, setShowAddTypeModal] = useState(false);
   const [typeName, setTypeName] = useState('');
@@ -65,13 +80,20 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
 
   const fetchRooms = async () => {
     try {
-      const [data, typesData] = await Promise.all([
+      const [data, typesData, locsData] = await Promise.all([
         mobileApi.getPublicRooms({
           workspaceType: selectedCategory !== 'ALL' ? selectedCategory : undefined
         }),
-        mobileApi.getWorkspaceTypes()
+        mobileApi.getWorkspaceTypes(),
+        mobileApi.getPublicLocations()
       ]);
       setRooms(Array.isArray(data) ? data : []);
+      if (Array.isArray(locsData) && locsData.length > 0) {
+        setLocations(locsData);
+        if (!selectedHubId) {
+          setSelectedHubId(locsData[0]._id);
+        }
+      }
       if (Array.isArray(typesData) && typesData.length > 0) {
         setWorkspaceTypes(typesData);
         if (!roomType && typesData[0]?.code) {
@@ -95,6 +117,54 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
     fetchRooms();
   };
 
+  const pickImagesForRoom = async (isEdit: boolean = false) => {
+    const currentPhotos = isEdit ? editPhotos : roomPhotos;
+    if (currentPhotos.length >= 10) {
+      Alert.alert('Limit Reached', 'You can upload up to 10 photos per workspace.');
+      return;
+    }
+    const remaining = 10 - currentPhotos.length;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      selectionLimit: remaining,
+      quality: 0.7,
+      base64: true
+    });
+    if (!result.canceled && result.assets) {
+      const newPhotos = result.assets.map((asset) => {
+        if (asset.base64) {
+          return `data:image/jpeg;base64,${asset.base64}`;
+        }
+        return asset.uri;
+      });
+      if (isEdit) {
+        setEditPhotos((prev) => [...prev, ...newPhotos].slice(0, 10));
+      } else {
+        setRoomPhotos((prev) => [...prev, ...newPhotos].slice(0, 10));
+      }
+    }
+  };
+
+  const uploadPhotosIfRequired = async (photoList: string[]): Promise<string[]> => {
+    const resultUrls: string[] = [];
+    for (const p of photoList) {
+      if (p.startsWith('data:image')) {
+        try {
+          const uploadRes = await mobileApi.uploadRoomPhoto({ image: p });
+          if (uploadRes?.url) {
+            resultUrls.push(uploadRes.url);
+          }
+        } catch (e) {
+          console.warn('Failed to upload photo:', e);
+        }
+      } else {
+        resultUrls.push(p);
+      }
+    }
+    return resultUrls;
+  };
+
   const handleCreateRoom = async () => {
     if (!roomName.trim()) {
       Alert.alert('Validation Error', 'Workspace name is required.');
@@ -102,23 +172,56 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
     }
     setCreatingRoom(true);
     try {
+      const uploadedUrls = await uploadPhotosIfRequired(roomPhotos);
       await mobileApi.createRoom({
         name: roomName.trim(),
         workspaceType: roomType || 'HOT_DESK',
+        locationId: selectedHubId || undefined,
         capacity: parseInt(roomCapacity, 10) || 1,
         hourlyRate: parseFloat(roomHourlyRate) || 300,
         description: roomDesc.trim() || undefined,
+        photos: uploadedUrls.length > 0 ? uploadedUrls : undefined,
         amenities: ['High-speed Wi-Fi', 'Power Outlets', 'Ergonomic Seating', 'Air Conditioning']
       });
       setShowAddRoomModal(false);
       setRoomName('');
       setRoomDesc('');
+      setRoomPhotos([]);
       Alert.alert('Success', 'Workspace created successfully.');
       fetchRooms();
     } catch (err: any) {
       Alert.alert('Create Error', err.message || 'Could not create workspace.');
     } finally {
       setCreatingRoom(false);
+    }
+  };
+
+  const handleUpdateRoom = async () => {
+    if (!editingRoom?._id || !editRoomName.trim()) {
+      Alert.alert('Validation Error', 'Workspace name is required.');
+      return;
+    }
+    setUpdatingRoom(true);
+    try {
+      const uploadedUrls = await uploadPhotosIfRequired(editPhotos);
+      await mobileApi.updateRoom(editingRoom._id, {
+        name: editRoomName.trim(),
+        workspaceType: editRoomType || 'HOT_DESK',
+        locationId: editHubId || undefined,
+        capacity: parseInt(editCapacity, 10) || 1,
+        hourlyRate: parseFloat(editHourlyRate) || 300,
+        description: editDesc.trim() || undefined,
+        photos: uploadedUrls
+      });
+      setShowEditRoomModal(false);
+      setEditingRoom(null);
+      setEditPhotos([]);
+      Alert.alert('Success', 'Workspace updated successfully.');
+      fetchRooms();
+    } catch (err: any) {
+      Alert.alert('Update Error', err.message || 'Could not update workspace.');
+    } finally {
+      setUpdatingRoom(false);
     }
   };
 
@@ -216,11 +319,34 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
               <Ionicons name="time-outline" size={13} color={theme.textMuted} style={{ marginRight: 4 }} />
               <Text style={{ fontSize: 12, color: theme.textMuted }}>{loc.distanceLabel || '15 Min • 3.0 km'}</Text>
             </View>
-            <View style={styles.capacityMeta}>
-              <Ionicons name="people-outline" size={13} color="#00A859" style={{ marginRight: 4 }} />
-              <Text style={{ fontSize: 12, fontWeight: '600', color: theme.textPrimary }}>
-                {item.capacity || 1} Seats
-              </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={styles.capacityMeta}>
+                <Ionicons name="people-outline" size={13} color="#00A859" style={{ marginRight: 4 }} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: theme.textPrimary }}>
+                  {item.capacity || 1} Seats
+                </Text>
+              </View>
+              {isAdminRole && (
+                <TouchableOpacity
+                  style={styles.cardEditBtn}
+                  onPress={(e) => {
+                    e.stopPropagation?.();
+                    setEditingRoom(item);
+                    setEditRoomName(item.name || '');
+                    setEditRoomType(item.workspaceType || 'HOT_DESK');
+                    setEditHubId(item.locationId?._id || item.locationId || (locations[0]?._id || ''));
+                    setEditCapacity(String(item.capacity || 4));
+                    setEditHourlyRate(String(item.hourlyRate || 450));
+                    setEditDesc(item.description || '');
+                    setEditPhotos(Array.isArray(item.photos) ? [...item.photos] : []);
+                    setShowEditRoomModal(true);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="create-outline" size={15} color="#00A859" />
+                  <Text style={styles.cardEditText}>Edit</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -355,7 +481,7 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 440 }}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 480 }}>
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Workspace Name</Text>
               <TextInput
                 style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
@@ -364,6 +490,33 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
                 placeholder="e.g. Executive Boardroom Alpha"
                 placeholderTextColor={theme.textMuted}
               />
+
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Coworking Hub / Facility</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                {locations.map((loc) => {
+                  const isSelected = selectedHubId === loc._id;
+                  return (
+                    <TouchableOpacity
+                      key={loc._id}
+                      style={[
+                        styles.typeOptionChip,
+                        isSelected && styles.typeOptionActive,
+                        { borderColor: theme.cardBorder }
+                      ]}
+                      onPress={() => setSelectedHubId(loc._id)}
+                    >
+                      <Text
+                        style={[
+                          styles.typeOptionText,
+                          { color: isSelected ? '#FFFFFF' : theme.textPrimary }
+                        ]}
+                      >
+                        {loc.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
 
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Workspace Type</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
@@ -414,6 +567,41 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
                 </View>
               </View>
 
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 6 }}>
+                <Text style={[styles.fieldLabel, { color: theme.textSecondary, marginTop: 0 }]}>
+                  Workspace Photos ({roomPhotos.length}/10)
+                </Text>
+                {roomPhotos.length < 10 && (
+                  <TouchableOpacity onPress={() => pickImagesForRoom(false)}>
+                    <Text style={{ fontSize: 12, color: '#00A859', fontWeight: '700' }}>+ Upload Images</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                {roomPhotos.map((photoUri, index) => (
+                  <View key={index} style={styles.photoThumbBox}>
+                    <SafeImage uri={photoUri} style={styles.photoThumb} borderRadius={12} />
+                    <TouchableOpacity
+                      style={styles.photoRemoveBtn}
+                      onPress={() => setRoomPhotos((prev) => prev.filter((_, i) => i !== index))}
+                    >
+                      <Ionicons name="close" size={12} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                {roomPhotos.length < 10 && (
+                  <TouchableOpacity
+                    style={[styles.photoAddBtn, { borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}
+                    onPress={() => pickImagesForRoom(false)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="camera-outline" size={22} color="#00A859" />
+                    <Text style={[styles.photoAddBtnText, { color: theme.textSecondary }]}>Add Photo</Text>
+                  </TouchableOpacity>
+                )}
+              </ScrollView>
+
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Description</Text>
               <TextInput
                 style={[styles.inputField, { height: 70, textAlignVertical: 'top', backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
@@ -434,6 +622,174 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <Text style={styles.modalSubmitText}>Save & Publish Workspace</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showEditRoomModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEditRoomModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Edit Workspace</Text>
+                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                  Update details, pricing, hub and photos
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowEditRoomModal(false)}>
+                <Ionicons name="close" size={24} color={theme.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 480 }}>
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Workspace Name</Text>
+              <TextInput
+                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={editRoomName}
+                onChangeText={setEditRoomName}
+                placeholder="e.g. Executive Boardroom Alpha"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Coworking Hub / Facility</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                {locations.map((loc) => {
+                  const isSelected = editHubId === loc._id;
+                  return (
+                    <TouchableOpacity
+                      key={loc._id}
+                      style={[
+                        styles.typeOptionChip,
+                        isSelected && styles.typeOptionActive,
+                        { borderColor: theme.cardBorder }
+                      ]}
+                      onPress={() => setEditHubId(loc._id)}
+                    >
+                      <Text
+                        style={[
+                          styles.typeOptionText,
+                          { color: isSelected ? '#FFFFFF' : theme.textPrimary }
+                        ]}
+                      >
+                        {loc.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Workspace Type</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                {categories.filter((c) => c.value !== 'ALL').map((c) => (
+                  <TouchableOpacity
+                    key={c.value}
+                    style={[
+                      styles.typeOptionChip,
+                      editRoomType === c.value && styles.typeOptionActive,
+                      { borderColor: theme.cardBorder }
+                    ]}
+                    onPress={() => setEditRoomType(c.value)}
+                  >
+                    <Text
+                      style={[
+                        styles.typeOptionText,
+                        { color: editRoomType === c.value ? '#FFFFFF' : theme.textPrimary }
+                      ]}
+                    >
+                      {c.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Capacity (Seats)</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={editCapacity}
+                    onChangeText={setEditCapacity}
+                    placeholder="4"
+                    keyboardType="number-pad"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Hourly Rate (₹)</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={editHourlyRate}
+                    onChangeText={setEditHourlyRate}
+                    placeholder="450"
+                    keyboardType="number-pad"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 6 }}>
+                <Text style={[styles.fieldLabel, { color: theme.textSecondary, marginTop: 0 }]}>
+                  Workspace Photos ({editPhotos.length}/10)
+                </Text>
+                {editPhotos.length < 10 && (
+                  <TouchableOpacity onPress={() => pickImagesForRoom(true)}>
+                    <Text style={{ fontSize: 12, color: '#00A859', fontWeight: '700' }}>+ Upload Images</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                {editPhotos.map((photoUri, index) => (
+                  <View key={index} style={styles.photoThumbBox}>
+                    <SafeImage uri={photoUri} style={styles.photoThumb} borderRadius={12} />
+                    <TouchableOpacity
+                      style={styles.photoRemoveBtn}
+                      onPress={() => setEditPhotos((prev) => prev.filter((_, i) => i !== index))}
+                    >
+                      <Ionicons name="close" size={12} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                {editPhotos.length < 10 && (
+                  <TouchableOpacity
+                    style={[styles.photoAddBtn, { borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}
+                    onPress={() => pickImagesForRoom(true)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="camera-outline" size={22} color="#00A859" />
+                    <Text style={[styles.photoAddBtnText, { color: theme.textSecondary }]}>Add Photo</Text>
+                  </TouchableOpacity>
+                )}
+              </ScrollView>
+
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Description</Text>
+              <TextInput
+                style={[styles.inputField, { height: 70, textAlignVertical: 'top', backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={editDesc}
+                onChangeText={setEditDesc}
+                placeholder="Acoustic glass, high-speed Wi-Fi, 4K screen..."
+                placeholderTextColor={theme.textMuted}
+                multiline
+              />
+
+              <TouchableOpacity
+                style={styles.modalSubmitBtn}
+                onPress={handleUpdateRoom}
+                disabled={updatingRoom}
+                activeOpacity={0.85}
+              >
+                {updatingRoom ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.modalSubmitText}>Save Changes</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -769,5 +1125,60 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700'
+  },
+  cardEditBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#00A859',
+    backgroundColor: 'rgba(0, 168, 89, 0.08)',
+    marginLeft: 8
+  },
+  cardEditText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#00A859',
+    marginLeft: 3
+  },
+  photoThumbBox: {
+    width: 68,
+    height: 68,
+    borderRadius: 12,
+    marginRight: 10,
+    overflow: 'hidden',
+    position: 'relative'
+  },
+  photoThumb: {
+    width: 68,
+    height: 68
+  },
+  photoRemoveBtn: {
+    position: 'absolute',
+    top: 3,
+    right: 3,
+    backgroundColor: '#EF4444',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  photoAddBtn: {
+    width: 68,
+    height: 68,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10
+  },
+  photoAddBtnText: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 2
   }
 });

@@ -262,7 +262,7 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
               activeOpacity={0.85}
             >
               <View style={styles.hierarchyAvatar}>
-                <Ionicons name="pie-chart" size={22} color="#00A859" />
+                <Ionicons name="layers" size={22} color="#00A859" />
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={[styles.hierarchyTitle, { color: theme.textPrimary }]}>{adm.name}</Text>

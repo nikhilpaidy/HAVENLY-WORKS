@@ -65,6 +65,21 @@ export async function testServerConnection(): Promise<{ ok: boolean; message: st
   }
 }
 
+export function resolveImageUrl(uri?: string): string | undefined {
+  if (!uri) return undefined;
+  if (
+    uri.startsWith('http://') ||
+    uri.startsWith('https://') ||
+    uri.startsWith('data:') ||
+    uri.startsWith('file://')
+  ) {
+    return uri;
+  }
+  const root = (inMemoryBaseUrl || PUBLIC_DEV_TUNNEL_URL).replace('/api/v1', '');
+  const cleanUri = uri.startsWith('/') ? uri : `/${uri}`;
+  return `${root}${cleanUri}`;
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const [token, baseUrl] = await Promise.all([
     AsyncStorage.getItem('aura_auth_token'),
@@ -231,6 +246,18 @@ export const roomsApi = {
       body: JSON.stringify(payload)
     }),
 
+  updateRoom: (id: string, payload: any) =>
+    request<any>(`/rooms/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    }),
+
+  uploadPhoto: (data: { image?: string; images?: string[] }) =>
+    request<{ url: string; urls: string[] }>('/rooms/upload-photo', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
   getPublicRooms: (params: {
     workspaceType?: string;
     locationId?: string;
@@ -346,7 +373,10 @@ export const companiesApi = {
   getCompanies: () => request<any[]>('/companies'),
   createCompany: (payload: {
     name: string;
+    domain?: string;
     billingEmail: string;
+    ownerName?: string;
+    ownerEmail?: string;
     phone?: string;
     gstin?: string;
     pan?: string;
@@ -541,7 +571,11 @@ export const mobileApi = {
   getCompanies: companiesApi.getCompanies,
   createCompany: companiesApi.createCompany,
   createLocation: locationsApi.createLocation,
+  rooms: roomsApi,
   createRoom: roomsApi.createRoom,
+  updateRoom: roomsApi.updateRoom,
+  uploadRoomPhoto: roomsApi.uploadPhoto,
+  resolveImageUrl,
   createWorkspaceType: (payload: {
     name: string;
     code?: string;

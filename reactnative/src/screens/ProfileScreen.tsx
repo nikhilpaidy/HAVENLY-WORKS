@@ -314,7 +314,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <>
               <View style={[styles.specRow, { borderBottomColor: theme.cardBorder }]}>
                 <View style={styles.specLeft}>
-                  <Ionicons name="pie-chart-outline" size={16} color="#00A859" />
+                  <Ionicons name="layers-outline" size={16} color="#00A859" />
                   <Text style={[styles.specLabel, { color: theme.textSecondary }]}>
                     Complimentary Quota
                   </Text>
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40
+    paddingBottom: 150
   },
   card: {
     borderRadius: 20,

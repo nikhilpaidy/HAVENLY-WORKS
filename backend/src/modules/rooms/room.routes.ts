@@ -9,7 +9,8 @@ import {
   getPublicRoomById,
   addRoomReview,
   getRoomReviews,
-  toggleRoomLike
+  toggleRoomLike,
+  uploadRoomPhotoHandler
 } from './room.controller.js';
 import { authenticateJwt, optionalAuthenticateJwt, requireRole } from '../../middleware/auth.js';
 import { UserRole } from '../../types/index.js';
@@ -21,6 +22,12 @@ router.get('/public/:id', getPublicRoomById);
 router.get('/public/:id/reviews', getRoomReviews);
 
 router.use(authenticateJwt);
+
+router.post(
+  '/upload-photo',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.COWORKING_ADMIN),
+  uploadRoomPhotoHandler
+);
 
 router.get('/', getRooms);
 router.get('/:id', getRoomById);

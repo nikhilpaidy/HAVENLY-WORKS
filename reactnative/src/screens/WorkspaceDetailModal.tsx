@@ -222,10 +222,12 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
 
           <View style={styles.infoSection}>
             <View style={styles.badgeRow}>
-              <View style={styles.saveBadge}>
-                <Ionicons name="checkmark-circle" size={14} color="#00A859" />
-                <Text style={styles.saveBadgeText}>{space.saveBadge || 'Save 10%'}</Text>
-              </View>
+              {space.saveBadge ? (
+                <View style={styles.saveBadge}>
+                  <Ionicons name="checkmark-circle" size={14} color="#00A859" />
+                  <Text style={styles.saveBadgeText}>{space.saveBadge}</Text>
+                </View>
+              ) : null}
               <View style={styles.ratingBadge}>
                 <Ionicons name="star" size={15} color="#F59E0B" />
                 <Text style={[styles.ratingText, { color: theme.textPrimary }]}>
