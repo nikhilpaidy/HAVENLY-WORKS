@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth, UserRole } from '../../context/AuthContext.js';
 import { ThemeToggle } from '../../components/ThemeToggle.js';
 import { AuthRoleSwitcher } from '../../components/AuthRoleSwitcher.js';
+import { HavenlyLogo } from '../../components/HavenlyLogo.js';
 import { ShieldCheck, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
 
 export const SuperAdminLoginPage: React.FC = () => {
@@ -43,10 +44,10 @@ export const SuperAdminLoginPage: React.FC = () => {
         <AuthRoleSwitcher currentRole="SUPER_ADMIN" />
 
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-slate-900 text-[#C5A880] dark:bg-[#C5A880] dark:text-[#090D16] mx-auto flex items-center justify-center shadow-lg shadow-brand-500/20">
-            <ShieldCheck className="w-6 h-6" />
+          <div className="flex justify-center mb-1">
+            <HavenlyLogo size={36} variant="horizontal" tagline="togetherness" />
           </div>
-          <span className="text-[11px] font-bold uppercase tracking-widest text-brand-600 dark:text-[#C5A880] block">
+          <span className="text-[11px] font-bold uppercase tracking-widest text-[#00A859] block">
             Platform Governance
           </span>
           <h1 className="text-2xl font-bold font-display tracking-tight text-slate-900 dark:text-white">

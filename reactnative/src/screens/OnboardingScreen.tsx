@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { SafeImage } from '../components/SafeImage';
+import { HavenlyLogo } from '../components/HavenlyLogo';
 
 interface OnboardingScreenProps {
   onGetStarted: () => void;
@@ -62,12 +63,16 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
       </View>
 
       <View style={styles.contentSection}>
+        <View style={{ alignItems: 'center', marginBottom: 12 }}>
+          <HavenlyLogo variant="horizontal" size={32} textColor={theme.textPrimary} />
+        </View>
+
         <Text style={[styles.heading, { color: theme.textPrimary }]}>
-          Discover Your <Text style={{ color: '#00A859' }}>Perfect</Text>{'\n'}Place to Work
+          SPACE FOR <Text style={{ color: '#00A859' }}>TOGETHERNESS</Text>
         </Text>
 
         <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-          Discover premium coworking spaces, private offices, and reserve desks seamlessly in seconds.
+          COWORK • CONNECT • GROW{'\n'}Discover premium workspaces, private desks & meeting hubs in Madhapur & Hyderabad.
         </Text>
 
         <TouchableOpacity

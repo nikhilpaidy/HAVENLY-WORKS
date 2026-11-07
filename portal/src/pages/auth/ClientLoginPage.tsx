@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.js';
 import { ThemeToggle } from '../../components/ThemeToggle.js';
 import { AuthRoleSwitcher } from '../../components/AuthRoleSwitcher.js';
+import { HavenlyLogo } from '../../components/HavenlyLogo.js';
 import { Users, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
 
 export const ClientLoginPage: React.FC = () => {
   const [email, setEmail] = useState('aptapace@gmail.com');
-  const [password, setPassword] = useState('Apta@2026');
+  const [password, setPassword] = useState('Client@123');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -42,10 +43,10 @@ export const ClientLoginPage: React.FC = () => {
         <AuthRoleSwitcher currentRole="CLIENT" />
 
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-brand-50 dark:bg-brand-950/60 border border-brand-500/30 text-brand-600 dark:text-brand-400 mx-auto flex items-center justify-center shadow-lg">
-            <Users className="w-6 h-6" />
+          <div className="flex justify-center mb-1">
+            <HavenlyLogo size={36} variant="horizontal" tagline="togetherness" />
           </div>
-          <span className="text-[11px] font-bold uppercase tracking-widest text-brand-600 dark:text-gold-400 block">
+          <span className="text-[11px] font-bold uppercase tracking-widest text-[#00A859] block">
             Tenant Company Access
           </span>
           <h1 className="text-2xl font-bold font-display tracking-tight text-slate-900 dark:text-white">

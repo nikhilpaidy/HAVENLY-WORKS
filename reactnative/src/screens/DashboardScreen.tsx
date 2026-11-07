@@ -20,6 +20,7 @@ import { WorkspaceCardSkeleton, ListRowSkeleton } from '../components/SkeletonLo
 import { WorkspaceDetailModal } from './WorkspaceDetailModal';
 import { RadiusSearchModal } from './RadiusSearchModal';
 import { ExecutiveLineChart, QuotaRing } from '../components/Charts';
+import { LocationPickerModal, HYDERABAD_AREAS, LocationArea } from '../components/LocationPickerModal';
 
 interface DashboardScreenProps {
   onNavigate: (tab: TabKey) => void;
@@ -28,13 +29,6 @@ interface DashboardScreenProps {
 }
 
 const { width } = Dimensions.get('window');
-
-const NEIGHBORHOODS = [
-  { name: 'Bangalore, Indiranagar', lat: 12.9784, lng: 77.6408 },
-  { name: 'Bangalore, MG Road', lat: 12.9754, lng: 77.6094 },
-  { name: 'Bangalore, Koramangala', lat: 12.9352, lng: 77.6245 },
-  { name: 'Bangalore, HSR Layout', lat: 12.9121, lng: 77.6446 }
-];
 
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   onNavigate,
@@ -51,7 +45,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const [currentCityIndex, setCurrentCityIndex] = useState(0);
+  const [selectedLocation, setSelectedLocation] = useState<LocationArea>(HYDERABAD_AREAS[0]);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [passType, setPassType] = useState<'DAY_PASS' | 'HOURLY'>('DAY_PASS');
   const [personCount, setPersonCount] = useState(1);
@@ -68,13 +63,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
 
-  const currentCoords = NEIGHBORHOODS[currentCityIndex];
-
   const loadData = async () => {
     try {
       const [roomsData, nearbyData] = await Promise.all([
         mobileApi.getPublicRooms({ workspaceType: spaceTypeFilter !== 'ALL' ? spaceTypeFilter : undefined }),
-        mobileApi.getNearbyLocations(currentCoords.lat, currentCoords.lng, selectedRadiusKm)
+        mobileApi.getNearbyLocations(selectedLocation.lat, selectedLocation.lng, selectedRadiusKm)
       ]);
 
       setWorkspaces(roomsData || []);
@@ -112,7 +105,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
   useEffect(() => {
     loadData();
-  }, [currentCityIndex, spaceTypeFilter, selectedRadiusKm]);
+  }, [selectedLocation, spaceTypeFilter, selectedRadiusKm]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -122,11 +115,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const handleOpenSpace = (spaceItem: any) => {
     setSelectedSpace(spaceItem);
     setShowDetailModal(true);
-  };
-
-  const toggleCity = () => {
-    const nextIdx = (currentCityIndex + 1) % NEIGHBORHOODS.length;
-    setCurrentCityIndex(nextIdx);
   };
 
   const categories = [
@@ -158,11 +146,15 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 borderRadius={20}
               />
             </View>
-            <TouchableOpacity onPress={toggleCity} style={styles.locationPill}>
+            <TouchableOpacity
+              onPress={() => setShowLocationPicker(true)}
+              style={styles.locationPill}
+              activeOpacity={0.8}
+            >
               <Text style={styles.locationLabel}>Location</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons name="location-sharp" size={14} color="#FFFFFF" style={{ marginRight: 3 }} />
-                <Text style={styles.locationValue}>{currentCoords.name}</Text>
+                <Text style={styles.locationValue}>{selectedLocation.name}, Hyderabad</Text>
                 <Ionicons name="chevron-down" size={14} color="#FFFFFF" style={{ marginLeft: 3 }} />
               </View>
             </TouchableOpacity>
@@ -459,6 +451,16 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         onApply={(filters) => {
           if (filters.workspaceType) setSpaceTypeFilter(filters.workspaceType);
           if (filters.radiusKm) setSelectedRadiusKm(filters.radiusKm);
+        }}
+      />
+
+      <LocationPickerModal
+        visible={showLocationPicker}
+        selectedLocation={selectedLocation}
+        onClose={() => setShowLocationPicker(false)}
+        onSelectLocation={(area) => {
+          setSelectedLocation(area);
+          setShowLocationPicker(false);
         }}
       />
     </View>

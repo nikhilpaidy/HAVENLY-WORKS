@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
+import { HavenlyLogo } from './HavenlyLogo';
 import {
   Building2,
   Menu,
@@ -38,20 +39,7 @@ export const Navbar: React.FC = () => {
         <div className="glass-panel glow-border rounded-2xl px-5 py-3 flex items-center justify-between shadow-lg">
           {/* Brand Logo */}
           <Link to="/" className="flex items-center space-x-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-brand-500 to-gold-500 p-0.5 shadow-md shadow-brand-500/25 group-hover:scale-105 transition-transform">
-              <div className="w-full h-full bg-[#050814] dark:bg-[#050814] light:bg-white rounded-[10px] flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-gold-400 group-hover:text-gold-300 transition-colors" />
-              </div>
-            </div>
-            <div>
-              <span className="font-display font-black text-xl tracking-tight text-slate-900 dark:text-white flex items-center">
-                AURA
-                <span className="w-1.5 h-1.5 rounded-full bg-brand-500 ml-1 animate-pulse" />
-              </span>
-              <span className="text-[9px] uppercase tracking-widest text-brand-600 dark:text-gold-400 font-bold block -mt-1">
-                Executive Spaces
-              </span>
-            </div>
+            <HavenlyLogo size={36} variant="horizontal" tagline="togetherness" />
           </Link>
 
           {/* Desktop Navigation Links with Hover Dropdown Mega-Menus */}

@@ -50,23 +50,22 @@ export const HomePage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-4xl mx-auto space-y-6">
             {/* Pill Badge */}
-            <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full border border-brand-500/30 bg-brand-500/10 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300 text-xs font-bold tracking-wider uppercase backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-gold-500 animate-spin" style={{ animationDuration: '6s' }} />
-              <span>Next-Generation Coworking & Meeting Operating System</span>
+            <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-xs font-bold tracking-wider uppercase backdrop-blur-md">
+              <Sparkles className="w-3.5 h-3.5 text-[#00A859] animate-spin" style={{ animationDuration: '6s' }} />
+              <span>SPACE FOR TOGETHERNESS • HYDERABAD HUBS</span>
             </div>
 
             {/* Main Headline */}
             <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black font-display tracking-tight text-slate-900 dark:text-white leading-[1.08]">
-              Architectural Spaces with{' '}
-              <span className="bg-gradient-to-r from-brand-600 via-brand-500 to-gold-400 bg-clip-text text-transparent">
-                Zero Double Bookings
+              Cowork, Connect & Grow with{' '}
+              <span className="bg-gradient-to-r from-emerald-600 via-[#00A859] to-teal-400 bg-clip-text text-transparent">
+                HavenlyWork
               </span>
             </h1>
 
             {/* Subheading */}
             <p className="text-base sm:text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
-              Empower your executive coworking hubs with atomic inventory slot locks, automated monthly
-              free-hour pools, and transparent extra-hour billing statements.
+              Premium coworking spaces, executive meeting rooms, and private offices across Madhapur, Hitec City, and Gachibowli with atomic conflict-free reservations.
             </p>
 
             {/* Call to Actions */}
@@ -159,7 +158,7 @@ export const HomePage: React.FC = () => {
             <div className="p-6 pt-0 border-t border-slate-100 dark:border-slate-800/60 mt-4 flex items-center justify-between">
               <div>
                 <span className="text-[10px] text-slate-400 block">Rate</span>
-                <span className="text-sm font-bold text-slate-900 dark:text-white">$75 / hour</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">₹1,800 / hour</span>
               </div>
               <button
                 onClick={() => handleOpenInquiry('Apex Executive Boardroom')}
@@ -203,7 +202,7 @@ export const HomePage: React.FC = () => {
             <div className="p-6 pt-0 border-t border-slate-100 dark:border-slate-800/60 mt-4 flex items-center justify-between">
               <div>
                 <span className="text-[10px] text-slate-400 block">Rate</span>
-                <span className="text-sm font-bold text-slate-900 dark:text-white">$50 / hour</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">₹1,200 / hour</span>
               </div>
               <button
                 onClick={() => handleOpenInquiry('Horizon Strategy Suite')}
@@ -247,7 +246,7 @@ export const HomePage: React.FC = () => {
             <div className="p-6 pt-0 border-t border-slate-100 dark:border-slate-800/60 mt-4 flex items-center justify-between">
               <div>
                 <span className="text-[10px] text-slate-400 block">Rate</span>
-                <span className="text-sm font-bold text-slate-900 dark:text-white">$25 / hour</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">₹600 / hour</span>
               </div>
               <button
                 onClick={() => handleOpenInquiry('Focus Acoustic Pod Suite')}
@@ -270,7 +269,7 @@ export const HomePage: React.FC = () => {
             Built for High-Stakes Operations
           </h2>
           <p className="text-sm text-slate-500 mt-2">
-            Why leading coworking operators standardise their campus technology on AURA.
+            Why leading coworking operators standardise their campus technology on HavenlyWork.
           </p>
         </div>
 

@@ -41,7 +41,7 @@ export const LoginGatewayPage: React.FC = () => {
           Choose Your Portal Experience
         </h1>
         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300">
-          AURA provides dedicated, role-optimized portals backed by strict server-side role and tenant authorization.
+          HavenlyWork provides dedicated, role-optimized portals backed by strict server-side role and tenant authorization.
         </p>
       </div>
 

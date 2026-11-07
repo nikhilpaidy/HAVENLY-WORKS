@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../theme/ThemeContext';
+import { HavenlyLogo } from '../components/HavenlyLogo';
 
 interface LoginScreenProps {
   onBackToExplore?: () => void;
@@ -68,14 +69,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToExplore }) => 
           )}
 
           <View style={styles.brandContainer}>
-            <View style={styles.logoBadge}>
-              <Ionicons name="business" size={30} color="#FFFFFF" />
-            </View>
-            <Text style={[styles.brandTitle, { color: theme.textPrimary }]}>
-              Hubbly <Text style={{ color: '#00A859' }}>Coworking</Text>
-            </Text>
-            <Text style={[styles.brandSubtitle, { color: theme.textSecondary }]}>
-              Sign in to manage bookings, teams & quotas
+            <HavenlyLogo variant="vertical" size={74} textColor={theme.textPrimary} />
+            <Text style={[styles.brandSubtitle, { color: theme.textSecondary, marginTop: 10 }]}>
+              SPACE FOR TOGETHERNESS{'\n'}Sign in to manage bookings, teams & quotas
             </Text>
           </View>
 
@@ -199,7 +195,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToExplore }) => 
           )}
 
           <Text style={[styles.securityNotice, { color: theme.textMuted }]}>
-            Protected by enterprise encryption • Hubbly Coworking Platform
+            Protected by enterprise encryption • HavenlyWork Platform
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

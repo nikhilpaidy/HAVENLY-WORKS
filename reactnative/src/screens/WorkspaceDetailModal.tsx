@@ -111,7 +111,7 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
           roomId: space._id,
           guestName,
           guestPhone,
-          guestEmail: guestEmail || 'guest@hubbly.com',
+          guestEmail: guestEmail || 'guest@havenlywork.com',
           bookingType: bookingMode,
           startTime,
           endTime,

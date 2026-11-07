@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, Sparkles } from 'lucide-react';
+import { HavenlyLogo } from './HavenlyLogo';
+import { Sparkles } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   const portalUrl = import.meta.env.VITE_PORTAL_URL || 'http://localhost:5174';
@@ -11,23 +12,11 @@ export const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
           {/* Brand Info */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#141A29] to-[#06080E] border border-[#C5A880]/40 flex items-center justify-center text-[#C5A880]">
-                <Building2 className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="font-display font-bold text-xl tracking-tight text-slate-900 dark:text-white">
-                  AURA
-                </span>
-                <span className="text-[10px] uppercase tracking-widest text-[#C5A880] block font-semibold">
-                  Coworking Platform
-                </span>
-              </div>
-            </div>
+            <HavenlyLogo size={40} variant="horizontal" tagline="togetherness" />
             <p className="text-sm max-w-sm leading-relaxed">
-              Architectural workspace management for premium coworking operators and forward-thinking enterprises. Atomic conflict-free booking, automated quota accounting, and precision financial oversight.
+              SPACE FOR TOGETHERNESS • Cowork, connect and grow across Hyderabad’s premier hubs: Madhapur, Hitec City, Gachibowli, and Jubilee Hills.
             </p>
-            <div className="pt-2 flex items-center space-x-2 text-xs text-[#B6925A] dark:text-[#C5A880]">
+            <div className="pt-2 flex items-center space-x-2 text-xs text-[#00A859]">
               <Sparkles className="w-4 h-4" />
               <span>Engineered with mathematical zero-overlap reservation guarantees</span>
             </div>
@@ -92,7 +81,7 @@ export const Footer: React.FC = () => {
 
         {/* Bottom bar */}
         <div className="mt-14 pt-8 border-t border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500">
-          <p>© {new Date().getFullYear()} AURA Technologies Inc. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} HavenlyWork Technologies. All rights reserved.</p>
           <div className="flex space-x-6 mt-4 sm:mt-0">
             <Link to="/privacy" className="hover:text-slate-900 dark:hover:text-white transition-colors">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-slate-900 dark:hover:text-white transition-colors">Terms of Service</Link>

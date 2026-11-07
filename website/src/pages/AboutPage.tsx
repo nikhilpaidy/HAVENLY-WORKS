@@ -12,7 +12,7 @@ export const AboutPage: React.FC = () => {
           Pioneering Spatial Operations for the Modern Era
         </h1>
         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300">
-          AURA was born from a fundamental architectural conviction: high-performance workspaces deserve high-performance software.
+          HavenlyWork was born from a fundamental architectural conviction: high-performance workspaces deserve high-performance software.
         </p>
       </div>
 
@@ -25,7 +25,7 @@ export const AboutPage: React.FC = () => {
             Uncompromising Standards
           </h3>
           <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-            We reject the flimsy, generic templates that plague the workspace SaaS landscape. Every interaction in AURA is engineered for executive teams.
+            We reject the flimsy, generic templates that plague the workspace SaaS landscape. Every interaction in HavenlyWork is engineered for executive teams.
           </p>
         </div>
 
@@ -49,7 +49,7 @@ export const AboutPage: React.FC = () => {
             Global Multi-Hub Vision
           </h3>
           <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-            Whether managing a flagship Midtown penthouse or a nationwide portfolio, AURA delivers unified visibility across all timezones.
+            Whether managing a flagship Madhapur hub or a nationwide portfolio, HavenlyWork delivers unified visibility across all timezones.
           </p>
         </div>
       </div>

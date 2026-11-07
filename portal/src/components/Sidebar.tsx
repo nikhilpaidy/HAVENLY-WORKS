@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth, UserRole } from '../context/AuthContext.js';
+import { HavenlyLogo, HavenlyLogoMark } from './HavenlyLogo.js';
 import {
   Building2,
   LayoutDashboard,
@@ -157,18 +158,12 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
       <div className="space-y-6">
         {/* Brand header */}
         <div className={`flex items-center space-x-3 px-2 ${collapsed ? 'justify-center' : ''}`}>
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 border border-gold-400/40 flex items-center justify-center text-gold-400 shadow-md shadow-brand-500/20 shrink-0">
-            <Building2 className="w-5 h-5" />
-          </div>
-          {!collapsed && (
+          {collapsed ? (
+            <HavenlyLogoMark size={32} />
+          ) : (
             <div className="min-w-0 flex-1">
-              <div className="flex items-center space-x-1.5">
-                <span className="font-display font-black text-lg tracking-tight text-slate-900 dark:text-white">
-                  AURA
-                </span>
-                <Sparkles className="w-3 h-3 text-gold-400 animate-pulse" />
-              </div>
-              <div className="flex items-center space-x-1 mt-0.5">
+              <HavenlyLogo size={32} variant="horizontal" tagline="togetherness" />
+              <div className="flex items-center space-x-1 mt-1 pl-1">
                 <span
                   className={`text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded border ${badgeConfig.color}`}
                 >
@@ -228,7 +223,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[11px] font-bold text-slate-900 dark:text-white truncate">
-                {user?.organization?.name || user?.company?.name || 'AURA Platform'}
+                {user?.organization?.name || user?.company?.name || 'HavenlyWork Platform'}
               </div>
               <div className="text-[10px] text-slate-400 truncate">
                 {user?.email}

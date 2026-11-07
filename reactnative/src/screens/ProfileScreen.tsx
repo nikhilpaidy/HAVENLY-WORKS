@@ -37,11 +37,35 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setShowLogoutModal(true);
   };
 
+  const getRoleDisplayName = () => {
+    if (!user) return 'Guest Explorer';
+    switch (user.role) {
+      case 'SUPER_ADMIN':
+        return 'Platform Super Admin';
+      case 'SUPER_ADMIN_STAFF':
+        return 'Super Admin Staff';
+      case 'COWORKING_ADMIN':
+        return 'Coworking Space Owner / Admin';
+      case 'COWORKING_ADMIN_STAFF':
+        return 'Coworking Space Staff';
+      case 'COMPANY_OWNER':
+        return 'Company Owner (Client)';
+      case 'COMPANY_STAFF':
+      case 'COMPANY_USER':
+      case 'EMPLOYEE':
+        return 'Company Staff / Operations';
+      case 'GUEST':
+        return 'Guest Explorer';
+      default:
+        return user.role ? user.role.replace(/_/g, ' ') : 'Enterprise Member';
+    }
+  };
+
   const getCompanyDisplayName = () => {
     if (user?.company?.name) return user.company.name;
     if (user?.organization?.name) return user.organization.name;
-    if (isSuperAdmin) return 'Hubbly Platform Infrastructure';
-    if (isCoworkingAdmin) return 'CWS ONE Coworking Space';
+    if (isSuperAdmin) return 'HavenlyWork Global Platform';
+    if (isCoworkingAdmin) return 'HavenlyWork Coworking Spaces';
     return 'Aptapace Private Limited';
   };
 
@@ -75,7 +99,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               ) : null}
               <View style={[styles.rolePill, { backgroundColor: `${theme.gold}15`, borderColor: theme.gold }]}>
                 <Text style={[styles.roleText, { color: theme.gold }]}>
-                  {user?.role ? user.role.replace(/_/g, ' ') : 'ENTERPRISE MEMBER'}
+                  {getRoleDisplayName()}
                 </Text>
               </View>
             </View>
@@ -187,7 +211,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <Text style={[styles.specLabel, { color: theme.textSecondary }]}>Campus Hub</Text>
             </View>
             <Text style={[styles.specValue, { color: theme.textPrimary }]}>
-              {user?.organization?.name || 'CWS ONE Horizon, MG Road'}
+              {user?.organization?.name || 'HavenlyWork Madhapur Hub, Hyderabad'}
             </Text>
           </View>
         </View>

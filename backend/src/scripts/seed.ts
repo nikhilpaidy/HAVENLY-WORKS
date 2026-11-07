@@ -20,9 +20,6 @@ import {
   BlogPostStatus,
   NotificationType,
   BookingStatus,
-  InvoiceStatus,
-  PaymentMethod,
-  PaymentStatus,
   TicketCategory,
   TicketPriority,
   TicketStatus
@@ -60,8 +57,8 @@ async function runSeed() {
   ]);
 
   const superAdminPasswordHash = await bcrypt.hash('Nikhil@123', 10);
-  const cwsAdminPasswordHash = await bcrypt.hash('Cws@2026', 10);
-  const aptaClientPasswordHash = await bcrypt.hash('Apta@2026', 10);
+  const adminPasswordHash = await bcrypt.hash('Admin@123', 10);
+  const clientPasswordHash = await bcrypt.hash('Client@123', 10);
   const staffPasswordHash = await bcrypt.hash('Staff@123', 10);
 
   const superAdmin = await User.create({
@@ -74,17 +71,17 @@ async function runSeed() {
   });
 
   const organization = await CoworkingOrganization.create({
-    name: 'CWS ONE Coworking Space',
-    slug: 'cws-one-coworking',
-    email: 'support@cwsone.com',
+    name: 'HavenlyWork Coworking Spaces',
+    slug: 'havenlywork-spaces',
+    email: 'support@havenlywork.com',
     phone: '+91 98450 12345',
-    website: 'https://cwsone.in',
+    website: 'https://havenlywork.com',
     address: {
-      street: 'Prestige Meridian, 29 MG Road',
-      city: 'Bangalore',
-      state: 'Karnataka',
+      street: 'Cyber Towers Junction, Madhapur',
+      city: 'Hyderabad',
+      state: 'Telangana',
       country: 'India',
-      postalCode: '560001'
+      postalCode: '500081'
     },
     currency: 'INR',
     timezone: 'Asia/Kolkata',
@@ -98,9 +95,9 @@ async function runSeed() {
   });
 
   const cwsAdmin = await User.create({
-    name: 'CWS Admin',
-    email: 'cwsone@gmail.com',
-    passwordHash: cwsAdminPasswordHash,
+    name: 'HavenlyWork Admin',
+    email: 'cwsadmin@gmail.com',
+    passwordHash: adminPasswordHash,
     role: UserRole.COWORKING_ADMIN,
     organizationId: organization._id,
     phone: '+91 98450 12345',
@@ -110,35 +107,35 @@ async function runSeed() {
   const locations = await Location.create([
     {
       organizationId: organization._id,
-      name: 'The Nexora Space',
-      slug: 'the-nexora-space',
+      name: 'HavenlyWork Apex Hub (Madhapur)',
+      slug: 'havenlywork-apex-madhapur',
       address: {
-        street: '789 Park Avenue, 100ft Road',
-        city: 'Bangalore',
-        state: 'Karnataka',
+        street: 'Plot 12, Hitech City Road, Madhapur',
+        city: 'Hyderabad',
+        state: 'Telangana',
         country: 'India',
-        postalCode: '560038'
+        postalCode: '500081'
       },
-      latitude: 12.9784,
-      longitude: 77.6408,
+      latitude: 17.4483,
+      longitude: 78.3915,
       geoLocation: {
         type: 'Point',
-        coordinates: [77.6408, 12.9784]
+        coordinates: [78.3915, 17.4483]
       },
       phone: '+91 98450 12345',
-      email: 'nexora@cwsone.com',
+      email: 'madhapur@havenlywork.com',
       timezone: 'Asia/Kolkata',
       managerName: 'Olivia Bennett',
       managerPhone: '+91 98450 12345',
-      managerEmail: 'olivia.bennett@cwsone.com',
+      managerEmail: 'olivia@havenlywork.com',
       managerAvatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&q=80',
       paymentQrCodeUrl: '/uploads/cws-upi-qr.png',
-      upiId: 'cwsone@icici',
+      upiId: 'havenlywork@icici',
       rating: 4.9,
-      reviewCount: 2500,
-      tagline: 'Modern Coworking Destination for Innovators',
-      description: 'The Nexora Space is a modern coworking destination designed for professionals, entrepreneurs, freelancers, and growing enterprise teams.',
-      amenities: ['High-Speed WiFi', 'Parking', 'Printer', 'Phone Booth', 'Coffee Bar', 'Meeting Rooms', '24/7 Access', 'Outdoor Terrace'],
+      reviewCount: 2850,
+      tagline: 'SPACE FOR TOGETHERNESS • COWORK • CONNECT • GROW',
+      description: 'HavenlyWork Apex in Madhapur offers premium workstations, high-speed fiber internet, private phone booths, and collaborative lounges in the center of IT corridor.',
+      amenities: ['High-Speed WiFi', 'Valet Parking', 'Color Printer', 'Phone Booth', 'Artisanal Cafe', 'Meeting Rooms', '24/7 Access', 'Outdoor Terrace'],
       images: [
         'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80',
         'https://images.unsplash.com/photo-1497215842964-222b430dc094?w=800&q=80',
@@ -148,35 +145,35 @@ async function runSeed() {
     },
     {
       organizationId: organization._id,
-      name: 'The Workspace Club',
-      slug: 'the-workspace-club',
+      name: 'HavenlyWork Knowledge City (Hitec City)',
+      slug: 'havenlywork-hitec-city',
       address: {
-        street: '125 MG Road, Central Business District',
-        city: 'Bangalore',
-        state: 'Karnataka',
+        street: 'Knowledge City, Cyber Gateway Road, Hitec City',
+        city: 'Hyderabad',
+        state: 'Telangana',
         country: 'India',
-        postalCode: '560001'
+        postalCode: '500081'
       },
-      latitude: 12.9754,
-      longitude: 77.6094,
+      latitude: 17.4435,
+      longitude: 78.3772,
       geoLocation: {
         type: 'Point',
-        coordinates: [77.6094, 12.9754]
+        coordinates: [78.3772, 17.4435]
       },
       phone: '+91 98450 12346',
-      email: 'club@cwsone.com',
+      email: 'hiteccity@havenlywork.com',
       timezone: 'Asia/Kolkata',
       managerName: 'Jenny Doe',
       managerPhone: '+91 98450 12346',
-      managerEmail: 'jenny.doe@cwsone.com',
+      managerEmail: 'jenny@havenlywork.com',
       managerAvatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&q=80',
       paymentQrCodeUrl: '/uploads/cws-upi-qr.png',
-      upiId: 'cwsone@icici',
+      upiId: 'havenlywork@icici',
       rating: 4.9,
-      reviewCount: 1850,
-      tagline: 'Elite Workspaces in the Heart of the CBD',
-      description: 'Experience premium executive workspaces right in the city center with ergonomic furnishings, soundproof phone booths, and concierge support.',
-      amenities: ['High-Speed WiFi', 'Valet Parking', 'Printer', 'Phone Booth', 'Artisanal Cafe', 'Boardrooms'],
+      reviewCount: 2100,
+      tagline: 'SPACE FOR TOGETHERNESS',
+      description: 'Premier executive workspaces in Hitec City equipped with high-tech boardrooms, ergonomic Herman Miller seating, and concierge services.',
+      amenities: ['High-Speed WiFi', 'Underground Parking', 'Printer', 'Private Booths', 'Espresso Bar', 'Executive Boardrooms'],
       images: [
         'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=1200&q=80',
         'https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?w=800&q=80'
@@ -185,35 +182,35 @@ async function runSeed() {
     },
     {
       organizationId: organization._id,
-      name: 'The Virelle Workspace',
-      slug: 'the-virelle-workspace',
+      name: 'HavenlyWork Financial Vista (Gachibowli)',
+      slug: 'havenlywork-gachibowli',
       address: {
-        street: '410 80ft Road, 4th Block, Koramangala',
-        city: 'Bangalore',
-        state: 'Karnataka',
+        street: 'Financial District, Near DLF Cybercity, Gachibowli',
+        city: 'Hyderabad',
+        state: 'Telangana',
         country: 'India',
-        postalCode: '560034'
+        postalCode: '500032'
       },
-      latitude: 12.9352,
-      longitude: 77.6245,
+      latitude: 17.4401,
+      longitude: 78.3489,
       geoLocation: {
         type: 'Point',
-        coordinates: [77.6245, 12.9352]
+        coordinates: [78.3489, 17.4401]
       },
       phone: '+91 98450 12347',
-      email: 'virelle@cwsone.com',
+      email: 'gachibowli@havenlywork.com',
       timezone: 'Asia/Kolkata',
       managerName: 'Shella Lemke',
       managerPhone: '+91 98450 12347',
-      managerEmail: 'shella.lemke@cwsone.com',
+      managerEmail: 'shella@havenlywork.com',
       managerAvatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80',
       paymentQrCodeUrl: '/uploads/cws-upi-qr.png',
-      upiId: 'cwsone@icici',
+      upiId: 'havenlywork@icici',
       rating: 4.8,
-      reviewCount: 1200,
-      tagline: 'Vibrant Coworking for Startups & Scaleups',
-      description: 'A thriving ecosystem in Koramangala surrounded by top tech startups, venture firms, and cafes.',
-      amenities: ['High-Speed WiFi', 'Parking', 'Printer', 'Phone Booth', 'Unlimited Tea/Coffee', 'Podcast Studio'],
+      reviewCount: 1650,
+      tagline: 'COWORK • CONNECT • GROW',
+      description: 'Sprawling campus in Gachibowli tailored for high-growth tech ventures, remote squads, and enterprise teams.',
+      amenities: ['High-Speed WiFi', 'Reserved Parking', 'Printing Hub', 'Soundproof Booths', 'Lounge Bar', 'Podcast Studio'],
       images: [
         'https://images.unsplash.com/photo-1517502884422-41eaead166d4?w=1200&q=80',
         'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&q=80'
@@ -222,64 +219,100 @@ async function runSeed() {
     },
     {
       organizationId: organization._id,
-      name: 'The Lumora Hub',
-      slug: 'the-lumora-hub',
+      name: 'HavenlyWork Pavilion (Jubilee Hills)',
+      slug: 'havenlywork-jubilee-hills',
       address: {
-        street: 'Sector 1, 27th Main Road, HSR Layout',
-        city: 'Bangalore',
-        state: 'Karnataka',
+        street: 'Road No. 36, Near Metro Station, Jubilee Hills',
+        city: 'Hyderabad',
+        state: 'Telangana',
         country: 'India',
-        postalCode: '560102'
+        postalCode: '500033'
       },
-      latitude: 12.9121,
-      longitude: 77.6446,
+      latitude: 17.4319,
+      longitude: 78.4073,
       geoLocation: {
         type: 'Point',
-        coordinates: [77.6446, 12.9121]
+        coordinates: [78.4073, 17.4319]
       },
       phone: '+91 98450 12348',
-      email: 'lumora@cwsone.com',
+      email: 'jubileehills@havenlywork.com',
       timezone: 'Asia/Kolkata',
       managerName: 'Dale Thiel',
       managerPhone: '+91 98450 12348',
-      managerEmail: 'dale.thiel@cwsone.com',
+      managerEmail: 'dale@havenlywork.com',
       managerAvatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80',
       paymentQrCodeUrl: '/uploads/cws-upi-qr.png',
-      upiId: 'cwsone@icici',
-      rating: 4.7,
-      reviewCount: 980,
-      tagline: 'Peaceful Work Haven in HSR Layout',
-      description: 'Lush greenery, natural sunlight, ergonomic Herman Miller seating, and quiet focus zones.',
-      amenities: ['High-Speed WiFi', 'Parking', 'Printer', 'Phone Booth', 'Coffee Bar', 'Rooftop Lounge'],
+      upiId: 'havenlywork@icici',
+      rating: 4.9,
+      reviewCount: 1420,
+      tagline: 'SPACE FOR TOGETHERNESS',
+      description: 'Boutique luxury workspace on Road 36 with natural sunlight, greenery, and executive client meeting suites.',
+      amenities: ['High-Speed WiFi', 'Valet Parking', 'Printer', 'Phone Booth', 'Rooftop Cafe', '24/7 Security'],
       images: [
         'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=1200&q=80',
         'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800&q=80'
       ],
       isActive: true
+    },
+    {
+      organizationId: organization._id,
+      name: 'HavenlyWork Silicon Hub (Kondapur)',
+      slug: 'havenlywork-kondapur',
+      address: {
+        street: 'Kothaguda Junction, Near Botanical Garden, Kondapur',
+        city: 'Hyderabad',
+        state: 'Telangana',
+        country: 'India',
+        postalCode: '500084'
+      },
+      latitude: 17.4699,
+      longitude: 78.3578,
+      geoLocation: {
+        type: 'Point',
+        coordinates: [78.3578, 17.4699]
+      },
+      phone: '+91 98450 12349',
+      email: 'kondapur@havenlywork.com',
+      timezone: 'Asia/Kolkata',
+      managerName: 'Olivia Bennett',
+      managerPhone: '+91 98450 12345',
+      managerEmail: 'olivia@havenlywork.com',
+      managerAvatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&q=80',
+      paymentQrCodeUrl: '/uploads/cws-upi-qr.png',
+      upiId: 'havenlywork@icici',
+      rating: 4.8,
+      reviewCount: 950,
+      tagline: 'COWORK • CONNECT • GROW',
+      description: 'Tranquil coworking destination with ergonomic desks, focus pods, and high-speed enterprise connectivity.',
+      amenities: ['High-Speed WiFi', 'Parking', 'Printer', 'Phone Booth', 'Coffee Bar', 'Focus Pods'],
+      images: [
+        'https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?w=1200&q=80'
+      ],
+      isActive: true
     }
   ]);
 
-  const [nexoraLoc, clubLoc, virelleLoc, lumoraLoc] = locations;
+  const [madhapurLoc, hitecLoc, gachiLoc, jubileeLoc, kondaLoc] = locations;
 
   const rooms = await MeetingRoom.create([
     {
       organizationId: organization._id,
-      locationId: nexoraLoc._id,
-      name: 'Open Flex Desk (Day Pass)',
-      code: 'NX-DAY-01',
+      locationId: madhapurLoc._id,
+      name: 'Flex Hot Desk (Day Pass)',
+      code: 'MDP-DAY-01',
       workspaceType: 'DAY_PASS',
-      description: 'Flexible hot desk with high-speed fiber internet and access to common lounge.',
+      description: 'Flexible hot desk with 500 Mbps internet, power outlets, and full lounge access.',
       capacity: 1,
       hourlyRate: 150,
       dailyRate: 699,
       rating: 4.9,
-      reviewCount: 420,
+      reviewCount: 520,
       saveBadge: 'Save 15%',
       photos: [
         'https://images.unsplash.com/photo-1497215842964-222b430dc094?w=800&q=80',
         'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800&q=80'
       ],
-      amenities: ['High-Speed WiFi', 'Coffee Bar', 'Power Sockets', 'Phone Booth Access'],
+      amenities: ['High-Speed WiFi', 'Artisanal Coffee', 'Power Outlets', 'Phone Booth Access'],
       slotIntervalMinutes: 60,
       minBookingMinutes: 60,
       maxBookingMinutes: 480,
@@ -287,21 +320,21 @@ async function runSeed() {
     },
     {
       organizationId: organization._id,
-      locationId: nexoraLoc._id,
-      name: 'Executive Hot Desk',
-      code: 'NX-DESK-02',
-      workspaceType: 'HOT_DESK',
-      description: 'Ergonomic seat with dual monitors available and quiet focus environment.',
+      locationId: madhapurLoc._id,
+      name: 'Dedicated Ergonomic Desk',
+      code: 'MDP-DESK-02',
+      workspaceType: 'DEDICATED_DESK',
+      description: 'Assigned personal desk with lockable storage drawer and dual monitor support.',
       capacity: 1,
       hourlyRate: 200,
       dailyRate: 899,
       rating: 4.8,
-      reviewCount: 310,
+      reviewCount: 340,
       saveBadge: 'Save 10%',
       photos: [
         'https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?w=800&q=80'
       ],
-      amenities: ['High-Speed WiFi', 'Dual Monitor', 'Ergonomic Chair', 'Coffee Bar'],
+      amenities: ['High-Speed WiFi', 'Dual Monitor Support', 'Ergonomic Herman Miller Chair', 'Coffee Bar'],
       slotIntervalMinutes: 30,
       minBookingMinutes: 30,
       maxBookingMinutes: 480,
@@ -309,22 +342,22 @@ async function runSeed() {
     },
     {
       organizationId: organization._id,
-      locationId: nexoraLoc._id,
-      name: 'The Apex Conference Room',
-      code: 'NX-CONF-01',
+      locationId: madhapurLoc._id,
+      name: 'Cyber Conference Suite',
+      code: 'MDP-CONF-01',
       workspaceType: 'MEETING_ROOM',
-      description: '8-seater modern glass conference room with 4K display and video conferencing bar.',
+      description: '8-seater acoustic glass conference room with 4K display and Jabra video conferencing bar.',
       capacity: 8,
       hourlyRate: 650,
       dailyRate: 3800,
       rating: 4.9,
-      reviewCount: 290,
+      reviewCount: 310,
       saveBadge: 'Save 10%',
       photos: [
         'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80',
         'https://images.unsplash.com/photo-1517502884422-41eaead166d4?w=800&q=80'
       ],
-      amenities: ['4K TV Display', 'Video Conferencing Bar', 'Whiteboard', 'Air Conditioning', 'High-Speed WiFi'],
+      amenities: ['4K Smart TV', 'Jabra Video Bar', 'Digital Whiteboard', 'Climate Control', 'High-Speed WiFi'],
       slotIntervalMinutes: 30,
       minBookingMinutes: 30,
       maxBookingMinutes: 480,
@@ -332,21 +365,21 @@ async function runSeed() {
     },
     {
       organizationId: organization._id,
-      locationId: nexoraLoc._id,
-      name: 'Grand Boardroom Horizon',
-      code: 'NX-BOARD-01',
+      locationId: madhapurLoc._id,
+      name: 'Grand Executive Boardroom',
+      code: 'MDP-BOARD-01',
       workspaceType: 'BOARDROOM',
-      description: '16-seater executive boardroom with soundproof walls and presentation controls.',
+      description: '16-seater luxury boardroom with soundproof walls and presentation controls.',
       capacity: 16,
       hourlyRate: 1200,
       dailyRate: 7500,
       rating: 5.0,
-      reviewCount: 180,
+      reviewCount: 220,
       saveBadge: 'Save 20%',
       photos: [
         'https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1200&q=80'
       ],
-      amenities: ['Dual 75-inch Displays', 'Polycom Video System', 'Wireless Presentation', 'Coffee & Tea Service'],
+      amenities: ['Dual 75-inch UHD Displays', 'Polycom Video System', 'Wireless Presentation', 'Beverage Service'],
       slotIntervalMinutes: 60,
       minBookingMinutes: 60,
       maxBookingMinutes: 480,
@@ -354,43 +387,21 @@ async function runSeed() {
     },
     {
       organizationId: organization._id,
-      locationId: clubLoc._id,
-      name: 'Club Dedicated Desk',
-      code: 'CLUB-DESK-01',
-      workspaceType: 'DEDICATED_DESK',
-      description: 'Personal permanent desk with lockable storage in a quiet zone.',
-      capacity: 1,
-      hourlyRate: 250,
-      dailyRate: 999,
-      rating: 4.8,
-      reviewCount: 140,
-      saveBadge: 'Save 10%',
-      photos: [
-        'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80'
-      ],
-      amenities: ['Lockable Pedestal', 'High-Speed WiFi', 'Printer Access', 'Lounge Access'],
-      slotIntervalMinutes: 60,
-      minBookingMinutes: 60,
-      maxBookingMinutes: 480,
-      isActive: true
-    },
-    {
-      organizationId: organization._id,
-      locationId: clubLoc._id,
-      name: 'Private Team Office (4 Seats)',
-      code: 'CLUB-PRIV-01',
+      locationId: hitecLoc._id,
+      name: 'Private Squad Office (6 Seats)',
+      code: 'HTC-PRIV-01',
       workspaceType: 'PRIVATE_OFFICE',
-      description: 'Private enclosed glass office for small teams with magnetic whiteboard and acoustic ceiling.',
-      capacity: 4,
-      hourlyRate: 850,
-      dailyRate: 4900,
+      description: 'Sound-insulated private team cabin with magnetic glass board and dedicated AC.',
+      capacity: 6,
+      hourlyRate: 950,
+      dailyRate: 5400,
       rating: 4.9,
-      reviewCount: 110,
+      reviewCount: 160,
       saveBadge: 'Save 10%',
       photos: [
         'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800&q=80'
       ],
-      amenities: ['Lockable Keycard Entry', 'Private Whiteboard', 'Dedicated AC Control', 'High-Speed LAN & WiFi'],
+      amenities: ['RFID Keycard Entry', 'Private Whiteboard', 'Independent AC', 'High-Speed LAN'],
       slotIntervalMinutes: 60,
       minBookingMinutes: 60,
       maxBookingMinutes: 480,
@@ -398,21 +409,21 @@ async function runSeed() {
     },
     {
       organizationId: organization._id,
-      locationId: virelleLoc._id,
-      name: 'Virelle Innovation Suite',
-      code: 'VIR-MEET-01',
+      locationId: gachiLoc._id,
+      name: 'Financial Vista Meeting Room',
+      code: 'GCH-MEET-01',
       workspaceType: 'MEETING_ROOM',
-      description: 'Creative meeting space with ergonomic modular tables and interactive touchscreen.',
+      description: '10-seater contemporary collaboration space with ergonomic seating and interactive screen.',
       capacity: 10,
       hourlyRate: 750,
       dailyRate: 4200,
-      rating: 4.9,
-      reviewCount: 220,
+      rating: 4.8,
+      reviewCount: 190,
       saveBadge: 'Save 15%',
       photos: [
         'https://images.unsplash.com/photo-1517502884422-41eaead166d4?w=800&q=80'
       ],
-      amenities: ['Touchscreen Interactive Display', 'Wireless Casting', 'Acoustic Soundproofing'],
+      amenities: ['Interactive Touchscreen', 'Wireless Casting', 'Acoustic Wall Panels'],
       slotIntervalMinutes: 30,
       minBookingMinutes: 30,
       maxBookingMinutes: 480,
@@ -425,15 +436,15 @@ async function runSeed() {
     name: 'Aptapace Private Limited',
     billingEmail: 'aptapace@gmail.com',
     phone: '+91 98451 55667',
-    gstin: '29ABCDE1234F1Z5',
+    gstin: '36ABCDE1234F1Z5',
     panNumber: 'ABCDE1234F',
     verificationStatus: 'VERIFIED',
     address: {
-      street: 'Tower B, 4th Floor, Tech Hub',
-      city: 'Bangalore',
-      state: 'Karnataka',
+      street: '4th Floor, Tech Hub, Madhapur',
+      city: 'Hyderabad',
+      state: 'Telangana',
       country: 'India',
-      postalCode: '560038'
+      postalCode: '500081'
     },
     status: 'ACTIVE',
     allowanceConfig: {
@@ -449,7 +460,7 @@ async function runSeed() {
   const clientOwner = await User.create({
     name: 'Aptapace Director',
     email: 'aptapace@gmail.com',
-    passwordHash: aptaClientPasswordHash,
+    passwordHash: clientPasswordHash,
     role: UserRole.COMPANY_OWNER,
     organizationId: organization._id,
     companyId: company._id,
@@ -523,17 +534,17 @@ async function runSeed() {
   const endTime1 = new Date(now.getTime() + 4 * 60 * 60 * 1000);
 
   const activeBooking = await Booking.create({
-    bookingNumber: 'BK-NX-2026-001',
+    bookingNumber: 'BK-MDP-2026-001',
     organizationId: organization._id,
-    locationId: nexoraLoc._id,
+    locationId: madhapurLoc._id,
     roomId: meetingRoom._id,
     companyId: company._id,
     bookedByUserId: clientOwner._id,
     isGuestBooking: false,
     workspaceType: 'MEETING_ROOM',
     bookingType: 'HOURLY',
-    title: 'Product Roadmap & Strategy Alignment',
-    purpose: 'Quarterly review with engineering and design team',
+    title: 'Product Roadmap & Engineering Review',
+    purpose: 'Quarterly architecture alignment with tech team',
     attendeeCount: 6,
     startTime: startTime1,
     endTime: endTime1,
@@ -556,9 +567,9 @@ async function runSeed() {
   const guestEnd = new Date(now.getTime() + 32 * 60 * 60 * 1000);
 
   const guestBooking = await Booking.create({
-    bookingNumber: 'GST-NX-2026-092',
+    bookingNumber: 'GST-MDP-2026-092',
     organizationId: organization._id,
-    locationId: nexoraLoc._id,
+    locationId: madhapurLoc._id,
     roomId: guestRoom._id,
     isGuestBooking: true,
     guestName: 'Rahul Sharma',
@@ -566,7 +577,7 @@ async function runSeed() {
     guestPhone: '+91 98765 43210',
     workspaceType: 'DAY_PASS',
     bookingType: 'DAY_PASS',
-    title: 'Full Day Pass - Rahul Sharma',
+    title: 'Full Day Pass - Rahul Sharma (Madhapur)',
     attendeeCount: 1,
     startTime: guestStart,
     endTime: guestEnd,
@@ -585,42 +596,10 @@ async function runSeed() {
     }
   });
 
-  const pastStart = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-  const pastEnd = new Date(now.getTime() - 46 * 60 * 60 * 1000);
-
-  await Booking.create({
-    bookingNumber: 'BK-NX-2026-000',
-    organizationId: organization._id,
-    locationId: nexoraLoc._id,
-    roomId: meetingRoom._id,
-    companyId: company._id,
-    bookedByUserId: clientOwner._id,
-    isGuestBooking: false,
-    workspaceType: 'MEETING_ROOM',
-    bookingType: 'HOURLY',
-    title: 'Client Onboarding Presentation',
-    purpose: 'Kickoff meeting with overseas partners',
-    attendeeCount: 5,
-    startTime: pastStart,
-    endTime: pastEnd,
-    durationHours: 2,
-    status: BookingStatus.COMPLETED,
-    paymentMethod: 'ALLOWANCE',
-    paymentStatus: 'VERIFIED',
-    pricingSnapshot: {
-      baseHourlyRate: meetingRoom.hourlyRate,
-      freeHoursApplied: 2,
-      chargeableHours: 0,
-      additionalHourlyRate: 500,
-      totalAmount: 0,
-      currency: 'INR'
-    }
-  });
-
   await Ticket.create({
     ticketNumber: 'TCK-2026-001',
     organizationId: organization._id,
-    locationId: nexoraLoc._id,
+    locationId: madhapurLoc._id,
     companyId: company._id,
     raisedByUserId: clientOwner._id,
     title: 'High-Speed 5GHz WiFi SSID check on 2nd floor',
@@ -636,8 +615,8 @@ async function runSeed() {
       recipientUserId: clientOwner._id,
       organizationId: organization._id,
       companyId: company._id,
-      title: 'Welcome to CWS ONE Coworking!',
-      message: 'Your Aptapace workspace membership is live. Explore conference rooms and high-speed desks.',
+      title: 'Welcome to HavenlyWork Spaces!',
+      message: 'Your Aptapace workspace membership in Madhapur is active. SPACE FOR TOGETHERNESS.',
       type: NotificationType.BROADCAST_ANNOUNCEMENT,
       isRead: false
     },
@@ -645,15 +624,15 @@ async function runSeed() {
       recipientUserId: clientOwner._id,
       organizationId: organization._id,
       companyId: company._id,
-      title: 'Booking Confirmed: The Apex Conference Room',
-      message: 'Your meeting is confirmed for today. Ref: #BK-NX-2026-001',
+      title: 'Booking Confirmed: Cyber Conference Suite',
+      message: 'Your meeting in Madhapur is confirmed for today. Ref: #BK-MDP-2026-001',
       type: NotificationType.BOOKING_CONFIRMED,
       isRead: true
     },
     {
       recipientUserId: cwsAdmin._id,
       organizationId: organization._id,
-      title: 'New Guest Day Pass Request',
+      title: 'New Guest Day Pass Request (Madhapur)',
       message: 'Rahul Sharma (+91 98765 43210) requested a Day Pass for tomorrow. Please call and verify payment.',
       type: NotificationType.GUEST_INQUIRY,
       isRead: false,
@@ -664,17 +643,17 @@ async function runSeed() {
       organizationId: organization._id,
       companyId: company._id,
       title: 'Festive Greeting: Happy Diwali & New Year Offers!',
-      message: 'Enjoy 15% discount on all weekend private office bookings this month. Have a great working week!',
+      message: 'Enjoy 15% discount on all weekend private office bookings this month. SPACE FOR TOGETHERNESS!',
       type: NotificationType.FESTIVAL_GREETING,
       isRead: false
     }
   ]);
 
   await BlogPost.create({
-    title: 'Designing High-Performance Workspaces for Remote-First Teams',
-    slug: 'designing-high-performance-workspaces',
-    excerpt: 'How hybrid teams leverage flexible coworking hubs to elevate creativity, team connection, and deep focus.',
-    content: 'The modern workplace is no longer a static office. Coworking environments like Hubbly provide an agile hybrid infrastructure where focus and collaboration seamlessly coalesce...',
+    title: 'Designing High-Performance Workspaces for Hyderabad Innovators',
+    slug: 'designing-high-performance-workspaces-hyderabad',
+    excerpt: 'How tech teams across Madhapur and Hitec City leverage flexible coworking hubs to elevate creativity, team connection, and deep focus.',
+    content: 'The modern workplace is no longer a static office. Coworking environments like HavenlyWork in Madhapur provide an agile hybrid infrastructure where focus and collaboration seamlessly coalesce...',
     coverImageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80',
     author: {
       name: 'Nikhil Paidy',
@@ -682,18 +661,17 @@ async function runSeed() {
       avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80'
     },
     categories: ['Productivity', 'Coworking'],
-    tags: ['Productivity', 'Coworking', 'Hybrid Work', 'Design'],
+    tags: ['Hyderabad', 'Madhapur', 'Coworking', 'Hybrid Work'],
     readTimeMinutes: 4,
     status: BlogPostStatus.PUBLISHED,
     publishedAt: new Date()
   });
 
-  console.log('Database cleanly seeded with realistic Hubbly coworking data in Indian Rupees!');
+  console.log('Database cleanly seeded with realistic HavenlyWork Hyderabad data in Indian Rupees!');
   console.log('Credentials Summary:');
   console.log('Super Admin: paidynikhil@gmail.com / Nikhil@123');
-  console.log('CWS Admin:   cwsone@gmail.com / Cws@2026');
-  console.log('Aptapace:    aptapace@gmail.com / Apta@2026');
-  console.log('Staff:       hr@aptapace.com / Staff@123');
+  console.log('Admin:       cwsadmin@gmail.com / Admin@123');
+  console.log('Client:      aptapace@gmail.com / Client@123');
 
   await mongoose.disconnect();
 }

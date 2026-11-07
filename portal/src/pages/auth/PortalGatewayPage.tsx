@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, UserRole } from '../../context/AuthContext.js';
 import { ThemeToggle } from '../../components/ThemeToggle.js';
+import { HavenlyLogo } from '../../components/HavenlyLogo.js';
 import {
   ShieldCheck,
   Building2,
@@ -62,29 +63,29 @@ export const PortalGatewayPage: React.FC = () => {
       role: 'Coworking Admin Portal',
       badge: 'Space Operator Hub',
       desc: 'Physical campuses, meeting room buffers, client companies, monthly free-hour quotas, and manual billing records.',
-      email: 'support@cwsone.com',
-      pass: 'Cws@2026',
+      email: 'cwsadmin@gmail.com',
+      pass: 'Admin@123',
       userRole: UserRole.COWORKING_ADMIN,
       dest: '/admin/dashboard',
       loginPath: '/admin/login',
       icon: Building2,
-      color: 'from-indigo-600 to-indigo-900',
+      color: 'from-emerald-600 to-emerald-900',
       badgeClass: 'text-brand-500 bg-brand-500/10 border-brand-500/25',
-      primaryBtn: 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/25'
+      primaryBtn: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/25'
     },
     {
       role: 'Client Member Portal',
       badge: 'Tenant Enterprise Access',
       desc: 'Discover rooms, reserve executive suites, inspect real-time monthly allowance balances, and download monthly statements.',
       email: 'aptapace@gmail.com',
-      pass: 'Apta@2026',
+      pass: 'Client@123',
       userRole: UserRole.COMPANY_OWNER,
       dest: '/client/dashboard',
       loginPath: '/client/login',
       icon: Users,
-      color: 'from-emerald-600 to-teal-800',
-      badgeClass: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/25',
-      primaryBtn: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/25'
+      color: 'from-teal-600 to-teal-800',
+      badgeClass: 'text-teal-500 bg-teal-500/10 border-teal-500/25',
+      primaryBtn: 'bg-teal-600 hover:bg-teal-500 text-white shadow-teal-500/25'
     }
   ];
 
@@ -95,22 +96,7 @@ export const PortalGatewayPage: React.FC = () => {
 
       {/* Header Bar */}
       <header className="flex items-center justify-between relative z-10 max-w-7xl mx-auto w-full">
-        <div className="flex items-center space-x-3">
-          <div className="w-11 h-11 rounded-2xl bg-brand-600 dark:bg-gold-500 text-white dark:text-obsidian-950 flex items-center justify-center font-bold shadow-lg shadow-brand-500/25">
-            <Building2 className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-1.5">
-              <span className="font-display font-black text-xl tracking-tight text-slate-900 dark:text-white">
-                AURA
-              </span>
-              <Sparkles className="w-4 h-4 text-gold-500 animate-pulse" />
-            </div>
-            <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">
-              Multi-Tenant Management Gateway
-            </span>
-          </div>
-        </div>
+        <HavenlyLogo size={42} variant="horizontal" tagline="togetherness" />
 
         <div className="flex items-center space-x-4">
           {isAuthenticated && user && (
@@ -220,7 +206,7 @@ export const PortalGatewayPage: React.FC = () => {
 
       {/* Footer info */}
       <footer className="relative z-10 max-w-7xl mx-auto w-full text-center text-xs text-slate-500 pt-6 border-t border-slate-200/80 dark:border-slate-800/80">
-        AURA Multi-Tenant Architecture • Role-Enforced JWT Sessions • MongoDB Atlas Cluster
+        HavenlyWork Enterprise Platform • SPACE FOR TOGETHERNESS • Hyderabad Madhapur Hubs
       </footer>
     </div>
   );

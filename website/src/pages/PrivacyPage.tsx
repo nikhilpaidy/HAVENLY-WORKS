@@ -15,7 +15,7 @@ export const PrivacyPage: React.FC = () => {
 
       <div className="prose dark:prose-invert max-w-none text-slate-600 dark:text-slate-300 text-sm space-y-6 leading-relaxed">
         <p>
-          At AURA Technologies, we hold workspace privacy to the highest architectural standards. This Privacy Policy details how we handle tenant company information, employee identities, and meeting reservation telemetry.
+          At HavenlyWork Technologies, we hold workspace privacy to the highest architectural standards. This Privacy Policy details how we handle tenant company information, employee identities, and meeting reservation telemetry.
         </p>
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">1. Data Architecture & Tenant Scoping</h2>
         <p>
@@ -27,7 +27,7 @@ export const PrivacyPage: React.FC = () => {
         </p>
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">3. Zero Data Monetization</h2>
         <p>
-          AURA does not sell, lease, or monetize your company’s booking patterns, meeting topics, or billing figures to any third party. Your operational data remains exclusively yours.
+          HavenlyWork does not sell, lease, or monetize your company’s booking patterns, meeting topics, or billing figures to any third party. Your operational data remains exclusively yours.
         </p>
       </div>
     </div>

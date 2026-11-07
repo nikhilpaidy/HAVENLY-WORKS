@@ -18,11 +18,13 @@ import { ProfileScreen } from './src/screens/ProfileScreen';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { TicketsScreen } from './src/screens/TicketsScreen';
 import { StaffScreen } from './src/screens/StaffScreen';
+import { LivingSplashScreen } from './src/screens/LivingSplashScreen';
 
 const MainApp: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const { theme, isDark } = useTheme();
 
+  const [showLivingSplash, setShowLivingSplash] = useState(true);
   const [authStep, setAuthStep] = useState<'onboarding' | 'login' | 'guest_explore'>('onboarding');
   const [currentTab, setCurrentTab] = useState<TabKey>('dashboard');
   const [showNotifications, setShowNotifications] = useState(false);
@@ -43,6 +45,10 @@ const MainApp: React.FC = () => {
       return () => clearInterval(interval);
     }
   }, [isAuthenticated]);
+
+  if (showLivingSplash) {
+    return <LivingSplashScreen onFinish={() => setShowLivingSplash(false)} />;
+  }
 
   if (isLoading) {
     return (

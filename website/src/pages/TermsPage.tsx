@@ -15,7 +15,7 @@ export const TermsPage: React.FC = () => {
 
       <div className="prose dark:prose-invert max-w-none text-slate-600 dark:text-slate-300 text-sm space-y-6 leading-relaxed">
         <p>
-          These Terms of Service govern the subscription, access, and utilization of the AURA Coworking & Meeting Room Platform by Coworking Business Owners and Tenant Companies.
+          These Terms of Service govern the subscription, access, and utilization of the HavenlyWork Coworking & Meeting Room Platform by Coworking Business Owners and Tenant Companies.
         </p>
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">1. Reservation Exclusivity Guarantee</h2>
         <p>

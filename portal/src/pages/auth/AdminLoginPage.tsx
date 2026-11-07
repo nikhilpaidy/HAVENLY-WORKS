@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth, UserRole } from '../../context/AuthContext.js';
 import { ThemeToggle } from '../../components/ThemeToggle.js';
 import { AuthRoleSwitcher } from '../../components/AuthRoleSwitcher.js';
+import { HavenlyLogo } from '../../components/HavenlyLogo.js';
 import { Building2, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
 
 export const AdminLoginPage: React.FC = () => {
-  const [email, setEmail] = useState('support@cwsone.com');
-  const [password, setPassword] = useState('Cws@2026');
+  const [email, setEmail] = useState('cwsadmin@gmail.com');
+  const [password, setPassword] = useState('Admin@123');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -42,10 +43,10 @@ export const AdminLoginPage: React.FC = () => {
         <AuthRoleSwitcher currentRole="COWORKING_ADMIN" />
 
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-brand-600 text-white dark:bg-gold-500 dark:text-obsidian-950 mx-auto flex items-center justify-center shadow-lg shadow-brand-500/20">
-            <Building2 className="w-6 h-6" />
+          <div className="flex justify-center mb-1">
+            <HavenlyLogo size={36} variant="horizontal" tagline="togetherness" />
           </div>
-          <span className="text-[11px] font-bold uppercase tracking-widest text-brand-600 dark:text-gold-400 block">
+          <span className="text-[11px] font-bold uppercase tracking-widest text-[#00A859] block">
             Coworking Space Operations
           </span>
           <h1 className="text-2xl font-bold font-display tracking-tight text-slate-900 dark:text-white">
