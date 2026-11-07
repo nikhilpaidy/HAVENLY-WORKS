@@ -55,7 +55,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
               borderRadius={12}
             />
             <View style={styles.circularBadge}>
-              <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+              <Ionicons name="calendar" size={16} color="#FFFFFF" />
               <Text style={styles.circularBadgeText}>BOOK NOW</Text>
             </View>
           </View>

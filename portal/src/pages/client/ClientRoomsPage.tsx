@@ -4,7 +4,6 @@ import {
   DoorOpen,
   Users,
   Clock,
-  Sparkles,
   Calendar,
   CheckCircle,
   AlertCircle,
@@ -680,7 +679,7 @@ export const ClientRoomsPage: React.FC = () => {
               {estimate && (
                 <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-slate-800 dark:text-slate-200 space-y-2">
                   <div className="flex items-center space-x-2 text-brand-600 dark:text-[#C5A880] font-bold text-xs">
-                    <Sparkles className="w-4 h-4" />
+                    <ShieldCheck className="w-4 h-4" />
                     <span>Free Allowance Assessment</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-[11px] pt-1 border-t border-amber-500/20">

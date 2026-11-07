@@ -19,7 +19,6 @@ import {
   ChevronRight,
   Shield,
   Briefcase,
-  Sparkles,
   HelpCircle
 } from 'lucide-react';
 

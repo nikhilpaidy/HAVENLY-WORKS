@@ -10,8 +10,7 @@ import {
   CreditCard,
   CheckCircle,
   AlertCircle,
-  FileText,
-  Sparkles
+  FileText
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatDateIST, formatTimeIST } from '../../utils/formatters.js';
@@ -167,7 +166,7 @@ export const ClientDashboardPage: React.FC = () => {
         <div className="glass-panel p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 flex flex-col justify-between space-y-4">
           <div>
             <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-[#B6925A] dark:text-[#C5A880] w-max mb-3">
-              <Sparkles className="w-5 h-5" />
+              <Clock className="w-5 h-5 text-emerald-500" />
             </div>
             <h4 className="text-base font-bold font-display text-slate-900 dark:text-white">
               Complimentary Entitlement

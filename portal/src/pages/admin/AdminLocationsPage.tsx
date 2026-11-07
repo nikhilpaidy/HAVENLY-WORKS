@@ -277,7 +277,7 @@ export const AdminLocationsPage: React.FC = () => {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Aura Tower Downtown"
+                  placeholder="e.g. HavenlyWork Apex Hub (Madhapur)"
                   className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-[#B6925A]"
                 />
               </div>

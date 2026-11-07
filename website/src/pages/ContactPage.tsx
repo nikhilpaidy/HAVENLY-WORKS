@@ -40,16 +40,16 @@ export const ContactPage: React.FC = () => {
 
             <div className="space-y-4 text-sm text-slate-600 dark:text-slate-300">
               <div className="flex items-start space-x-3">
-                <MapPin className="w-5 h-5 text-[#B6925A] dark:text-[#C5A880] shrink-0 mt-0.5" />
-                <span>452 5th Avenue, Floors 18-22, New York, NY 10018</span>
+                <MapPin className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                <span>Plot 12, Hitech City Main Road, Cyber Towers Junction, Madhapur, Hyderabad, Telangana 500081</span>
               </div>
               <div className="flex items-center space-x-3">
-                <Mail className="w-5 h-5 text-[#B6925A] dark:text-[#C5A880] shrink-0" />
-                <span>concierge@auracoworking.io</span>
+                <Mail className="w-5 h-5 text-emerald-500 shrink-0" />
+                <span>support@havenlywork.com</span>
               </div>
               <div className="flex items-center space-x-3">
-                <Phone className="w-5 h-5 text-[#B6925A] dark:text-[#C5A880] shrink-0" />
-                <span>+1 (212) 555-0144</span>
+                <Phone className="w-5 h-5 text-emerald-500 shrink-0" />
+                <span>+91 98450 12345</span>
               </div>
             </div>
           </div>

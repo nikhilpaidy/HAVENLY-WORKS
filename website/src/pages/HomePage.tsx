@@ -12,7 +12,6 @@ import {
   Building,
   TrendingUp,
   Clock,
-  Sparkles,
   Users,
   Code2,
   Calendar,
@@ -51,7 +50,7 @@ export const HomePage: React.FC = () => {
           <div className="text-center max-w-4xl mx-auto space-y-6">
             {/* Pill Badge */}
             <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-xs font-bold tracking-wider uppercase backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-[#00A859] animate-spin" style={{ animationDuration: '6s' }} />
+              <ShieldCheck className="w-3.5 h-3.5 text-[#00A859]" />
               <span>SPACE FOR TOGETHERNESS • HYDERABAD HUBS</span>
             </div>
 

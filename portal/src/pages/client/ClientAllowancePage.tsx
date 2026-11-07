@@ -6,7 +6,6 @@ import {
   AlertCircle,
   FileText,
   Calendar,
-  Sparkles,
   ArrowUpRight,
   ArrowDownLeft,
   RefreshCw,

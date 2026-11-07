@@ -12,7 +12,6 @@ import {
   AlertCircle,
   X,
   Layers,
-  Sparkles,
   MapPin,
   Image as ImageIcon
 } from 'lucide-react';

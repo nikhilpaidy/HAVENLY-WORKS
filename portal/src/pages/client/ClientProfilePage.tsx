@@ -115,7 +115,7 @@ export const ClientProfilePage: React.FC = () => {
                 <span>Operator Hub:</span>
               </span>
               <span className="font-semibold text-slate-900 dark:text-white">
-                {user?.organization?.name || 'Aura Coworking Hub'}
+                {user?.organization?.name || 'HavenlyWork Madhapur Hub'}
               </span>
             </div>
           </div>

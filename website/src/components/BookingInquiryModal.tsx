@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, CheckCircle2, Building2, Calendar, Mail, User, Phone, Sparkles } from 'lucide-react';
+import { X, CheckCircle2, Building2, Calendar, Mail, User, Phone } from 'lucide-react';
 
 interface BookingInquiryModalProps {
   isOpen: boolean;
@@ -42,8 +42,8 @@ export const BookingInquiryModal: React.FC<BookingInquiryModalProps> = ({
 
         <div className="flex items-start justify-between relative z-10 mb-6">
           <div>
-            <span className="text-[10px] uppercase font-bold tracking-widest text-brand-600 dark:text-gold-400 flex items-center space-x-1.5">
-              <Sparkles className="w-3.5 h-3.5" />
+            <span className="text-[10px] uppercase font-bold tracking-widest text-[#00A859] flex items-center space-x-1.5">
+              <Calendar className="w-3.5 h-3.5 text-[#00A859]" />
               <span>Executive Reservation Inquiry</span>
             </span>
             <h2 className="text-xl font-bold font-display text-slate-900 dark:text-white mt-1">

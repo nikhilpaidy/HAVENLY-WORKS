@@ -9,7 +9,7 @@ import {
   Wifi,
   Wind,
   Coffee,
-  Sparkles,
+  Droplets,
   Tv,
   Zap,
   Wrench,
@@ -21,7 +21,7 @@ const CATEGORIES = [
   { key: 'WIFI_NETWORK', label: 'Wi-Fi & Network', icon: Wifi },
   { key: 'AIR_CONDITIONING', label: 'Air Conditioning', icon: Wind },
   { key: 'WATER_REFRESHMENTS', label: 'Pantry & Coffee', icon: Coffee },
-  { key: 'WASHROOM_HYGIENE', label: 'Washroom & Hygiene', icon: Sparkles },
+  { key: 'WASHROOM_HYGIENE', label: 'Washroom & Hygiene', icon: Droplets },
   { key: 'DISPLAY_AV', label: 'Display & AV', icon: Tv },
   { key: 'POWER_ELECTRICAL', label: 'Power & Sockets', icon: Zap },
   { key: 'OTHER', label: 'Other Facilities', icon: Wrench }

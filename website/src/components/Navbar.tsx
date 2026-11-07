@@ -11,7 +11,6 @@ import {
   Users,
   Shield,
   Clock,
-  Sparkles,
   ArrowRight,
   BookOpen,
   Code2,
@@ -301,7 +300,7 @@ export const Navbar: React.FC = () => {
                       to="/contact"
                       className="p-2.5 rounded-xl hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-all flex items-center space-x-3 group"
                     >
-                      <Sparkles className="w-4 h-4 text-gold-500" />
+                      <Building2 className="w-4 h-4 text-emerald-500" />
                       <div>
                         <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-gold-400">
                           Schedule Private Walkthrough

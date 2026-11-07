@@ -8,7 +8,6 @@ import {
   Building2,
   Users,
   ArrowRight,
-  Sparkles,
   Lock,
   ExternalLink,
   CheckCircle2

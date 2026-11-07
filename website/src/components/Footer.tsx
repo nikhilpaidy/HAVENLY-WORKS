@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { HavenlyLogo } from './HavenlyLogo';
-import { Sparkles } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   const portalUrl = import.meta.env.VITE_PORTAL_URL || 'http://localhost:5174';
@@ -17,7 +17,7 @@ export const Footer: React.FC = () => {
               SPACE FOR TOGETHERNESS • Cowork, connect and grow across Hyderabad’s premier hubs: Madhapur, Hitec City, Gachibowli, and Jubilee Hills.
             </p>
             <div className="pt-2 flex items-center space-x-2 text-xs text-[#00A859]">
-              <Sparkles className="w-4 h-4" />
+              <ShieldCheck className="w-4 h-4" />
               <span>Engineered with mathematical zero-overlap reservation guarantees</span>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, ShieldCheck, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+import { Users, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface SimulatedRoom {
   id: string;
@@ -14,21 +14,21 @@ const ROOMS: SimulatedRoom[] = [
     id: 'apex',
     name: 'Apex Executive Boardroom',
     capacity: 16,
-    rate: 75,
+    rate: 1800,
     occupiedSlots: ['11:00', '11:30', '14:00', '14:30']
   },
   {
     id: 'horizon',
     name: 'Horizon Strategy Suite',
     capacity: 10,
-    rate: 50,
+    rate: 1200,
     occupiedSlots: ['09:30', '10:00', '15:00', '15:30']
   },
   {
     id: 'vanguard',
     name: 'Vanguard Creative Studio',
     capacity: 6,
-    rate: 35,
+    rate: 800,
     occupiedSlots: ['13:00', '13:30']
   }
 ];
@@ -68,7 +68,7 @@ export const InteractiveScheduler: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <span className="text-xs uppercase tracking-wider font-bold text-brand-600 dark:text-gold-400 flex items-center space-x-1.5">
-                <Sparkles className="w-3.5 h-3.5" />
+                <ShieldCheck className="w-3.5 h-3.5" />
                 <span>Live Interactive Simulator</span>
               </span>
               <h3 className="text-xl font-bold font-display text-slate-900 dark:text-white mt-1">
@@ -203,14 +203,14 @@ export const InteractiveScheduler: React.FC = () => {
               </div>
               <div className="flex justify-between py-1">
                 <span className="text-slate-500">Contract Overage Rate</span>
-                <span className="font-semibold text-slate-900 dark:text-white">${extraHourlyRate}/hr</span>
+                <span className="font-semibold text-slate-900 dark:text-white">₹{extraHourlyRate}/hr</span>
               </div>
             </div>
 
             <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-baseline">
               <span className="font-bold text-slate-900 dark:text-white text-xs">Estimated Charge</span>
-              <span className="text-2xl font-black font-display text-brand-600 dark:text-gold-400">
-                ${estimatedOverageCharge.toFixed(2)}
+              <span className="text-2xl font-black font-display text-emerald-600 dark:text-emerald-400">
+                ₹{estimatedOverageCharge.toFixed(0)}
               </span>
             </div>
           </div>

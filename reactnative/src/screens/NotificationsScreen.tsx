@@ -100,7 +100,7 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
   const getIconForType = (type: string) => {
     switch (type) {
       case 'FESTIVAL_GREETING':
-        return { name: 'sparkles' as const, color: '#D97706', bg: '#FEF3C7' };
+        return { name: 'ribbon' as const, color: '#D97706', bg: '#FEF3C7' };
       case 'GUEST_INQUIRY':
         return { name: 'call' as const, color: '#00A859', bg: '#DCFCE7' };
       case 'BOOKING_CONFIRMED':
