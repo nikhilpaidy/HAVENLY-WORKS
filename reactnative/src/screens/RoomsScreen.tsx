@@ -14,21 +14,25 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeImage } from '../components/SafeImage';
 import { WorkspaceCardSkeleton } from '../components/SkeletonLoader';
 import { WorkspaceDetailModal } from './WorkspaceDetailModal';
+import { Header } from '../components/Header';
 import { useAuth } from '../context/AuthContext';
 
 interface RoomsScreenProps {
   onOpenNotifications: () => void;
   unreadNotifsCount: number;
+  onOpenDrawer?: () => void;
 }
 
 export const RoomsScreen: React.FC<RoomsScreenProps> = ({
   onOpenNotifications,
-  unreadNotifsCount
+  unreadNotifsCount,
+  onOpenDrawer
 }) => {
   const { user } = useAuth();
   const { theme } = useTheme();
 
   const [rooms, setRooms] = useState<any[]>([]);
+  const [workspaceTypes, setWorkspaceTypes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('ALL');
@@ -39,10 +43,16 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
 
   const fetchRooms = async () => {
     try {
-      const data = await mobileApi.getPublicRooms({
-        workspaceType: selectedCategory !== 'ALL' ? selectedCategory : undefined
-      });
+      const [data, typesData] = await Promise.all([
+        mobileApi.getPublicRooms({
+          workspaceType: selectedCategory !== 'ALL' ? selectedCategory : undefined
+        }),
+        mobileApi.getWorkspaceTypes()
+      ]);
       setRooms(Array.isArray(data) ? data : []);
+      if (Array.isArray(typesData) && typesData.length > 0) {
+        setWorkspaceTypes(typesData);
+      }
     } catch (err) {
       console.warn('Failed to load rooms:', err);
     } finally {
@@ -60,15 +70,17 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
     fetchRooms();
   };
 
-  const categories = [
-    { label: 'All', value: 'ALL' },
-    { label: 'Hot Desk', value: 'HOT_DESK' },
-    { label: 'Dedicated Desk', value: 'DEDICATED_DESK' },
-    { label: 'Private Office', value: 'PRIVATE_OFFICE' },
-    { label: 'Conference', value: 'MEETING_ROOM' },
-    { label: 'Boardroom', value: 'BOARDROOM' },
-    { label: 'Day Pass', value: 'DAY_PASS' }
-  ];
+  const categories = workspaceTypes.length > 0
+    ? [{ label: 'All', value: 'ALL' }, ...workspaceTypes.map((t) => ({ label: t.name, value: t.code }))]
+    : [
+        { label: 'All', value: 'ALL' },
+        { label: 'Hot Desk', value: 'HOT_DESK' },
+        { label: 'Dedicated Desk', value: 'DEDICATED_DESK' },
+        { label: 'Private Office', value: 'PRIVATE_OFFICE' },
+        { label: 'Conference', value: 'MEETING_ROOM' },
+        { label: 'Boardroom', value: 'BOARDROOM' },
+        { label: 'Day Pass', value: 'DAY_PASS' }
+      ];
 
   const filtered = rooms.filter((r) => {
     if (!searchQuery.trim()) return true;
@@ -115,7 +127,7 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
           <View style={styles.locRow}>
             <Ionicons name="location-outline" size={14} color="#00A859" style={{ marginRight: 4 }} />
             <Text style={[styles.locText, { color: theme.textSecondary }]} numberOfLines={1}>
-              {loc.address?.street || '789 Park Avenue'}, {loc.city || 'Bangalore'}
+              {loc.address?.street || 'Madhapur Main Rd'}, {loc.city || 'Hyderabad'}
             </Text>
           </View>
 
@@ -138,13 +150,13 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Explore Workspaces</Text>
-        <TouchableOpacity style={styles.notifBtn} onPress={onOpenNotifications}>
-          <Ionicons name="notifications-outline" size={20} color={theme.textPrimary} />
-          {unreadNotifsCount > 0 && <View style={styles.unreadDot} />}
-        </TouchableOpacity>
-      </View>
+      <Header
+        title="Workspaces"
+        subtitle="Meeting Rooms & Desks"
+        onOpenDrawer={onOpenDrawer}
+        unreadNotifsCount={unreadNotifsCount}
+        onOpenNotifications={onOpenNotifications}
+      />
 
       <View style={[styles.searchBox, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
         <Ionicons name="search-outline" size={18} color={theme.textMuted} style={{ marginRight: 8 }} />

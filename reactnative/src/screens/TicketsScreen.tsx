@@ -41,14 +41,14 @@ interface TicketItem {
 }
 
 const CATEGORIES = [
-  { key: 'ALL', label: 'All', icon: 'apps-outline' },
-  { key: 'WIFI_NETWORK', label: 'Wi-Fi & Network', icon: 'wifi-outline' },
-  { key: 'AIR_CONDITIONING', label: 'HVAC & Climate', icon: 'snow-outline' },
-  { key: 'WATER_REFRESHMENTS', label: 'Pantry & Coffee', icon: 'cafe-outline' },
-  { key: 'WASHROOM_HYGIENE', label: 'Hygiene & Housekeeping', icon: 'water-outline' },
-  { key: 'DISPLAY_AV', label: 'Meeting AV & Screens', icon: 'tv-outline' },
-  { key: 'POWER_ELECTRICAL', label: 'Power & Sockets', icon: 'flash-outline' },
-  { key: 'OTHER', label: 'General Facilities', icon: 'build-outline' }
+  { key: 'ALL', label: 'All' },
+  { key: 'WIFI_NETWORK', label: 'Wi-Fi & Network' },
+  { key: 'AIR_CONDITIONING', label: 'HVAC & Climate' },
+  { key: 'WATER_REFRESHMENTS', label: 'Pantry & Coffee' },
+  { key: 'WASHROOM_HYGIENE', label: 'Hygiene & Housekeeping' },
+  { key: 'DISPLAY_AV', label: 'Meeting AV & Screens' },
+  { key: 'POWER_ELECTRICAL', label: 'Power & Sockets' },
+  { key: 'OTHER', label: 'General Facilities' }
 ];
 
 const PRIORITIES = [
@@ -58,10 +58,19 @@ const PRIORITIES = [
   { key: 'URGENT', label: 'Urgent', color: '#EF4444' }
 ];
 
-export const TicketsScreen: React.FC<{
+interface TicketsScreenProps {
   onOpenNotifications?: () => void;
   unreadNotifsCount?: number;
-}> = ({ onOpenNotifications, unreadNotifsCount = 0 }) => {
+  onBack?: () => void;
+  onOpenDrawer?: () => void;
+}
+
+export const TicketsScreen: React.FC<TicketsScreenProps> = ({
+  onOpenNotifications,
+  unreadNotifsCount = 0,
+  onBack,
+  onOpenDrawer
+}) => {
   const { user, hasPermission } = useAuth();
   const { theme, isDark } = useTheme();
 
@@ -225,6 +234,9 @@ export const TicketsScreen: React.FC<{
         subtitle={isAdmin ? 'Facility Operations Desk' : '24/7 Workplace Support Desk'}
         unreadNotifsCount={unreadNotifsCount}
         onOpenNotifications={onOpenNotifications}
+        showBack={!!onBack}
+        onPressBack={onBack}
+        onOpenDrawer={onOpenDrawer}
       />
 
       <View style={styles.topActionsBar}>
@@ -279,12 +291,6 @@ export const TicketsScreen: React.FC<{
               ]}
               onPress={() => setSelectedCategory(cat.key)}
             >
-              <Ionicons
-                name={cat.icon as any}
-                size={14}
-                color={selectedCategory === cat.key ? '#FFFFFF' : theme.textSecondary}
-                style={{ marginRight: 4 }}
-              />
               <Text
                 style={[
                   styles.categoryChipText,
@@ -557,12 +563,6 @@ export const TicketsScreen: React.FC<{
                     ]}
                     onPress={() => setNewCategory(cat.key)}
                   >
-                    <Ionicons
-                      name={cat.icon as any}
-                      size={14}
-                      color={newCategory === cat.key ? '#FFFFFF' : theme.textPrimary}
-                      style={{ marginRight: 4 }}
-                    />
                     <Text
                       style={[
                         styles.modalOptionPillText,

@@ -18,15 +18,18 @@ import { useAuth } from '../context/AuthContext';
 import { SafeImage } from '../components/SafeImage';
 import { ListRowSkeleton } from '../components/SkeletonLoader';
 import { RoomReviewModal } from '../components/RoomReviewModal';
+import { Header } from '../components/Header';
 
 interface BookingsScreenProps {
   onOpenNotifications: () => void;
   unreadNotifsCount: number;
+  onOpenDrawer?: () => void;
 }
 
 export const BookingsScreen: React.FC<BookingsScreenProps> = ({
   onOpenNotifications,
-  unreadNotifsCount
+  unreadNotifsCount,
+  onOpenDrawer
 }) => {
   const { user } = useAuth();
   const { theme, isDark } = useTheme();
@@ -139,7 +142,7 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
           {room.name || item.title}
         </Text>
         <Text style={[styles.addressText, { color: theme.textSecondary }]}>
-          {loc.address?.street || '789 Park Avenue'}, {loc.city || 'Bangalore'}
+          {loc.address?.street || 'Madhapur Main Rd'}, {loc.city || 'Hyderabad'}
         </Text>
 
         <View style={styles.timeSection}>
@@ -207,13 +210,13 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>My Bookings</Text>
-        <TouchableOpacity style={styles.notifBtn} onPress={onOpenNotifications}>
-          <Ionicons name="notifications-outline" size={20} color={theme.textPrimary} />
-          {unreadNotifsCount > 0 && <View style={styles.unreadDot} />}
-        </TouchableOpacity>
-      </View>
+      <Header
+        title="My Bookings"
+        subtitle="Reservations & History"
+        onOpenDrawer={onOpenDrawer}
+        unreadNotifsCount={unreadNotifsCount}
+        onOpenNotifications={onOpenNotifications}
+      />
 
       <View style={[styles.tabBar, { borderBottomColor: theme.cardBorder }]}>
         {(['ONGOING', 'COMPLETED', 'CANCELLED'] as const).map((tab) => (

@@ -1,8 +1,3 @@
-/**
- * Complaint & Service Ticket Model.
- * Enables client companies to raise facilities, internet, washroom,
- * air conditioning, or equipment issues directly to their coworking hub management.
- */
 
 import mongoose, { Document, Schema, Types } from 'mongoose';
 import { TicketCategory, TicketPriority, TicketStatus } from '../../types/index.js';

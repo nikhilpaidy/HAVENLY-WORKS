@@ -1,8 +1,3 @@
-/**
- * Staff & Granular Permissions Controller.
- * Handles staff creation, permission assignment, list fetching,
- * and client password overrides by authorized coworking admins.
- */
 
 import { Request, Response, NextFunction } from 'express';
 import {

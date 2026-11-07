@@ -13,15 +13,18 @@ import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { ListRowSkeleton } from '../components/SkeletonLoader';
+import { Header } from '../components/Header';
 
 interface AllowanceScreenProps {
   onOpenNotifications: () => void;
   unreadNotifsCount: number;
+  onOpenDrawer?: () => void;
 }
 
 export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
   onOpenNotifications,
-  unreadNotifsCount
+  unreadNotifsCount,
+  onOpenDrawer
 }) => {
   const { user } = useAuth();
   const { theme, isDark } = useTheme();
@@ -134,13 +137,13 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Workspace Quota</Text>
-        <TouchableOpacity style={styles.notifBtn} onPress={onOpenNotifications}>
-          <Ionicons name="notifications-outline" size={20} color={theme.textPrimary} />
-          {unreadNotifsCount > 0 && <View style={styles.unreadDot} />}
-        </TouchableOpacity>
-      </View>
+      <Header
+        title="Workspace Quota"
+        subtitle="Annual Enterprise Allowances"
+        onOpenDrawer={onOpenDrawer}
+        unreadNotifsCount={unreadNotifsCount}
+        onOpenNotifications={onOpenNotifications}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}

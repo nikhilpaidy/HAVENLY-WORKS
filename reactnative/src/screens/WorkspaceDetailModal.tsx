@@ -239,7 +239,7 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
             <View style={styles.locationRow}>
               <Ionicons name="location-outline" size={16} color="#00A859" />
               <Text style={[styles.addressText, { color: theme.textSecondary }]} numberOfLines={1}>
-                {loc.address?.street || '789 Park Avenue'}, {loc.address?.city || 'Bangalore'}
+                {loc.address?.street || 'Madhapur Main Rd'}, {loc.address?.city || 'Hyderabad'}
               </Text>
             </View>
 

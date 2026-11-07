@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -21,115 +21,66 @@ interface TabBarProps {
 interface NavTabItem {
   key: TabKey;
   label: string;
-  icon: any;
-  iconActive: any;
+  iconOutline: keyof typeof Ionicons.glyphMap;
+  iconFilled: keyof typeof Ionicons.glyphMap;
 }
 
 const NAV_TABS: NavTabItem[] = [
-  { key: 'dashboard', label: 'Explore', icon: 'compass-outline', iconActive: 'compass' },
-  { key: 'rooms', label: 'Rooms', icon: 'business-outline', iconActive: 'business' },
-  { key: 'bookings', label: 'Bookings', icon: 'calendar-outline', iconActive: 'calendar' },
-  { key: 'allowance', label: 'Quota', icon: 'pie-chart-outline', iconActive: 'pie-chart' }
+  { key: 'dashboard', label: 'Explore', iconOutline: 'home-outline', iconFilled: 'home' },
+  { key: 'rooms', label: 'Workspaces', iconOutline: 'grid-outline', iconFilled: 'grid' },
+  { key: 'bookings', label: 'Bookings', iconOutline: 'bookmark-outline', iconFilled: 'bookmark' },
+  { key: 'allowance', label: 'Quota', iconOutline: 'pie-chart-outline', iconFilled: 'pie-chart' }
 ];
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const BAR_HORIZONTAL_PADDING = 16;
-const AVAILABLE_WIDTH = SCREEN_WIDTH - BAR_HORIZONTAL_PADDING * 2;
-const TAB_WIDTH = AVAILABLE_WIDTH / NAV_TABS.length;
-
 export const TabBar: React.FC<TabBarProps> = ({ currentTab, onSelectTab }) => {
-  const { theme, isDark } = useTheme();
-
-  const activeIndex = NAV_TABS.findIndex((t) => t.key === currentTab);
-  const safeIndex = activeIndex >= 0 ? activeIndex : 0;
-
-  const slideAnim = useRef(new Animated.Value(safeIndex * TAB_WIDTH)).current;
-  const scaleAnims = useRef(NAV_TABS.map(() => new Animated.Value(1))).current;
-
-  useEffect(() => {
-    Animated.spring(slideAnim, {
-      toValue: safeIndex * TAB_WIDTH,
-      useNativeDriver: true,
-      friction: 7,
-      tension: 65
-    }).start();
-  }, [safeIndex]);
-
-  const handleTabPress = (tab: NavTabItem, index: number) => {
-    Animated.sequence([
-      Animated.timing(scaleAnims[index], {
-        toValue: 0.88,
-        duration: 80,
-        useNativeDriver: true
-      }),
-      Animated.spring(scaleAnims[index], {
-        toValue: 1,
-        friction: 4,
-        tension: 80,
-        useNativeDriver: true
-      })
-    ]).start();
-
-    onSelectTab(tab.key);
-  };
+  const { isDark } = useTheme();
 
   return (
-    <View
-      style={[
-        styles.wrapper,
-        {
-          backgroundColor: isDark ? '#0A0F1D' : '#FFFFFF',
-          borderTopColor: isDark ? '#1E293B' : '#E2E8F0'
-        }
-      ]}
-    >
-      <View style={styles.container}>
-        <Animated.View
-          style={[
-            styles.activePillIndicator,
-            {
-              width: TAB_WIDTH - 8,
-              transform: [{ translateX: slideAnim }]
-            }
-          ]}
-        />
-
-        {NAV_TABS.map((tab, idx) => {
+    <View style={styles.floatingWrapper} pointerEvents="box-none">
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: isDark ? '#111827' : '#FFFFFF',
+            borderColor: isDark ? '#1F2937' : '#F1F5F9'
+          }
+        ]}
+      >
+        {NAV_TABS.map((tab) => {
           const isActive = currentTab === tab.key;
           return (
             <TouchableOpacity
               key={tab.key}
-              onPress={() => handleTabPress(tab, idx)}
-              style={styles.tabItem}
-              activeOpacity={0.8}
+              onPress={() => onSelectTab(tab.key)}
+              style={[
+                styles.tabItem,
+                isActive && [
+                  styles.tabItemActive,
+                  {
+                    backgroundColor: isDark ? 'rgba(0, 168, 89, 0.22)' : '#E8F5E9'
+                  }
+                ]
+              ]}
+              activeOpacity={0.75}
             >
-              <Animated.View
-                style={[
-                  styles.tabInner,
-                  { transform: [{ scale: scaleAnims[idx] }] }
-                ]}
-              >
-                <Ionicons
-                  name={isActive ? tab.iconActive : tab.icon}
-                  size={20}
-                  color={isActive ? '#FFFFFF' : (isDark ? '#94A3B8' : '#64748B')}
-                />
+              <Ionicons
+                name={isActive ? tab.iconFilled : tab.iconOutline}
+                size={20}
+                color={isActive ? '#00A859' : (isDark ? '#6B7280' : '#94A3B8')}
+              />
+              {isActive && (
                 <Text
                   style={[
                     styles.tabLabel,
                     {
-                      color: isActive
-                        ? '#FFFFFF'
-                        : isDark
-                        ? '#94A3B8'
-                        : '#64748B',
-                      fontWeight: isActive ? '700' : '500'
+                      color: isDark ? '#34D399' : '#00A859'
                     }
                   ]}
+                  numberOfLines={1}
                 >
                   {tab.label}
                 </Text>
-              </Animated.View>
+              )}
             </TouchableOpacity>
           );
         })}
@@ -139,44 +90,45 @@ export const TabBar: React.FC<TabBarProps> = ({ currentTab, onSelectTab }) => {
 };
 
 const styles = StyleSheet.create({
-  wrapper: {
-    borderTopWidth: 1,
-    paddingTop: 8,
-    paddingBottom: 16,
-    paddingHorizontal: BAR_HORIZONTAL_PADDING
+  floatingWrapper: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 24 : 16,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    paddingHorizontal: 20
   },
   container: {
     flexDirection: 'row',
-    position: 'relative',
     alignItems: 'center',
-    height: 52
-  },
-  activePillIndicator: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#00A859',
-    shadowColor: '#00A859',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 5
+    justifyContent: 'space-between',
+    width: '100%',
+    maxWidth: 380,
+    height: 60,
+    borderRadius: 30,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 10
   },
   tabItem: {
-    width: TAB_WIDTH,
-    height: 52,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 2
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 22
   },
-  tabInner: {
-    alignItems: 'center',
-    justifyContent: 'center'
+  tabItemActive: {
+    paddingHorizontal: 16,
+    paddingVertical: 9
   },
   tabLabel: {
-    fontSize: 11,
-    marginTop: 3
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: 7
   }
 });

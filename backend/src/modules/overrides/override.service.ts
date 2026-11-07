@@ -1,8 +1,3 @@
-/**
- * Emergency Slot Override Service.
- * Implements arbitration workflows where facility admins can review,
- * approve, or reject urgent room conflicts, with automated slot reallocation and notifications.
- */
 
 import { Types } from 'mongoose';
 import { EmergencyOverride, IEmergencyOverride } from './override.model.js';

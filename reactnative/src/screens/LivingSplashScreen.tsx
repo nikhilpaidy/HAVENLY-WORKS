@@ -185,7 +185,7 @@ export const LivingSplashScreen: React.FC<LivingSplashScreenProps> = ({ onFinish
           }
         ]}
       >
-        {/* Living Ripple 1 */}
+        
         <Animated.View
           style={[
             styles.ripple,
@@ -196,7 +196,7 @@ export const LivingSplashScreen: React.FC<LivingSplashScreenProps> = ({ onFinish
           ]}
         />
 
-        {/* Living Ripple 2 */}
+        
         <Animated.View
           style={[
             styles.ripple,
@@ -208,7 +208,7 @@ export const LivingSplashScreen: React.FC<LivingSplashScreenProps> = ({ onFinish
           ]}
         />
 
-        {/* Floating, Breathing Living Logo */}
+        
         <Animated.View
           style={{
             transform: [
@@ -223,7 +223,7 @@ export const LivingSplashScreen: React.FC<LivingSplashScreenProps> = ({ onFinish
           </View>
         </Animated.View>
 
-        {/* Title & Tagline with Living Stagger */}
+        
         <Animated.View style={[styles.textWrapper, { opacity: textFade }]}>
           <Text style={[styles.brandTitle, { color: isDark ? '#FFFFFF' : '#0A3826' }]}>
             Havenly<Text style={{ color: '#00A859' }}>Work</Text>

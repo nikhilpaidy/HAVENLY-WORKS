@@ -1,8 +1,3 @@
-/**
- * Emergency Override Controller.
- * Provides REST handlers for submitting urgent slot override requests,
- * viewing pending requests, and administrative approval/rejection.
- */
 
 import { Request, Response, NextFunction } from 'express';
 import {

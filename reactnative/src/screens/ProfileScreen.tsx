@@ -23,6 +23,9 @@ interface ProfileScreenProps {
   unreadNotifsCount: number;
   onNavigateToStaff?: () => void;
   onNavigateToTickets?: () => void;
+  onBack?: () => void;
+  onOpenDrawer?: () => void;
+  onSignInRequest?: () => void;
 }
 
 const PRESET_AVATARS = [
@@ -38,10 +41,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onOpenNotifications,
   unreadNotifsCount,
   onNavigateToStaff,
-  onNavigateToTickets
+  onNavigateToTickets,
+  onBack,
+  onOpenDrawer,
+  onSignInRequest
 }) => {
-  const { user, logout, refreshProfile } = useAuth();
-  const { theme, themeMode, setThemeMode } = useTheme();
+  const { user, isGuest, logout, refreshProfile } = useAuth();
+  const { theme, themeMode, setThemeMode, isDark } = useTheme();
 
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
@@ -130,15 +136,40 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header
         title="Executive Account"
-        subtitle="Identity & Role Governance"
+        subtitle={isGuest ? "Guest Mode" : "Identity & Role Governance"}
         unreadNotifsCount={unreadNotifsCount}
         onOpenNotifications={onOpenNotifications}
+        showBack={!!onBack}
+        onPressBack={onBack}
+        onOpenDrawer={onOpenDrawer}
       />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {isGuest && (
+          <View style={[styles.card, { backgroundColor: isDark ? '#162032' : '#F0FDF4', borderColor: '#00A859' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <Ionicons name="sparkles" size={20} color="#00A859" style={{ marginRight: 8 }} />
+              <Text style={{ fontSize: 16, fontWeight: '800', color: theme.textPrimary }}>
+                Guest Explorer Mode Active
+              </Text>
+            </View>
+            <Text style={{ fontSize: 13, color: theme.textSecondary, lineHeight: 18, marginBottom: 14 }}>
+              Sign in with your enterprise or personal account to unlock room reservations, annual quota tracking, helpdesk discussion threads, and digital invoice receipts.
+            </Text>
+            <TouchableOpacity
+              style={{ backgroundColor: '#00A859', height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+              onPress={onSignInRequest}
+              activeOpacity={0.8}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>
+                Sign In to HavenlyWork
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
           <View style={styles.avatarSection}>
             <View style={styles.avatarBorder}>

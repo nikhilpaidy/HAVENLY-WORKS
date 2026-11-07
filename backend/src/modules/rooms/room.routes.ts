@@ -11,12 +11,12 @@ import {
   getRoomReviews,
   toggleRoomLike
 } from './room.controller.js';
-import { authenticateJwt, requireRole } from '../../middleware/auth.js';
+import { authenticateJwt, optionalAuthenticateJwt, requireRole } from '../../middleware/auth.js';
 import { UserRole } from '../../types/index.js';
 
 const router = Router();
 
-router.get('/public', getPublicRooms);
+router.get('/public', optionalAuthenticateJwt, getPublicRooms);
 router.get('/public/:id', getPublicRoomById);
 router.get('/public/:id/reviews', getRoomReviews);
 

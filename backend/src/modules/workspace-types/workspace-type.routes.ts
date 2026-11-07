@@ -5,12 +5,12 @@ import {
   updateWorkspaceType,
   deleteWorkspaceType
 } from './workspace-type.controller.js';
-import { authenticateJwt, requireRole } from '../../middleware/auth.js';
+import { authenticateJwt, optionalAuthenticateJwt, requireRole } from '../../middleware/auth.js';
 import { UserRole } from '../../types/index.js';
 
 const router = Router();
 
-router.get('/public', getWorkspaceTypes);
+router.get('/public', optionalAuthenticateJwt, getWorkspaceTypes);
 
 router.use(authenticateJwt);
 

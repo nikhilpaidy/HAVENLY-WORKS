@@ -15,11 +15,15 @@ import { Ionicons } from '@expo/vector-icons';
 interface InvoicesScreenProps {
   onOpenNotifications: () => void;
   unreadNotifsCount: number;
+  onBack?: () => void;
+  onOpenDrawer?: () => void;
 }
 
 export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({
   onOpenNotifications,
-  unreadNotifsCount
+  unreadNotifsCount,
+  onBack,
+  onOpenDrawer
 }) => {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +52,9 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({
         subtitle="Corporate Accounts"
         unreadCount={unreadNotifsCount}
         onPressNotifications={onOpenNotifications}
+        showBack={!!onBack}
+        onPressBack={onBack}
+        onOpenDrawer={onOpenDrawer}
       />
 
       {loading ? (

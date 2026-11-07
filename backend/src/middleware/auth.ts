@@ -58,6 +58,50 @@ export async function authenticateJwt(
   }
 }
 
+export async function optionalAuthenticateJwt(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    let token: string | undefined;
+
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    } else if (req.headers.cookie) {
+      const cookies = req.headers.cookie.split(';').reduce((acc, c) => {
+        const [k, v] = c.trim().split('=');
+        if (k && v) acc[k] = decodeURIComponent(v);
+        return acc;
+      }, {} as Record<string, string>);
+      token = cookies.accessToken;
+    }
+
+    if (!token) {
+      return next();
+    }
+
+    const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as JwtPayload;
+
+    const user = await User.findById(decoded.userId).select('isActive role organizationId companyId email permissions');
+    if (user && user.isActive) {
+      req.user = {
+        userId: user._id.toString(),
+        email: user.email,
+        role: user.role as UserRole,
+        organizationId: user.organizationId?.toString(),
+        companyId: user.companyId?.toString(),
+        permissions: user.permissions || []
+      };
+    }
+
+    next();
+  } catch {
+    next();
+  }
+}
+
 export function requireRole(...allowedRoles: UserRole[]) {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {

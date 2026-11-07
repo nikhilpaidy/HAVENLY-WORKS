@@ -1,7 +1,3 @@
-/**
- * Staff & Granular Permissions Routes.
- * Authenticated endpoints for hierarchy staff management and password resets.
- */
 
 import { Router } from 'express';
 import {

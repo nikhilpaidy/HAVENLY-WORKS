@@ -48,10 +48,19 @@ const COMPANY_STAFF_PERMISSIONS = [
   { key: 'raise_tickets', label: 'Raise Facilities Helpdesk', desc: 'Submit complaints and request on-site amenities' }
 ];
 
-export const StaffScreen: React.FC<{
+interface StaffScreenProps {
   onOpenNotifications?: () => void;
   unreadNotifsCount?: number;
-}> = ({ onOpenNotifications, unreadNotifsCount = 0 }) => {
+  onBack?: () => void;
+  onOpenDrawer?: () => void;
+}
+
+export const StaffScreen: React.FC<StaffScreenProps> = ({
+  onOpenNotifications,
+  unreadNotifsCount = 0,
+  onBack,
+  onOpenDrawer
+}) => {
   const { user } = useAuth();
   const { theme, isDark } = useTheme();
 
@@ -204,6 +213,9 @@ export const StaffScreen: React.FC<{
         }
         unreadNotifsCount={unreadNotifsCount}
         onOpenNotifications={onOpenNotifications}
+        showBack={!!onBack}
+        onPressBack={onBack}
+        onOpenDrawer={onOpenDrawer}
       />
 
       {canManageStaff && (
@@ -306,7 +318,7 @@ export const StaffScreen: React.FC<{
         </ScrollView>
       )}
 
-      {/* ADD STAFF MODAL */}
+      
       <Modal visible={showAddModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
@@ -411,7 +423,7 @@ export const StaffScreen: React.FC<{
         </View>
       </Modal>
 
-      {/* EDIT PERMISSIONS MODAL */}
+      
       <Modal visible={!!editStaff} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
@@ -473,7 +485,7 @@ export const StaffScreen: React.FC<{
         </View>
       </Modal>
 
-      {/* RESET CLIENT PASSWORD MODAL (COWORKING ADMIN ONLY) */}
+      
       <Modal visible={showResetModal} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>

@@ -532,7 +532,7 @@ export const BookModal: React.FC<BookModalProps> = ({
         </View>
       </KeyboardAvoidingView>
 
-      {/* EMERGENCY OVERRIDE REQUEST MODAL */}
+      
       <Modal visible={showOverrideModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>

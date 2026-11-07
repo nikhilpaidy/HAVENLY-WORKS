@@ -22,9 +22,10 @@ import { LivingSplashScreen } from './src/screens/LivingSplashScreen';
 import { LeftDrawerModal } from './src/components/LeftDrawerModal';
 import { LegalModal } from './src/components/LegalModal';
 import { SupportModal } from './src/components/SupportModal';
+import { AuthRequiredModal } from './src/components/AuthRequiredModal';
 
 const MainApp: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, logout } = useAuth();
   const { theme, isDark } = useTheme();
 
   const [showLivingSplash, setShowLivingSplash] = useState(true);
@@ -36,6 +37,9 @@ const MainApp: React.FC = () => {
   const [showLeftDrawer, setShowLeftDrawer] = useState(false);
   const [showLegalModal, setShowLegalModal] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
+
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authFeatureName, setAuthFeatureName] = useState('this feature');
 
   const fetchUnreadCount = async () => {
     try {
@@ -52,6 +56,15 @@ const MainApp: React.FC = () => {
       return () => clearInterval(interval);
     }
   }, [isAuthenticated]);
+
+  const handleSelectTab = (tab: TabKey) => {
+    if (!isAuthenticated && (tab === 'bookings' || tab === 'allowance')) {
+      setAuthFeatureName(tab === 'bookings' ? 'reservations & bookings' : 'corporate quota & allowances');
+      setShowAuthModal(true);
+      return;
+    }
+    setCurrentTab(tab);
+  };
 
   if (showLivingSplash) {
     return <LivingSplashScreen onFinish={() => setShowLivingSplash(false)} />;
@@ -104,7 +117,7 @@ const MainApp: React.FC = () => {
       <View style={styles.content}>
         {currentTab === 'dashboard' && (
           <DashboardScreen
-            onNavigate={(tab) => setCurrentTab(tab)}
+            onNavigate={(tab) => handleSelectTab(tab)}
             onOpenNotifications={() => setShowNotifications(true)}
             unreadNotifsCount={unreadCount}
             onOpenDrawer={() => setShowLeftDrawer(true)}
@@ -114,36 +127,45 @@ const MainApp: React.FC = () => {
           <RoomsScreen
             onOpenNotifications={() => setShowNotifications(true)}
             unreadNotifsCount={unreadCount}
+            onOpenDrawer={() => setShowLeftDrawer(true)}
           />
         )}
         {currentTab === 'bookings' && (
           <BookingsScreen
             onOpenNotifications={() => setShowNotifications(true)}
             unreadNotifsCount={unreadCount}
+            onOpenDrawer={() => setShowLeftDrawer(true)}
           />
         )}
         {currentTab === 'allowance' && (
           <AllowanceScreen
             onOpenNotifications={() => setShowNotifications(true)}
             unreadNotifsCount={unreadCount}
+            onOpenDrawer={() => setShowLeftDrawer(true)}
           />
         )}
         {currentTab === 'tickets' && (
           <TicketsScreen
             onOpenNotifications={() => setShowNotifications(true)}
             unreadNotifsCount={unreadCount}
+            onBack={() => setCurrentTab('dashboard')}
+            onOpenDrawer={() => setShowLeftDrawer(true)}
           />
         )}
         {currentTab === 'staff' && (
           <StaffScreen
             onOpenNotifications={() => setShowNotifications(true)}
             unreadNotifsCount={unreadCount}
+            onBack={() => setCurrentTab('dashboard')}
+            onOpenDrawer={() => setShowLeftDrawer(true)}
           />
         )}
         {currentTab === 'invoices' && (
           <InvoicesScreen
             onOpenNotifications={() => setShowNotifications(true)}
             unreadNotifsCount={unreadCount}
+            onBack={() => setCurrentTab('dashboard')}
+            onOpenDrawer={() => setShowLeftDrawer(true)}
           />
         )}
         {currentTab === 'profile' && (
@@ -152,22 +174,68 @@ const MainApp: React.FC = () => {
             unreadNotifsCount={unreadCount}
             onNavigateToStaff={() => setCurrentTab('staff')}
             onNavigateToTickets={() => setCurrentTab('tickets')}
+            onBack={() => setCurrentTab('dashboard')}
+            onOpenDrawer={() => setShowLeftDrawer(true)}
+            onSignInRequest={() => setAuthStep('login')}
           />
         )}
       </View>
 
-      <TabBar currentTab={currentTab} onSelectTab={(tab) => setCurrentTab(tab)} />
+      <TabBar currentTab={currentTab} onSelectTab={handleSelectTab} />
 
       <LeftDrawerModal
         visible={showLeftDrawer}
         onClose={() => setShowLeftDrawer(false)}
+        onOpenExplore={() => setCurrentTab('dashboard')}
+        onOpenRooms={() => setCurrentTab('rooms')}
+        onOpenBookings={() => {
+          if (!isAuthenticated) {
+            setAuthFeatureName('workspace reservations');
+            setShowAuthModal(true);
+          } else {
+            setCurrentTab('bookings');
+          }
+        }}
+        onOpenQuota={() => {
+          if (!isAuthenticated) {
+            setAuthFeatureName('workspace allowances & quota');
+            setShowAuthModal(true);
+          } else {
+            setCurrentTab('allowance');
+          }
+        }}
         onOpenProfile={() => setCurrentTab('profile')}
-        onOpenHelpdesk={() => setCurrentTab('tickets')}
-        onOpenStaff={() => setCurrentTab('staff')}
-        onOpenInvoices={() => setCurrentTab('invoices')}
-        onOpenQuota={() => setCurrentTab('allowance')}
+        onOpenHelpdesk={() => {
+          if (!isAuthenticated) {
+            setAuthFeatureName('facilities helpdesk');
+            setShowAuthModal(true);
+          } else {
+            setCurrentTab('tickets');
+          }
+        }}
+        onOpenStaff={() => {
+          if (!isAuthenticated) {
+            setAuthFeatureName('staff management');
+            setShowAuthModal(true);
+          } else {
+            setCurrentTab('staff');
+          }
+        }}
+        onOpenInvoices={() => {
+          if (!isAuthenticated) {
+            setAuthFeatureName('invoices & billing');
+            setShowAuthModal(true);
+          } else {
+            setCurrentTab('invoices');
+          }
+        }}
         onOpenLegal={() => setShowLegalModal(true)}
         onOpenSupport={() => setShowSupportModal(true)}
+        onSignOut={async () => {
+          await logout();
+          setAuthStep('login');
+        }}
+        onSignInRequest={() => setAuthStep('login')}
       />
 
       <LegalModal
@@ -178,7 +246,21 @@ const MainApp: React.FC = () => {
       <SupportModal
         visible={showSupportModal}
         onClose={() => setShowSupportModal(false)}
-        onOpenTickets={() => setCurrentTab('tickets')}
+        onOpenTickets={() => {
+          if (!isAuthenticated) {
+            setAuthFeatureName('facilities helpdesk');
+            setShowAuthModal(true);
+          } else {
+            setCurrentTab('tickets');
+          }
+        }}
+      />
+
+      <AuthRequiredModal
+        visible={showAuthModal}
+        featureName={authFeatureName}
+        onClose={() => setShowAuthModal(false)}
+        onSignIn={() => setAuthStep('login')}
       />
     </SafeAreaView>
   );

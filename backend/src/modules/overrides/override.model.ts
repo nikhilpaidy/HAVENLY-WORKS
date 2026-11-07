@@ -1,8 +1,3 @@
-/**
- * Emergency Slot Override Request Model.
- * Allows client companies to request urgent executive access to meeting rooms
- * that are already occupied by another company, pending coworking admin arbitration.
- */
 
 import mongoose, { Document, Schema, Types } from 'mongoose';
 import { OverrideRequestStatus } from '../../types/index.js';

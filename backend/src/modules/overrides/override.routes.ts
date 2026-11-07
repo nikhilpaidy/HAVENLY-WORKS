@@ -1,7 +1,3 @@
-/**
- * Emergency Override Routes.
- * Authenticated endpoints for client emergency override requests and admin arbitration.
- */
 
 import { Router } from 'express';
 import {

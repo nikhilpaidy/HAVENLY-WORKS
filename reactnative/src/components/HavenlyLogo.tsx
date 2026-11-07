@@ -70,7 +70,6 @@ export const HavenlyLogo: React.FC<LogoProps> = ({
     );
   }
 
-  // Horizontal variant
   const targetHeight = height || Math.round(size * 0.32);
   const targetWidth = width || Math.round(targetHeight * (541 / 104));
 

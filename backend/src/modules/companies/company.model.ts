@@ -1,9 +1,3 @@
-/**
- * Enterprise Company Model.
- * Represents client companies subscribed to coworking locations.
- * Includes Indian statutory fields (GSTIN, PAN), verification proofs,
- * and customizable monthly or annual complimentary room allowance policies.
- */
 
 import mongoose, { Document, Schema, Types } from 'mongoose';
 

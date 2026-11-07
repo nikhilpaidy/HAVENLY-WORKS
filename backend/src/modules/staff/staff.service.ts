@@ -1,9 +1,3 @@
-/**
- * Staff & Granular Permissions Service.
- * Allows Super Admins, Coworking Hub Admins, and Enterprise Company Owners
- * to onboard staff members, grant dynamic granular permissions, and modify access
- * with real-time propagation across active mobile and web sessions.
- */
 
 import { Types } from 'mongoose';
 import bcrypt from 'bcryptjs';
