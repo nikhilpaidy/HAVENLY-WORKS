@@ -7,20 +7,33 @@ export interface IMaintenanceBlock {
   createdBy?: Types.ObjectId;
 }
 
+export type WorkspaceType = 
+  | 'HOT_DESK' 
+  | 'DEDICATED_DESK' 
+  | 'PRIVATE_OFFICE' 
+  | 'MEETING_ROOM' 
+  | 'BOARDROOM' 
+  | 'DAY_PASS';
+
 export interface IMeetingRoom extends Document {
   organizationId: Types.ObjectId;
   locationId: Types.ObjectId;
   name: string;
-  code: string; 
+  code: string;
+  workspaceType: WorkspaceType;
   description?: string;
   capacity: number;
-  hourlyRate: number; 
+  hourlyRate: number;
+  dailyRate?: number;
+  rating: number;
+  reviewCount: number;
+  saveBadge?: string;
   photos: string[];
-  amenities: string[]; 
-  slotIntervalMinutes: number; 
-  minBookingMinutes: number; 
-  maxBookingMinutes: number; 
-  bufferMinutes: number; 
+  amenities: string[];
+  slotIntervalMinutes: number;
+  minBookingMinutes: number;
+  maxBookingMinutes: number;
+  bufferMinutes: number;
   maintenanceBlocks: IMaintenanceBlock[];
   isActive: boolean;
   createdAt: Date;
@@ -61,6 +74,12 @@ const MeetingRoomSchema = new Schema<IMeetingRoom>(
       required: true,
       trim: true
     },
+    workspaceType: {
+      type: String,
+      enum: ['HOT_DESK', 'DEDICATED_DESK', 'PRIVATE_OFFICE', 'MEETING_ROOM', 'BOARDROOM', 'DAY_PASS'],
+      default: 'MEETING_ROOM',
+      index: true
+    },
     description: String,
     capacity: {
       type: Number,
@@ -71,6 +90,22 @@ const MeetingRoomSchema = new Schema<IMeetingRoom>(
       type: Number,
       required: true,
       min: 0
+    },
+    dailyRate: {
+      type: Number,
+      default: 0
+    },
+    rating: {
+      type: Number,
+      default: 4.9
+    },
+    reviewCount: {
+      type: Number,
+      default: 120
+    },
+    saveBadge: {
+      type: String,
+      default: 'Save 10%'
     },
     photos: {
       type: [String],
@@ -114,5 +149,6 @@ const MeetingRoomSchema = new Schema<IMeetingRoom>(
 
 MeetingRoomSchema.index({ locationId: 1, code: 1 }, { unique: true });
 MeetingRoomSchema.index({ organizationId: 1, capacity: 1 });
+MeetingRoomSchema.index({ locationId: 1, workspaceType: 1 });
 
 export const MeetingRoom = mongoose.model<IMeetingRoom>('MeetingRoom', MeetingRoomSchema);

@@ -44,7 +44,7 @@ export async function requestEmergencyOverride(data: {
     );
   }
 
-  if (conflictingBooking.companyId.toString() === data.requestingCompanyId.toString()) {
+  if (conflictingBooking.companyId && conflictingBooking.companyId.toString() === data.requestingCompanyId.toString()) {
     throw new AppError('This slot is already booked by your own company team.', 400);
   }
 
@@ -158,7 +158,7 @@ export async function reviewEmergencyOverride(
       metadata: { bookingId: newBooking._id.toString() }
     }).catch(() => {});
 
-    if (existing) {
+    if (existing && existing.bookedByUserId) {
       await createNotification({
         recipientUserId: existing.bookedByUserId,
         type: NotificationType.BOOKING_CANCELLED,

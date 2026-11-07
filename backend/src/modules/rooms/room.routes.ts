@@ -4,12 +4,17 @@ import {
   getRoomById,
   createRoom,
   updateRoom,
-  addMaintenanceBlock
+  addMaintenanceBlock,
+  getPublicRooms,
+  getPublicRoomById
 } from './room.controller.js';
 import { authenticateJwt, requireRole } from '../../middleware/auth.js';
 import { UserRole } from '../../types/index.js';
 
 const router = Router();
+
+router.get('/public', getPublicRooms);
+router.get('/public/:id', getPublicRoomById);
 
 router.use(authenticateJwt);
 

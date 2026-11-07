@@ -1,9 +1,3 @@
-/**
- * Central type definitions and enums for the Coworking Platform.
- * Supports multi-tenant isolation, granular staff permissions, 
- * complaint ticketing, and emergency slot overrides.
- */
-
 export enum UserRole {
   SUPER_ADMIN = 'SUPER_ADMIN',
   SUPER_ADMIN_STAFF = 'SUPER_ADMIN_STAFF',
@@ -16,6 +10,7 @@ export enum UserRole {
 }
 
 export enum BookingStatus {
+  PENDING_CONFIRMATION = 'PENDING_CONFIRMATION',
   CONFIRMED = 'CONFIRMED',
   CHECKED_IN = 'CHECKED_IN',
   COMPLETED = 'COMPLETED',
@@ -33,10 +28,12 @@ export enum InvoiceStatus {
 }
 
 export enum PaymentMethod {
+  UPI_QR = 'UPI_QR',
   BANK_TRANSFER = 'BANK_TRANSFER',
   CASH = 'CASH',
   CHEQUE = 'CHEQUE',
   POS_CARD = 'POS_CARD',
+  ALLOWANCE = 'ALLOWANCE',
   OTHER = 'OTHER'
 }
 
@@ -65,6 +62,10 @@ export enum NotificationType {
   OVERRIDE_REQUESTED = 'OVERRIDE_REQUESTED',
   OVERRIDE_APPROVED = 'OVERRIDE_APPROVED',
   OVERRIDE_REJECTED = 'OVERRIDE_REJECTED',
+  BROADCAST_ANNOUNCEMENT = 'BROADCAST_ANNOUNCEMENT',
+  FESTIVAL_GREETING = 'FESTIVAL_GREETING',
+  GUEST_INQUIRY = 'GUEST_INQUIRY',
+  MONTH_END_INVOICE = 'MONTH_END_INVOICE',
   SYSTEM = 'SYSTEM'
 }
 

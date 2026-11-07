@@ -5,16 +5,18 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
+  Switch,
+  Modal,
+  ScrollView,
   RefreshControl,
-  Platform
+  Alert
 } from 'react-native';
 import { mobileApi } from '../services/api';
-import { colors } from '../theme/colors';
-import { Header } from '../components/Header';
-import { ModalPopup } from '../components/ModalPopup';
+import { useTheme } from '../theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { SafeImage } from '../components/SafeImage';
+import { ListRowSkeleton } from '../components/SkeletonLoader';
 
 interface BookingsScreenProps {
   onOpenNotifications: () => void;
@@ -26,23 +28,24 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
   unreadNotifsCount
 }) => {
   const { user } = useAuth();
-  const isAdminRole = user?.role === 'SUPER_ADMIN' || user?.role === 'COWORKING_ADMIN';
+  const { theme, isDark } = useTheme();
 
-  const [activeFilter, setActiveFilter] = useState<'all' | 'upcoming' | 'completed' | 'cancelled'>('all');
+  const isCoworkingAdmin = user?.role === 'COWORKING_ADMIN';
+
+  const [activeTab, setActiveTab] = useState<'ONGOING' | 'COMPLETED' | 'CANCELLED'>('ONGOING');
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
-  const [targetCancelBooking, setTargetCancelBooking] = useState<any | null>(null);
-  const [modalError, setModalError] = useState<string | null>(null);
+
+  const [selectedReceipt, setSelectedReceipt] = useState<any | null>(null);
+  const [reminders, setReminders] = useState<Record<string, boolean>>({});
 
   const fetchBookings = async () => {
     try {
-      const scopeParam = activeFilter === 'upcoming' ? 'upcoming' : activeFilter === 'completed' ? 'past' : undefined;
-      const data = await mobileApi.getMyBookings(scopeParam);
+      const data = await mobileApi.getBookings({ tab: activeTab });
       setBookings(data || []);
     } catch (err) {
-      console.error('Failed to load bookings:', err);
+      console.warn('Failed to load bookings:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -51,471 +54,491 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
 
   useEffect(() => {
     fetchBookings();
-  }, [activeFilter]);
+  }, [activeTab]);
 
-  const confirmCancelBooking = (booking: any) => {
-    setTargetCancelBooking(booking);
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchBookings();
   };
 
-  const executeCancelBooking = async () => {
-    if (!targetCancelBooking) return;
+  const toggleReminder = (bookingId: string) => {
+    setReminders((prev) => ({
+      ...prev,
+      [bookingId]: !prev[bookingId]
+    }));
+  };
+
+  const handleCancelBooking = (booking: any) => {
+    Alert.alert(
+      'Cancel Reservation',
+      `Are you sure you want to cancel booking #${booking.bookingNumber}? Any quota will be restored.`,
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await mobileApi.cancelBooking(booking._id, 'Cancelled via Mobile App');
+              fetchBookings();
+            } catch (err: any) {
+              Alert.alert('Cancel Error', err.message || 'Could not cancel booking.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleConfirmGuest = async (booking: any) => {
     try {
-      setCancellingId(targetCancelBooking._id);
-      await mobileApi.cancelBooking(targetCancelBooking._id, 'Client mobile app cancellation');
-      setTargetCancelBooking(null);
+      await mobileApi.confirmGuestBooking(booking._id);
+      Alert.alert('Confirmed', `Guest booking #${booking.bookingNumber} confirmed.`);
       fetchBookings();
     } catch (err: any) {
-      setTargetCancelBooking(null);
-      setModalError(err.message || 'Failed to cancel reservation');
-    } finally {
-      setCancellingId(null);
+      Alert.alert('Error', err.message || 'Could not confirm booking.');
     }
   };
 
-  const filteredBookings = bookings.filter((b) => {
-    if (activeFilter === 'all') return true;
-    if (activeFilter === 'upcoming') return b.status === 'CONFIRMED' || b.status === 'CHECKED_IN';
-    if (activeFilter === 'completed') return b.status === 'COMPLETED';
-    if (activeFilter === 'cancelled') return b.status === 'CANCELLED' || b.status === 'EXPIRED';
-    return true;
-  });
+  const formatDate = (isoString?: string) => {
+    if (!isoString) return 'Date TBD';
+    const d = new Date(isoString);
+    const datePart = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const timePart = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    return `${datePart} | ${timePart}`;
+  };
+
+  const renderBookingCard = ({ item }: { item: any }) => {
+    const room = item.roomId || {};
+    const loc = item.locationId || {};
+    const isPending = item.status === 'PENDING_CONFIRMATION';
+    const isRemindActive = reminders[item._id] ?? true;
+
+    return (
+      <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+        <View style={styles.cardHeader}>
+          <View style={[styles.typeBadge, { backgroundColor: isPending ? '#FEF3C7' : '#DCFCE7' }]}>
+            <Text style={[styles.typeBadgeText, { color: isPending ? '#B45309' : '#15803D' }]}>
+              {item.workspaceType?.replace('_', ' ') || room.workspaceType?.replace('_', ' ') || 'WORKSPACE'}
+            </Text>
+          </View>
+          {isPending && (
+            <View style={styles.pendingTag}>
+              <Text style={styles.pendingTagText}>Awaiting Call Verification</Text>
+            </View>
+          )}
+        </View>
+
+        <Text style={[styles.spaceName, { color: theme.textPrimary }]}>
+          {room.name || item.title}
+        </Text>
+        <Text style={[styles.addressText, { color: theme.textSecondary }]}>
+          {loc.address?.street || '789 Park Avenue'}, {loc.city || 'Bangalore'}
+        </Text>
+
+        <View style={styles.timeSection}>
+          <Text style={[styles.timeLabel, { color: theme.textMuted }]}>Booking Date & Time</Text>
+          <Text style={[styles.timeValue, { color: theme.textPrimary }]}>{formatDate(item.startTime)}</Text>
+        </View>
+
+        {isCoworkingAdmin && isPending && (
+          <TouchableOpacity
+            style={styles.adminConfirmBtn}
+            onPress={() => handleConfirmGuest(item)}
+          >
+            <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.adminConfirmText}>Verify QR & Confirm Booking</Text>
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.cardFooter}>
+          <TouchableOpacity
+            style={styles.receiptBtn}
+            onPress={() => setSelectedReceipt(item)}
+            activeOpacity={0.88}
+          >
+            <Text style={styles.receiptBtnText}>E-Receipt</Text>
+          </TouchableOpacity>
+
+          <View style={styles.remindRow}>
+            <Text style={[styles.remindText, { color: theme.textSecondary }]}>Remind me</Text>
+            <Switch
+              value={isRemindActive}
+              onValueChange={() => toggleReminder(item._id)}
+              trackColor={{ false: theme.cardBorder, true: '#00A859' }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+        </View>
+
+        {activeTab === 'ONGOING' && (
+          <TouchableOpacity
+            style={styles.cancelLink}
+            onPress={() => handleCancelBooking(item)}
+          >
+            <Text style={styles.cancelLinkText}>Cancel Booking</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
 
   return (
-    <View style={styles.container}>
-      <Header
-        title={isAdminRole ? 'All Reservations' : 'My Reservations'}
-        subtitle={isAdminRole ? 'Campus Facility Bookings' : 'Schedule & History'}
-        unreadCount={unreadNotifsCount}
-        onPressNotifications={onOpenNotifications}
-      />
-
-      <View style={styles.scopeRow}>
-        <TouchableOpacity
-          onPress={() => setActiveFilter('all')}
-          style={[styles.scopePill, activeFilter === 'all' && styles.scopePillActive]}
-        >
-          <Text style={[styles.scopeText, activeFilter === 'all' && styles.scopeTextActive]}>
-            All ({bookings.length})
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setActiveFilter('upcoming')}
-          style={[styles.scopePill, activeFilter === 'upcoming' && styles.scopePillActive]}
-        >
-          <Text style={[styles.scopeText, activeFilter === 'upcoming' && styles.scopeTextActive]}>
-            Upcoming
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setActiveFilter('completed')}
-          style={[styles.scopePill, activeFilter === 'completed' && styles.scopePillActive]}
-        >
-          <Text style={[styles.scopeText, activeFilter === 'completed' && styles.scopeTextActive]}>
-            Completed
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setActiveFilter('cancelled')}
-          style={[styles.scopePill, activeFilter === 'cancelled' && styles.scopePillActive]}
-        >
-          <Text style={[styles.scopeText, activeFilter === 'cancelled' && styles.scopeTextActive]}>
-            Cancelled
-          </Text>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={styles.header}>
+        <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>My Bookings</Text>
+        <TouchableOpacity style={styles.notifBtn} onPress={onOpenNotifications}>
+          <Ionicons name="notifications-outline" size={20} color={theme.textPrimary} />
+          {unreadNotifsCount > 0 && <View style={styles.unreadDot} />}
         </TouchableOpacity>
       </View>
 
+      <View style={[styles.tabBar, { borderBottomColor: theme.cardBorder }]}>
+        {(['ONGOING', 'COMPLETED', 'CANCELLED'] as const).map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            style={[styles.tabItem, activeTab === tab && styles.tabItemActive]}
+            onPress={() => setActiveTab(tab)}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                { color: activeTab === tab ? '#00A859' : theme.textSecondary },
+                activeTab === tab && { fontWeight: '700' }
+              ]}
+            >
+              {tab === 'ONGOING' ? 'Ongoing' : tab === 'COMPLETED' ? 'Completed' : 'Cancelled'}
+            </Text>
+            {activeTab === tab && <View style={styles.tabIndicator} />}
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={colors.brassLight} />
+        <View style={{ padding: 20 }}>
+          <ListRowSkeleton />
+          <ListRowSkeleton />
+          <ListRowSkeleton />
+        </View>
+      ) : bookings.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="calendar-outline" size={48} color={theme.textMuted} />
+          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+            No {activeTab.toLowerCase()} bookings found.
+          </Text>
         </View>
       ) : (
         <FlatList
-          data={filteredBookings}
+          data={bookings}
           keyExtractor={(item) => item._id}
+          renderItem={renderBookingCard}
           contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                fetchBookings();
-              }}
-              tintColor={colors.brassLight}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyCard}>
-              <Ionicons name="calendar-outline" size={36} color={colors.textMuted} />
-              <Text style={styles.emptyTitle}>No reservations found</Text>
-              <Text style={styles.emptySub}>
-                {activeFilter === 'upcoming'
-                  ? 'No scheduled bookings found in this view.'
-                  : activeFilter === 'cancelled'
-                  ? 'No cancelled or expired booking records.'
-                  : 'No reservations available.'}
-              </Text>
-            </View>
-          }
-          renderItem={({ item }) => {
-            const roomName =
-              typeof item.roomId === 'object' && item.roomId !== null
-                ? item.roomId.name
-                : 'Meeting Room';
-            const companyName =
-              typeof item.companyId === 'object' && item.companyId !== null
-                ? item.companyId.name
-                : 'Aptapace Private Limited';
-            const start = new Date(item.startTime);
-            const end = new Date(item.endTime);
-            const isConfirmed = item.status === 'CONFIRMED';
-            const isCompleted = item.status === 'COMPLETED';
-            const isCancelled = item.status === 'CANCELLED';
-            const isExpired = item.status === 'EXPIRED';
-            const isCancelling = cancellingId === item._id;
-
-            return (
-              <View style={styles.card}>
-                <View style={styles.cardTop}>
-                  <Text style={styles.refText}>{item.bookingNumber}</Text>
-                  <View
-                    style={[
-                      styles.statusPill,
-                      isConfirmed
-                        ? styles.statusConfirmed
-                        : isCompleted
-                        ? styles.statusCompleted
-                        : isCancelled
-                        ? styles.statusCancelled
-                        : styles.statusExpired
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.statusText,
-                        isConfirmed
-                          ? styles.statusConfirmedText
-                          : isCompleted
-                          ? styles.statusCompletedText
-                          : isCancelled
-                          ? styles.statusCancelledText
-                          : styles.statusExpiredText
-                      ]}
-                    >
-                      {item.status}
-                    </Text>
-                  </View>
-                </View>
-
-                <Text style={styles.cardTitle}>{item.title}</Text>
-
-                {isAdminRole && (
-                  <View style={styles.companyRow}>
-                    <Ionicons name="business" size={12} color={colors.brassLight} />
-                    <Text style={styles.companyNameText}>{companyName}</Text>
-                  </View>
-                )}
-
-                <View style={styles.metaRow}>
-                  <Ionicons name="location-outline" size={14} color={colors.brassLight} />
-                  <Text style={styles.metaText}>{roomName}</Text>
-                  <Text style={styles.metaDot}>•</Text>
-                  <Ionicons name="people-outline" size={14} color={colors.textMuted} />
-                  <Text style={styles.metaText}>{item.attendeeCount} guests</Text>
-                </View>
-
-                <View style={styles.metaRow}>
-                  <Ionicons name="time-outline" size={14} color={colors.textMuted} />
-                  <Text style={styles.metaText}>
-                    {start.toLocaleDateString('en-IN', {
-                      timeZone: 'Asia/Kolkata',
-                      weekday: 'short',
-                      month: 'short',
-                      day: 'numeric'
-                    })}{' '}
-                    •{' '}
-                    {start.toLocaleTimeString('en-IN', {
-                      timeZone: 'Asia/Kolkata',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true
-                    })}{' '}
-                    -{' '}
-                    {end.toLocaleTimeString('en-IN', {
-                      timeZone: 'Asia/Kolkata',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true
-                    })}
-                  </Text>
-                </View>
-
-                {item.cancellationReason && (
-                  <View style={styles.reasonBox}>
-                    <Ionicons name="information-circle" size={14} color={colors.danger} />
-                    <Text style={styles.reasonText}>{item.cancellationReason}</Text>
-                  </View>
-                )}
-
-                <View style={styles.cardFooter}>
-                  <View>
-                    <Text style={styles.quotaText}>
-                      {item.pricingSnapshot?.freeHoursApplied > 0
-                        ? `✓ ${item.pricingSnapshot.freeHoursApplied} free hrs applied`
-                        : 'Complimentary Quota'}
-                    </Text>
-                    {item.pricingSnapshot?.chargeableHours > 0 && (
-                      <Text style={styles.overageText}>
-                        +{item.pricingSnapshot.chargeableHours}h (₹
-                        {item.pricingSnapshot.totalAmount || 0})
-                      </Text>
-                    )}
-                  </View>
-
-                  {isConfirmed && (
-                    <TouchableOpacity
-                      onPress={() => confirmCancelBooking(item)}
-                      disabled={isCancelling}
-                      style={styles.cancelButton}
-                    >
-                      {isCancelling ? (
-                        <ActivityIndicator size="small" color={colors.danger} />
-                      ) : (
-                        <Text style={styles.cancelText}>Cancel</Text>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            );
-          }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
         />
       )}
 
-      <ModalPopup
-        visible={!!targetCancelBooking}
-        title="Cancel Reservation?"
-        message={`Are you sure you want to cancel "${targetCancelBooking?.title || 'this reservation'}"? Free allowance hours applied will be immediately refunded to your corporate balance.`}
-        variant="danger"
-        confirmText="Yes, Cancel Booking"
-        cancelText="Keep Booking"
-        onConfirm={executeCancelBooking}
-        onCancel={() => setTargetCancelBooking(null)}
-      />
+      <Modal
+        visible={!!selectedReceipt}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedReceipt(null)}
+      >
+        <View style={styles.receiptBackdrop}>
+          <View style={[styles.receiptCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <View style={styles.receiptHeader}>
+              <View>
+                <Text style={styles.receiptBadge}>E-RECEIPT</Text>
+                <Text style={[styles.receiptTitle, { color: theme.textPrimary }]}>
+                  #{selectedReceipt?.bookingNumber}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setSelectedReceipt(null)}>
+                <Ionicons name="close" size={24} color={theme.textPrimary} />
+              </TouchableOpacity>
+            </View>
 
-      <ModalPopup
-        visible={!!modalError}
-        title="Notice"
-        message={modalError || ''}
-        variant="info"
-        confirmText="OK"
-        onConfirm={() => setModalError(null)}
-      />
+            <ScrollView style={{ maxHeight: 420 }}>
+              <View style={styles.receiptRow}>
+                <Text style={[styles.receiptLabel, { color: theme.textMuted }]}>Workspace</Text>
+                <Text style={[styles.receiptValue, { color: theme.textPrimary }]}>
+                  {selectedReceipt?.roomId?.name || selectedReceipt?.title}
+                </Text>
+              </View>
+
+              <View style={styles.receiptRow}>
+                <Text style={[styles.receiptLabel, { color: theme.textMuted }]}>Type</Text>
+                <Text style={[styles.receiptValue, { color: theme.textPrimary }]}>
+                  {selectedReceipt?.workspaceType?.replace('_', ' ') || 'DESK'}
+                </Text>
+              </View>
+
+              <View style={styles.receiptRow}>
+                <Text style={[styles.receiptLabel, { color: theme.textMuted }]}>Date & Time</Text>
+                <Text style={[styles.receiptValue, { color: theme.textPrimary }]}>
+                  {formatDate(selectedReceipt?.startTime)}
+                </Text>
+              </View>
+
+              <View style={styles.receiptRow}>
+                <Text style={[styles.receiptLabel, { color: theme.textMuted }]}>Status</Text>
+                <Text style={{ fontWeight: '700', color: selectedReceipt?.status === 'CANCELLED' ? '#EF4444' : '#00A859' }}>
+                  {selectedReceipt?.status}
+                </Text>
+              </View>
+
+              <View style={styles.receiptRow}>
+                <Text style={[styles.receiptLabel, { color: theme.textMuted }]}>Payment Method</Text>
+                <Text style={[styles.receiptValue, { color: theme.textPrimary }]}>
+                  {selectedReceipt?.paymentMethod || 'UPI QR Code'}
+                </Text>
+              </View>
+
+              <View style={[styles.receiptTotalBox, { backgroundColor: isDark ? '#0A0F1D' : '#F0FDF4' }]}>
+                <Text style={{ fontSize: 13, color: '#166534', fontWeight: '600' }}>Amount Paid / Quota</Text>
+                <Text style={styles.receiptTotalAmount}>
+                  ₹{(selectedReceipt?.pricingSnapshot?.totalAmount || 0).toLocaleString('en-IN')}
+                </Text>
+              </View>
+
+              <Text style={{ fontSize: 11, color: theme.textMuted, textAlign: 'center', marginTop: 14 }}>
+                Show this digital receipt upon entry at the reception desk.
+              </Text>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: colors.background
+    flex: 1
   },
-  scopeRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 6
-  },
-  scopePill: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    alignItems: 'center'
-  },
-  scopePillActive: {
-    backgroundColor: colors.brassLight,
-    borderColor: colors.brassLight
-  },
-  scopeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textMuted
-  },
-  scopeTextActive: {
-    color: '#090D16'
-  },
-  loadingWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  listContent: {
-    padding: 16,
-    paddingTop: 4,
-    paddingBottom: 32
-  },
-  emptyCard: {
-    backgroundColor: colors.card,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    padding: 32,
-    alignItems: 'center',
-    marginTop: 20
-  },
-  emptyTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginTop: 12
-  },
-  emptySub: {
-    fontSize: 12,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: 6
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    padding: 16,
-    marginBottom: 12
-  },
-  cardTop: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 10
   },
-  refText: {
-    fontSize: 11,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    color: colors.brassLight,
-    fontWeight: '700'
-  },
-  statusPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6
-  },
-  statusConfirmed: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)'
-  },
-  statusCompleted: {
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)'
-  },
-  statusCancelled: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)'
-  },
-  statusExpired: {
-    backgroundColor: 'rgba(148, 163, 184, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.3)'
-  },
-  statusText: {
-    fontSize: 10,
+  headerTitle: {
+    fontSize: 22,
     fontWeight: '800'
   },
-  statusConfirmedText: {
-    color: colors.success
-  },
-  statusCompletedText: {
-    color: colors.info
-  },
-  statusCancelledText: {
-    color: colors.danger
-  },
-  statusExpiredText: {
-    color: colors.textMuted
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 6
-  },
-  companyRow: {
-    flexDirection: 'row',
+  notifBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 6
+    justifyContent: 'center'
   },
-  companyNameText: {
+  unreadDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444'
+  },
+  tabBar: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    borderBottomWidth: 1
+  },
+  tabItem: {
+    paddingVertical: 12,
+    marginRight: 24,
+    position: 'relative'
+  },
+  tabItemActive: {},
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  tabIndicator: {
+    position: 'absolute',
+    bottom: -1,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: '#00A859',
+    borderRadius: 2
+  },
+  listContent: {
+    padding: 20,
+    paddingBottom: 90
+  },
+  card: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 18,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10
+  },
+  typeBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12
+  },
+  typeBadgeText: {
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  pendingTag: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8
+  },
+  pendingTagText: {
+    color: '#B45309',
     fontSize: 11,
-    fontWeight: '700',
-    color: colors.brassLight
+    fontWeight: '600'
   },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  spaceName: {
+    fontSize: 17,
+    fontWeight: '800',
     marginBottom: 4
   },
-  metaText: {
+  addressText: {
+    fontSize: 13,
+    marginBottom: 14
+  },
+  timeSection: {
+    marginBottom: 16
+  },
+  timeLabel: {
     fontSize: 12,
-    color: colors.textMuted
+    fontWeight: '500'
   },
-  metaDot: {
-    color: colors.textMuted,
-    marginHorizontal: 2
-  },
-  reasonBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
-    padding: 8,
-    borderRadius: 8,
-    marginTop: 6
-  },
-  reasonText: {
-    fontSize: 11,
-    color: colors.danger,
-    flex: 1
+  timeValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 2
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  receiptBtn: {
+    backgroundColor: '#00A859',
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+    borderRadius: 20
+  },
+  receiptBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  remindRow: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  remindText: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginRight: 8
+  },
+  cancelLink: {
+    alignSelf: 'center',
+    marginTop: 12
+  },
+  cancelLinkText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  adminConfirmBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.inputBg
+    justifyContent: 'center',
+    backgroundColor: '#059669',
+    paddingVertical: 10,
+    borderRadius: 14,
+    marginBottom: 12
   },
-  quotaText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.success
-  },
-  overageText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.warning
-  },
-  cancelButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)'
-  },
-  cancelText: {
-    fontSize: 11,
+  adminConfirmText: {
+    color: '#FFFFFF',
     fontWeight: '700',
-    color: colors.danger
+    fontSize: 13
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60
+  },
+  emptyText: {
+    fontSize: 14,
+    marginTop: 10
+  },
+  receiptBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end'
+  },
+  receiptCard: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    padding: 24,
+    paddingBottom: 40
+  },
+  receiptHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20
+  },
+  receiptBadge: {
+    color: '#00A859',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5
+  },
+  receiptTitle: {
+    fontSize: 18,
+    fontWeight: '800'
+  },
+  receiptRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.06)'
+  },
+  receiptLabel: {
+    fontSize: 13
+  },
+  receiptValue: {
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  receiptTotalBox: {
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginTop: 16
+  },
+  receiptTotalAmount: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#00A859',
+    marginTop: 4
   }
 });

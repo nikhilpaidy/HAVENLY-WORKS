@@ -6,17 +6,20 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
-  Image,
-  Platform
+  TextInput,
+  Dimensions,
+  Alert
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { mobileApi } from '../services/api';
-import { colors } from '../theme/colors';
-import { Header } from '../components/Header';
+import { useTheme } from '../theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { TabKey } from '../components/TabBar';
-import { ExecutiveLineChart, ExecutiveBarChart, QuotaRing } from '../components/Charts';
+import { SafeImage } from '../components/SafeImage';
+import { WorkspaceCardSkeleton, ListRowSkeleton } from '../components/SkeletonLoader';
+import { WorkspaceDetailModal } from './WorkspaceDetailModal';
+import { RadiusSearchModal } from './RadiusSearchModal';
+import { ExecutiveLineChart, QuotaRing } from '../components/Charts';
 
 interface DashboardScreenProps {
   onNavigate: (tab: TabKey) => void;
@@ -24,12 +27,23 @@ interface DashboardScreenProps {
   unreadNotifsCount: number;
 }
 
+const { width } = Dimensions.get('window');
+
+const NEIGHBORHOODS = [
+  { name: 'Bangalore, Indiranagar', lat: 12.9784, lng: 77.6408 },
+  { name: 'Bangalore, MG Road', lat: 12.9754, lng: 77.6094 },
+  { name: 'Bangalore, Koramangala', lat: 12.9352, lng: 77.6245 },
+  { name: 'Bangalore, HSR Layout', lat: 12.9121, lng: 77.6446 }
+];
+
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   onNavigate,
   onOpenNotifications,
   unreadNotifsCount
 }) => {
   const { user } = useAuth();
+  const { theme, isDark } = useTheme();
+
   const role = user?.role;
   const isSuperAdmin = role === 'SUPER_ADMIN';
   const isCoworkingAdmin = role === 'COWORKING_ADMIN';
@@ -37,99 +51,59 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const [currentCityIndex, setCurrentCityIndex] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [passType, setPassType] = useState<'DAY_PASS' | 'HOURLY'>('DAY_PASS');
+  const [personCount, setPersonCount] = useState(1);
+  const [spaceTypeFilter, setSpaceTypeFilter] = useState('ALL');
+  const [selectedRadiusKm, setSelectedRadiusKm] = useState(2);
+
+  const [workspaces, setWorkspaces] = useState<any[]>([]);
+  const [nearbyLocations, setNearbyLocations] = useState<any[]>([]);
   const [allowance, setAllowance] = useState<any>(null);
   const [upcomingBookings, setUpcomingBookings] = useState<any[]>([]);
-  const [roomsCount, setRoomsCount] = useState(0);
-  const [totalRevenue, setTotalRevenue] = useState(0);
-  const [totalDue, setTotalDue] = useState(0);
+  const [pendingGuestCount, setPendingGuestCount] = useState(0);
 
-  const [clientWeeklyData, setClientWeeklyData] = useState([
-    { label: 'Mon', value: 2 },
-    { label: 'Tue', value: 0 },
-    { label: 'Wed', value: 1 },
-    { label: 'Thu', value: 2 },
-    { label: 'Fri', value: 0 },
-    { label: 'Sat', value: 0 },
-    { label: 'Sun', value: 0 }
-  ]);
+  const [selectedSpace, setSelectedSpace] = useState<any>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
 
-  const [adminHourlyData, setAdminHourlyData] = useState([
-    { label: '9 AM', value: 20 },
-    { label: '11 AM', value: 85 },
-    { label: '1 PM', value: 40 },
-    { label: '3 PM', value: 90 },
-    { label: '5 PM', value: 65 },
-    { label: '7 PM', value: 15 }
-  ]);
-
-  const [superAdminRevenueTrend, setSuperAdminRevenueTrend] = useState([
-    { label: 'May', value: 28 },
-    { label: 'Jun', value: 45 },
-    { label: 'Jul', value: 62 },
-    { label: 'Aug', value: 84 },
-    { label: 'Sep', value: 110 },
-    { label: 'Oct', value: 124 }
-  ]);
-
-  const [roomPopularity, setRoomPopularity] = useState([
-    { label: 'Sovereign', value: 12, highlight: true },
-    { label: 'Horizon', value: 8 },
-    { label: 'Vanguard', value: 6 },
-    { label: 'Apex', value: 4 }
-  ]);
+  const currentCoords = NEIGHBORHOODS[currentCityIndex];
 
   const loadData = async () => {
     try {
-      if (isSuperAdmin) {
-        const [statsRes, bookingsRes, roomsRes] = await Promise.all([
-          mobileApi.superAdmin.getPlatformStats().catch(() => null),
-          mobileApi.getBookings({}).catch(() => []),
-          mobileApi.getRooms().catch(() => [])
-        ]);
+      const [roomsData, nearbyData] = await Promise.all([
+        mobileApi.getPublicRooms({ workspaceType: spaceTypeFilter !== 'ALL' ? spaceTypeFilter : undefined }),
+        mobileApi.getNearbyLocations(currentCoords.lat, currentCoords.lng, selectedRadiusKm)
+      ]);
 
-        if (statsRes?.financials) {
-          setTotalRevenue(statsRes.financials.totalBilled || 0);
-          setTotalDue(statsRes.financials.totalOutstanding || 0);
-        }
-        setRoomsCount(roomsRes.length || 6);
-        setUpcomingBookings(bookingsRes || []);
-      } else if (isCoworkingAdmin) {
-        const [adminStats, bookingsRes, roomsRes, invoicesRes] = await Promise.all([
-          mobileApi.admin.getHubStats().catch(() => null),
-          mobileApi.getBookings({}).catch(() => []),
-          mobileApi.getRooms().catch(() => []),
-          mobileApi.getInvoices().catch(() => [])
-        ]);
+      setWorkspaces(roomsData || []);
+      setNearbyLocations(nearbyData?.locations || []);
 
-        if (adminStats?.financials) {
-          setTotalDue(adminStats.financials.totalDue || 0);
-          setTotalRevenue(adminStats.financials.totalBilled || 0);
-        } else if (invoicesRes.length > 0) {
-          const due = invoicesRes.reduce((acc: number, cur: any) => acc + (cur.amountDue || 0), 0);
-          setTotalDue(due);
+      if (user) {
+        if (!isSuperAdmin && !isCoworkingAdmin) {
+          try {
+            const [allowanceData, myBookings] = await Promise.all([
+              mobileApi.getCurrentAllowance(),
+              mobileApi.getBookings({ myOnly: true, tab: 'ONGOING' })
+            ]);
+            setAllowance(allowanceData);
+            setUpcomingBookings(myBookings || []);
+          } catch {}
         }
 
-        setRoomsCount(roomsRes.length || 6);
-        setUpcomingBookings(bookingsRes || []);
-      } else {
-        const [allowanceRes, bookingsRes, invoicesRes] = await Promise.all([
-          mobileApi.getCurrentAllowance().catch(() => null),
-          mobileApi.getBookings({ myOnly: true }).catch(() => []),
-          mobileApi.getInvoices().catch(() => [])
-        ]);
-
-        if (allowanceRes) {
-          setAllowance(allowanceRes);
+        if (isCoworkingAdmin) {
+          try {
+            const allBookings = await mobileApi.getBookings();
+            const pending = (allBookings || []).filter(
+              (b: any) => b.isGuestBooking && b.status === 'PENDING_CONFIRMATION'
+            ).length;
+            setPendingGuestCount(pending);
+          } catch {}
         }
-
-        const due = (invoicesRes || []).reduce(
-          (acc: number, cur: any) => acc + (cur.amountDue || 0),
-          0
-        );
-        setTotalDue(due);
-        setUpcomingBookings(bookingsRes || []);
       }
-    } catch {
+    } catch (err) {
+      console.warn('Dashboard load error:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -138,611 +112,709 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [currentCityIndex, spaceTypeFilter, selectedRadiusKm]);
 
   const onRefresh = () => {
     setRefreshing(true);
     loadData();
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.brassLight} />
-        <Text style={styles.loadingText}>Synchronizing Executive Workspace...</Text>
-      </View>
-    );
-  }
+  const handleOpenSpace = (spaceItem: any) => {
+    setSelectedSpace(spaceItem);
+    setShowDetailModal(true);
+  };
 
-  const grantedHours = allowance?.totalGrantedHours || allowance?.grantedHours || 20;
-  const availableHours = allowance?.availableHours || allowance?.balanceHours || 16;
-  const reservedHours = allowance?.reservedHours || 2;
-  const consumedHours = allowance?.consumedHours || 2;
+  const toggleCity = () => {
+    const nextIdx = (currentCityIndex + 1) % NEIGHBORHOODS.length;
+    setCurrentCityIndex(nextIdx);
+  };
+
+  const categories = [
+    { label: 'All', value: 'ALL' },
+    { label: 'Hot Desk', value: 'HOT_DESK' },
+    { label: 'Dedicated Desk', value: 'DEDICATED_DESK' },
+    { label: 'Private Office', value: 'PRIVATE_OFFICE' },
+    { label: 'Conference', value: 'MEETING_ROOM' },
+    { label: 'Boardroom', value: 'BOARDROOM' },
+    { label: 'Day Pass', value: 'DAY_PASS' }
+  ];
+
+  const filteredWorkspaces = workspaces.filter((w) => {
+    if (!searchQuery.trim()) return true;
+    const nameMatch = w.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const locMatch = (w.locationId?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+    return nameMatch || locMatch;
+  });
 
   return (
-    <View style={styles.container}>
-      <Header
-        title={
-          isSuperAdmin
-            ? 'Executive Platform'
-            : isCoworkingAdmin
-            ? 'CWS ONE Command Hub'
-            : user?.name || 'Workspace Member'
-        }
-        subtitle={
-          isSuperAdmin
-            ? 'Platform Governance • Nikhil Paidy'
-            : isCoworkingAdmin
-            ? 'CWS ONE Horizon, MG Road'
-            : user?.company?.name || 'Aptapace Private Limited'
-        }
-        unreadCount={unreadNotifsCount}
-        onPressNotifications={onOpenNotifications}
-      />
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.brassLight}
-          />
-        }
-      >
-        {isSuperAdmin && (
-          <View style={styles.roleSection}>
-            <View style={styles.kpiGrid}>
-              <View style={styles.kpiCard}>
-                <Ionicons name="business" size={20} color={colors.brassLight} />
-                <Text style={styles.kpiValue}>1</Text>
-                <Text style={styles.kpiLabel}>ORGANIZATION</Text>
-              </View>
-              <View style={styles.kpiCard}>
-                <Ionicons name="location" size={20} color={colors.info} />
-                <Text style={styles.kpiValue}>3</Text>
-                <Text style={styles.kpiLabel}>METRO HUBS</Text>
-              </View>
-              <View style={styles.kpiCard}>
-                <Ionicons name="cube" size={20} color={colors.warning} />
-                <Text style={styles.kpiValue}>{roomsCount}</Text>
-                <Text style={styles.kpiLabel}>MEETING SUITES</Text>
-              </View>
-              <View style={styles.kpiCard}>
-                <Ionicons name="cash" size={20} color={colors.success} />
-                <Text style={styles.kpiValue}>₹{totalRevenue.toLocaleString('en-IN')}</Text>
-                <Text style={styles.kpiLabel}>TOTAL INVOICED</Text>
-              </View>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.headerBanner, { backgroundColor: '#00A859' }]}>
+        <View style={styles.headerTopRow}>
+          <View style={styles.headerProfileRow}>
+            <View style={styles.avatarBorder}>
+              <SafeImage
+                uri={(user as any)?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80'}
+                style={styles.avatarImage}
+                borderRadius={20}
+              />
             </View>
-
-            <ExecutiveLineChart
-              title="Platform Gross Volume (6 Months)"
-              subtitle="Consolidated enterprise revenue across hubs"
-              data={superAdminRevenueTrend}
-              unit="k ₹"
-              height={140}
-              color={colors.brassLight}
-            />
-
-            <ExecutiveBarChart
-              title="Metro Hub Room Capacity"
-              subtitle="Active meeting rooms by campus"
-              data={[
-                { label: 'MG Road', value: 6, highlight: true },
-                { label: 'Indiranagar', value: 4 },
-                { label: 'BKC Mumbai', value: 4 },
-                { label: 'Hitec City', value: 4 }
-              ]}
-              unit=" rms"
-              height={130}
-            />
-          </View>
-        )}
-
-        {isCoworkingAdmin && (
-          <View style={styles.roleSection}>
-            <View style={styles.kpiGrid}>
-              <View style={styles.kpiCard}>
-                <Ionicons name="cube" size={20} color={colors.brassLight} />
-                <Text style={styles.kpiValue}>{roomsCount}</Text>
-                <Text style={styles.kpiLabel}>CAMPUS ROOMS</Text>
+            <TouchableOpacity onPress={toggleCity} style={styles.locationPill}>
+              <Text style={styles.locationLabel}>Location</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="location-sharp" size={14} color="#FFFFFF" style={{ marginRight: 3 }} />
+                <Text style={styles.locationValue}>{currentCoords.name}</Text>
+                <Ionicons name="chevron-down" size={14} color="#FFFFFF" style={{ marginLeft: 3 }} />
               </View>
-              <View style={styles.kpiCard}>
-                <Ionicons name="people" size={20} color={colors.info} />
-                <Text style={styles.kpiValue}>1</Text>
-                <Text style={styles.kpiLabel}>ENTERPRISE CLIENTS</Text>
-              </View>
-              <View style={styles.kpiCard}>
-                <Ionicons name="pie-chart" size={20} color={colors.warning} />
-                <Text style={styles.kpiValue}>20h</Text>
-                <Text style={styles.kpiLabel}>MONTHLY POOL</Text>
-              </View>
-              <View style={styles.kpiCard}>
-                <Ionicons name="wallet" size={20} color={colors.success} />
-                <Text style={styles.kpiValue}>₹{totalDue.toLocaleString('en-IN')}</Text>
-                <Text style={styles.kpiLabel}>RECEIVABLE DUE</Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              onPress={() => onNavigate('rooms')}
-              style={styles.bookButton}
-              activeOpacity={0.8}
-            >
-              <View style={styles.bookButtonLeft}>
-                <View style={styles.bookIconWrap}>
-                  <Ionicons name="calendar" size={20} color="#090D16" />
-                </View>
-                <View>
-                  <Text style={styles.bookButtonTitle}>Book on Behalf of Company</Text>
-                  <Text style={styles.bookButtonSubtitle}>Select client company & reserve executive suite</Text>
-                </View>
-              </View>
-              <Ionicons name="arrow-forward" size={18} color="#090D16" />
-            </TouchableOpacity>
-
-            <ExecutiveLineChart
-              title="Today's Hub Occupancy Curve"
-              subtitle="Live meeting room utilization rate"
-              data={adminHourlyData}
-              unit="%"
-              height={135}
-              color={colors.info}
-            />
-
-            <ExecutiveBarChart
-              title="Room Booking Demand"
-              subtitle="Monthly reservations count by suite"
-              data={roomPopularity}
-              unit=" bkgs"
-              height={130}
-            />
-          </View>
-        )}
-
-        {!isSuperAdmin && !isCoworkingAdmin && (
-          <View style={styles.roleSection}>
-            <QuotaRing
-              granted={grantedHours}
-              available={availableHours}
-              reserved={reservedHours}
-              consumed={consumedHours}
-              onPressBook={() => onNavigate('rooms')}
-            />
-
-            <ExecutiveLineChart
-              title="Weekly Meeting Hours Used"
-              subtitle="Current week consumption by your team"
-              data={clientWeeklyData}
-              unit="h"
-              height={135}
-              color={colors.success}
-            />
-
-            <ExecutiveBarChart
-              title="Quarterly Usage History"
-              subtitle="Meeting hours consumed by Aptapace"
-              data={[
-                { label: 'Aug', value: 8 },
-                { label: 'Sep', value: 14 },
-                { label: 'Oct', value: 5, highlight: true }
-              ]}
-              unit="h"
-              height={125}
-            />
-
-            <TouchableOpacity
-              onPress={() => onNavigate('rooms')}
-              style={styles.bookButton}
-              activeOpacity={0.8}
-            >
-              <View style={styles.bookButtonLeft}>
-                <View style={styles.bookIconWrap}>
-                  <Ionicons name="sparkles" size={20} color="#090D16" />
-                </View>
-                <View>
-                  <Text style={styles.bookButtonTitle}>Reserve Meeting Room</Text>
-                  <Text style={styles.bookButtonSubtitle}>
-                    Apply {availableHours} free allowance hours instantly
-                  </Text>
-                </View>
-              </View>
-              <Ionicons name="arrow-forward" size={18} color="#090D16" />
             </TouchableOpacity>
           </View>
-        )}
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {isSuperAdmin
-              ? 'Platform Recent Reservations'
-              : isCoworkingAdmin
-              ? 'Campus Live Reservations'
-              : 'Your Scheduled Meetings'}
-          </Text>
-          <TouchableOpacity onPress={() => onNavigate('bookings')}>
-            <Text style={styles.sectionLink}>View All ({upcomingBookings.length})</Text>
+          <TouchableOpacity style={styles.notifBtn} onPress={onOpenNotifications}>
+            <Ionicons name="notifications" size={20} color="#FFFFFF" />
+            {unreadNotifsCount > 0 && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadBadgeText}>
+                  {unreadNotifsCount > 9 ? '9+' : unreadNotifsCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
-        {upcomingBookings.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Ionicons name="calendar-outline" size={32} color={colors.textMuted} />
-            <Text style={styles.emptyTitle}>No reservations recorded</Text>
-            <Text style={styles.emptyText}>
-              Scheduled executive boardroom sessions will appear here in real-time.
+        <View style={[styles.searchCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+          <Text style={[styles.searchCardTitle, { color: theme.textPrimary }]}>
+            Where do you <Text style={{ color: '#00A859' }}>want to work?</Text>
+          </Text>
+
+          <View style={[styles.searchInputWrapper, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+            <Ionicons name="search-outline" size={18} color={theme.textMuted} style={{ marginRight: 8 }} />
+            <TextInput
+              style={[styles.searchInput, { color: theme.textPrimary }]}
+              placeholder="Search Workspace by name or area.."
+              placeholderTextColor={theme.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+
+          <View style={styles.searchOptionRow}>
+            <TouchableOpacity
+              style={[
+                styles.optionPill,
+                { borderColor: theme.inputBorder, backgroundColor: theme.inputBg },
+                passType === 'DAY_PASS' && { borderColor: '#00A859', backgroundColor: isDark ? 'rgba(0,168,89,0.15)' : '#DCFCE7' }
+              ]}
+              onPress={() => setPassType(passType === 'DAY_PASS' ? 'HOURLY' : 'DAY_PASS')}
+            >
+              <Ionicons name="calendar-outline" size={14} color="#00A859" style={{ marginRight: 6 }} />
+              <Text style={[styles.optionPillText, { color: theme.textPrimary }]}>
+                {passType === 'DAY_PASS' ? 'Day Pass' : 'Hourly Slot'}
+              </Text>
+              <Ionicons name="chevron-down" size={12} color={theme.textMuted} style={{ marginLeft: 4 }} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.optionPill, { borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}
+              onPress={() => setPersonCount(personCount === 1 ? 4 : personCount === 4 ? 8 : 1)}
+            >
+              <Ionicons name="person-outline" size={14} color="#00A859" style={{ marginRight: 6 }} />
+              <Text style={[styles.optionPillText, { color: theme.textPrimary }]}>{personCount} Person</Text>
+              <Ionicons name="chevron-down" size={12} color={theme.textMuted} style={{ marginLeft: 4 }} />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={styles.findWorkspaceBtn}
+            onPress={() => setShowFilterModal(true)}
+            activeOpacity={0.88}
+          >
+            <Text style={styles.findWorkspaceText}>Find Workspace</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
+        contentContainerStyle={{ paddingTop: 10, paddingBottom: 100 }}
+      >
+        {isCoworkingAdmin && pendingGuestCount > 0 && (
+          <View style={styles.adminAlertCard}>
+            <Ionicons name="call" size={20} color="#FFFFFF" style={{ marginRight: 10 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.adminAlertTitle}>Pending Guest Bookings ({pendingGuestCount})</Text>
+              <Text style={styles.adminAlertSubtitle}>Call guests & verify QR payment receipt.</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.adminAlertAction}
+              onPress={() => onNavigate('bookings')}
+            >
+              <Text style={styles.adminAlertActionText}>Review</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
+          {categories.map((c) => (
+            <TouchableOpacity
+              key={c.value}
+              style={[
+                styles.categoryChip,
+                spaceTypeFilter === c.value && styles.categoryChipActive,
+                { borderColor: theme.cardBorder }
+              ]}
+              onPress={() => setSpaceTypeFilter(c.value)}
+            >
+              <Text
+                style={[
+                  styles.categoryChipText,
+                  { color: spaceTypeFilter === c.value ? '#FFFFFF' : theme.textSecondary }
+                ]}
+              >
+                {c.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Popular Workspaces</Text>
+          <TouchableOpacity onPress={() => onNavigate('rooms')}>
+            <Text style={styles.seeAllLink}>See All</Text>
+          </TouchableOpacity>
+        </View>
+
+        {loading ? (
+          <View style={{ paddingHorizontal: 20 }}>
+            <WorkspaceCardSkeleton />
+            <WorkspaceCardSkeleton />
+          </View>
+        ) : filteredWorkspaces.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="business-outline" size={44} color={theme.textMuted} />
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              No workspaces match your selection.
             </Text>
           </View>
         ) : (
-          upcomingBookings.slice(0, 4).map((b) => {
-            const roomName =
-              typeof b.roomId === 'object' && b.roomId !== null ? b.roomId.name : 'Executive Suite';
-            const roomPhoto =
-              typeof b.roomId === 'object' && b.roomId?.photos?.[0]
-                ? b.roomId.photos[0]
-                : 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80';
-            const companyName =
-              typeof b.companyId === 'object' && b.companyId !== null
-                ? b.companyId.name
-                : 'Aptapace Private Limited';
-            const start = new Date(b.startTime);
-            const isConfirmed = b.status === 'CONFIRMED';
-            const isCompleted = b.status === 'COMPLETED';
-            const isCancelled = b.status === 'CANCELLED';
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.popularCarousel}
+            snapToInterval={width * 0.78 + 16}
+            decelerationRate="fast"
+          >
+            {filteredWorkspaces.map((item) => {
+              const loc = item.locationId || {};
+              const photo = (item.photos && item.photos[0]) || loc.images?.[0] || 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=80';
+              return (
+                <TouchableOpacity
+                  key={item._id}
+                  style={[styles.popularCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
+                  onPress={() => handleOpenSpace(item)}
+                  activeOpacity={0.88}
+                >
+                  <View style={styles.popularImageWrapper}>
+                    <SafeImage uri={photo} style={styles.popularImage} borderRadius={18} />
+                    <View style={styles.ratingBadgePill}>
+                      <Ionicons name="star" size={13} color="#F59E0B" />
+                      <Text style={styles.ratingBadgeText}>{item.rating || 4.9}</Text>
+                    </View>
+                    <View style={styles.typeBadgePill}>
+                      <Text style={styles.typeBadgeText}>{item.workspaceType?.replace('_', ' ') || 'DESK'}</Text>
+                    </View>
+                  </View>
 
-            return (
-              <View key={b._id} style={styles.bookingCard}>
-                <View style={styles.bookingPhotoWrap}>
-                  <Image source={{ uri: roomPhoto }} style={styles.bookingPhoto} />
-                  <View
-                    style={[
-                      styles.statusBadgeOverlay,
-                      isConfirmed
-                        ? styles.badgeConfirmed
-                        : isCompleted
-                        ? styles.badgeCompleted
-                        : isCancelled
-                        ? styles.badgeCancelled
-                        : styles.badgeExpired
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.statusText,
-                        isConfirmed
-                          ? styles.statusTextConfirmed
-                          : isCompleted
-                          ? styles.statusTextCompleted
-                          : isCancelled
-                          ? styles.statusTextCancelled
-                          : styles.statusTextExpired
-                      ]}
-                    >
-                      {b.status}
+                  <View style={styles.popularCardBody}>
+                    <Text style={[styles.cardTitle, { color: theme.textPrimary }]} numberOfLines={1}>
+                      {item.name}
                     </Text>
-                  </View>
-                </View>
-
-                <View style={styles.bookingContent}>
-                  <View style={styles.bookingTopRow}>
-                    <Text style={styles.bookingNumber}>{b.bookingNumber}</Text>
-                    <Text style={styles.durationTag}>{b.durationHours} hr session</Text>
-                  </View>
-
-                  <Text style={styles.bookingTitle}>{b.title}</Text>
-
-                  {(isSuperAdmin || isCoworkingAdmin) && (
-                    <View style={styles.companyRow}>
-                      <Ionicons name="business" size={12} color={colors.brassLight} />
-                      <Text style={styles.companyNameText}>{companyName}</Text>
+                    <View style={styles.cardLocationRow}>
+                      <Ionicons name="location-outline" size={14} color="#00A859" style={{ marginRight: 4 }} />
+                      <Text style={[styles.cardAddress, { color: theme.textSecondary }]} numberOfLines={1}>
+                        {loc.address?.street || 'Park Avenue'}, {loc.city || 'Bangalore'}
+                      </Text>
                     </View>
-                  )}
 
-                  <View style={styles.bookingMetaRow}>
-                    <View style={styles.metaItem}>
-                      <Ionicons name="location-outline" size={14} color={colors.brassLight} />
-                      <Text style={styles.metaText}>{roomName}</Text>
-                    </View>
-                    <View style={styles.metaItem}>
-                      <Ionicons name="time-outline" size={14} color={colors.textMuted} />
-                      <Text style={styles.metaText}>
-                        {start.toLocaleDateString('en-IN', {
-                          timeZone: 'Asia/Kolkata',
-                          month: 'short',
-                          day: 'numeric'
-                        })}{' '}
-                        •{' '}
-                        {start.toLocaleTimeString('en-IN', {
-                          timeZone: 'Asia/Kolkata',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: true
-                        })}
+                    <View style={styles.cardFooter}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons name="time-outline" size={13} color={theme.textMuted} style={{ marginRight: 4 }} />
+                        <Text style={[styles.cardTime, { color: theme.textMuted }]}>
+                          {loc.distanceLabel || '15 Min • 3.0 km'}
+                        </Text>
+                      </View>
+                      <Text style={styles.cardPrice}>
+                        ₹{item.hourlyRate || 350}
+                        <Text style={{ fontSize: 11, fontWeight: '500', color: theme.textMuted }}>/hr</Text>
                       </Text>
                     </View>
                   </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
 
-                  <View style={styles.bookingFooter}>
-                    <Text style={styles.allowanceAppliedText}>
-                      {b.pricingSnapshot?.freeHoursApplied > 0
-                        ? `✓ ${b.pricingSnapshot.freeHoursApplied}h complimentary quota applied`
-                        : 'Standard reservation slot'}
-                    </Text>
-                    {b.pricingSnapshot?.chargeableHours > 0 && (
-                      <Text style={styles.overageText}>
-                        +{b.pricingSnapshot.chargeableHours}h (₹
-                        {b.pricingSnapshot.totalAmount || 0})
-                      </Text>
-                    )}
+        <View style={[styles.sectionHeader, { marginTop: 24 }]}>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
+            Nearby Spaces ({selectedRadiusKm}km Radius)
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {[1, 2, 5].map((km) => (
+              <TouchableOpacity
+                key={km}
+                style={[
+                  styles.radiusPill,
+                  selectedRadiusKm === km && styles.radiusPillActive,
+                  { borderColor: theme.cardBorder }
+                ]}
+                onPress={() => setSelectedRadiusKm(km)}
+              >
+                <Text style={[styles.radiusPillText, selectedRadiusKm === km && { color: '#FFFFFF' }]}>
+                  {km}km
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={{ paddingHorizontal: 20 }}>
+          {loading ? (
+            <>
+              <ListRowSkeleton />
+              <ListRowSkeleton />
+            </>
+          ) : nearbyLocations.length === 0 ? (
+            <Text style={{ color: theme.textMuted, fontSize: 13, marginVertical: 10 }}>
+              No locations within {selectedRadiusKm}km. Tap 5km to expand radius.
+            </Text>
+          ) : (
+            nearbyLocations.map((loc) => (
+              <TouchableOpacity
+                key={loc._id}
+                style={[styles.nearbyCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
+                onPress={() => handleOpenSpace(loc)}
+                activeOpacity={0.88}
+              >
+                <SafeImage
+                  uri={loc.images?.[0] || 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=300&q=80'}
+                  style={styles.nearbyThumb}
+                  borderRadius={14}
+                />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.nearbyTitle, { color: theme.textPrimary }]} numberOfLines={1}>
+                    {loc.name}
+                  </Text>
+                  <Text style={[styles.nearbyAddress, { color: theme.textSecondary }]} numberOfLines={1}>
+                    {loc.address?.street}, {loc.address?.city}
+                  </Text>
+                  <View style={styles.nearbyMetaRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="navigate-outline" size={13} color="#00A859" style={{ marginRight: 4 }} />
+                      <Text style={{ fontSize: 12, color: theme.textMuted }}>{loc.distanceLabel}</Text>
+                    </View>
+                    <Text style={styles.nearbyPrice}>From ₹{loc.minHourlyRate || 250}/hr</Text>
                   </View>
                 </View>
-              </View>
-            );
-          })
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+
+        {user && !isSuperAdmin && !isCoworkingAdmin && allowance && (
+          <View style={[styles.quotaWidget, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.quotaWidgetTitle, { color: theme.textPrimary }]}>Company Workspace Quota</Text>
+              <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 4 }}>
+                {allowance.availableHours ?? allowance.balanceHours} hrs available out of {allowance.totalGrantedHours ?? allowance.grantedHours} hrs granted.
+              </Text>
+              <Text style={{ fontSize: 11, color: '#00A859', marginTop: 4 }}>
+                Quota stays active until consumed. Overdraft billed at month-end.
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.quotaPillBtn}
+              onPress={() => onNavigate('allowance')}
+            >
+              <Text style={styles.quotaPillBtnText}>View Quota</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </ScrollView>
+
+      <WorkspaceDetailModal
+        visible={showDetailModal}
+        onClose={() => setShowDetailModal(false)}
+        space={selectedSpace}
+        currentUser={user}
+        onBookSuccess={() => {
+          loadData();
+          onNavigate('bookings');
+        }}
+      />
+
+      <RadiusSearchModal
+        visible={showFilterModal}
+        currentRadius={selectedRadiusKm}
+        onClose={() => setShowFilterModal(false)}
+        onApply={(filters) => {
+          if (filters.workspaceType) setSpaceTypeFilter(filters.workspaceType);
+          if (filters.radiusKm) setSelectedRadiusKm(filters.radiusKm);
+        }}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: colors.background
-  },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  loadingText: {
-    marginTop: 12,
-    color: colors.textMuted,
-    fontSize: 13
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 32
-  },
-  roleSection: {
-    marginBottom: 8
-  },
-  kpiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 16
-  },
-  kpiCard: {
-    flexBasis: '48%',
-    flexGrow: 1,
-    backgroundColor: colors.card,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    padding: 16
-  },
-  kpiValue: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginTop: 8
-  },
-  kpiLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.textMuted,
-    marginTop: 2,
-    letterSpacing: 0.5
-  },
-  bookButton: {
-    backgroundColor: colors.brassLight,
-    borderRadius: 18,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16
-  },
-  bookButtonLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
     flex: 1
   },
-  bookIconWrap: {
+  headerBanner: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16
+  },
+  headerProfileRow: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  avatarBorder: {
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    borderRadius: 22,
+    overflow: 'hidden'
+  },
+  avatarImage: {
     width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(9, 13, 22, 0.15)',
+    height: 40
+  },
+  locationPill: {
+    marginLeft: 12
+  },
+  locationLabel: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 11,
+    fontWeight: '500'
+  },
+  locationValue: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  notifBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center'
   },
-  bookButtonTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#090D16'
+  unreadBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: '#EF4444',
+    borderRadius: 9,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4
   },
-  bookButtonSubtitle: {
-    fontSize: 11,
-    color: 'rgba(9, 13, 22, 0.8)',
-    marginTop: 2
+  unreadBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800'
+  },
+  searchCard: {
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 3
+  },
+  searchCardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 12
+  },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    height: 46,
+    paddingHorizontal: 12,
+    marginBottom: 12
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14
+  },
+  searchOptionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12
+  },
+  optionPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 10
+  },
+  optionPillText: {
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  findWorkspaceBtn: {
+    backgroundColor: '#00A859',
+    height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  findWorkspaceText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700'
+  },
+  adminAlertCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D97706',
+    marginHorizontal: 20,
+    marginVertical: 10,
+    padding: 14,
+    borderRadius: 16
+  },
+  adminAlertTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  adminAlertSubtitle: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12
+  },
+  adminAlertAction: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10
+  },
+  adminAlertActionText: {
+    color: '#D97706',
+    fontWeight: '700',
+    fontSize: 12
+  },
+  categoryScroll: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    gap: 8
+  },
+  categoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1
+  },
+  categoryChipActive: {
+    backgroundColor: '#00A859',
+    borderColor: '#00A859'
+  },
+  categoryChipText: {
+    fontSize: 13,
+    fontWeight: '600'
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 12,
+    paddingHorizontal: 20,
     marginBottom: 12
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    letterSpacing: 0.5
+    fontSize: 18,
+    fontWeight: '800'
   },
-  sectionLink: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.brassLight
-  },
-  emptyCard: {
-    backgroundColor: colors.card,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    padding: 32,
-    alignItems: 'center'
-  },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginTop: 12
-  },
-  emptyText: {
-    fontSize: 12,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: 6
-  },
-  bookingCard: {
-    backgroundColor: colors.card,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    overflow: 'hidden',
-    marginBottom: 14
-  },
-  bookingPhotoWrap: {
-    height: 110,
-    width: '100%',
-    position: 'relative'
-  },
-  bookingPhoto: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: colors.inputBg
-  },
-  statusBadgeOverlay: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 8
-  },
-  bookingContent: {
-    padding: 14
-  },
-  bookingTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6
-  },
-  bookingNumber: {
-    fontSize: 11,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    color: colors.brassLight,
+  seeAllLink: {
+    color: '#00A859',
+    fontSize: 13,
     fontWeight: '700'
   },
-  durationTag: {
-    fontSize: 11,
-    color: colors.textMuted,
-    fontWeight: '600'
+  popularCarousel: {
+    paddingHorizontal: 20,
+    gap: 16
   },
-  companyRow: {
+  popularCard: {
+    width: width * 0.76,
+    borderRadius: 22,
+    borderWidth: 1,
+    overflow: 'hidden'
+  },
+  popularImageWrapper: {
+    height: 160,
+    position: 'relative'
+  },
+  popularImage: {
+    width: '100%',
+    height: '100%'
+  },
+  ratingBadgePill: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(0,0,0,0.65)',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 8
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12
   },
-  companyNameText: {
+  ratingBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 4
+  },
+  typeBadgePill: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    backgroundColor: '#00A859',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10
+  },
+  typeBadgeText: {
+    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '700',
-    color: colors.brassLight
+    textTransform: 'uppercase'
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6
+  popularCardBody: {
+    padding: 14
   },
-  badgeConfirmed: {
-    backgroundColor: 'rgba(16, 185, 129, 0.9)',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 1)'
-  },
-  badgeCompleted: {
-    backgroundColor: 'rgba(59, 130, 246, 0.9)',
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 1)'
-  },
-  badgeCancelled: {
-    backgroundColor: 'rgba(239, 68, 68, 0.9)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 1)'
-  },
-  badgeExpired: {
-    backgroundColor: 'rgba(148, 163, 184, 0.9)',
-    borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 1)'
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.5
-  },
-  statusTextConfirmed: {
-    color: '#FFFFFF'
-  },
-  statusTextCompleted: {
-    color: '#FFFFFF'
-  },
-  statusTextCancelled: {
-    color: '#FFFFFF'
-  },
-  statusTextExpired: {
-    color: '#FFFFFF'
-  },
-  bookingTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.textPrimary,
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
     marginBottom: 6
   },
-  bookingMetaRow: {
+  cardLocationRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
+    alignItems: 'center',
     marginBottom: 10
   },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6
+  cardAddress: {
+    fontSize: 13,
+    flex: 1
   },
-  metaText: {
-    fontSize: 12,
-    color: colors.textMuted
-  },
-  bookingFooter: {
+  cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  cardTime: {
+    fontSize: 12
+  },
+  cardPrice: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#00A859'
+  },
+  radiusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1
+  },
+  radiusPillActive: {
+    backgroundColor: '#00A859',
+    borderColor: '#00A859'
+  },
+  radiusPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B'
+  },
+  nearbyCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: colors.inputBg
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 12
   },
-  allowanceAppliedText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.success
+  nearbyThumb: {
+    width: 76,
+    height: 76
   },
-  overageText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.warning
+  nearbyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 4
+  },
+  nearbyAddress: {
+    fontSize: 13,
+    marginBottom: 6
+  },
+  nearbyMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  nearbyPrice: {
+    color: '#00A859',
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  quotaWidget: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1
+  },
+  quotaWidgetTitle: {
+    fontSize: 15,
+    fontWeight: '700'
+  },
+  quotaPillBtn: {
+    backgroundColor: '#00A859',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 14,
+    marginLeft: 10
+  },
+  quotaPillBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  emptyState: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  emptyText: {
+    fontSize: 14,
+    marginTop: 8
   }
 });

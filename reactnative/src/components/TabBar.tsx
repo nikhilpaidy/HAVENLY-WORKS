@@ -67,31 +67,21 @@ export const TabBar: React.FC<TabBarProps> = ({ currentTab, onSelectTab }) => {
     ];
   } else if (role === 'COMPANY_OWNER') {
     tabs = [
-      { key: 'dashboard', label: 'Home', icon: 'home-outline', iconActive: 'home' },
+      { key: 'dashboard', label: 'Explore', icon: 'compass-outline', iconActive: 'compass' },
       { key: 'rooms', label: 'Rooms', icon: 'business-outline', iconActive: 'business' },
-      { key: 'bookings', label: 'Meetings', icon: 'calendar-outline', iconActive: 'calendar' },
-      { key: 'tickets', label: 'Helpdesk', icon: 'help-buoy-outline', iconActive: 'help-buoy' },
+      { key: 'bookings', label: 'Bookings', icon: 'calendar-outline', iconActive: 'calendar' },
       { key: 'allowance', label: 'Quota', icon: 'pie-chart-outline', iconActive: 'pie-chart' },
+      { key: 'tickets', label: 'Helpdesk', icon: 'help-buoy-outline', iconActive: 'help-buoy' },
       { key: 'staff', label: 'Staff', icon: 'people-outline', iconActive: 'people' },
       { key: 'profile', label: 'Profile', icon: 'person-outline', iconActive: 'person' }
     ];
   } else {
-    // COMPANY_STAFF or EMPLOYEE
+    // Guest or Employee
     tabs = [
-      { key: 'dashboard', label: 'Home', icon: 'home-outline', iconActive: 'home' },
-      ...(hasPermission('book_rooms')
-        ? [
-            { key: 'rooms' as TabKey, label: 'Rooms', icon: 'business-outline', iconActive: 'business' },
-            { key: 'bookings' as TabKey, label: 'Meetings', icon: 'calendar-outline', iconActive: 'calendar' }
-          ]
-        : []),
-      ...(hasPermission('raise_tickets')
-        ? [{ key: 'tickets' as TabKey, label: 'Helpdesk', icon: 'help-buoy-outline', iconActive: 'help-buoy' }]
-        : []),
-      ...(hasPermission('view_allowance')
-        ? [{ key: 'allowance' as TabKey, label: 'Quota', icon: 'pie-chart-outline', iconActive: 'pie-chart' }]
-        : []),
-      { key: 'profile', label: 'Profile', icon: 'person-outline', iconActive: 'person' }
+      { key: 'dashboard', label: 'Explore', icon: 'compass-outline', iconActive: 'compass' },
+      { key: 'rooms', label: 'Workspaces', icon: 'business-outline', iconActive: 'business' },
+      { key: 'bookings', label: 'Bookings', icon: 'calendar-outline', iconActive: 'calendar' },
+      { key: 'profile', label: 'Account', icon: 'person-outline', iconActive: 'person' }
     ];
   }
 
@@ -100,7 +90,7 @@ export const TabBar: React.FC<TabBarProps> = ({ currentTab, onSelectTab }) => {
       style={[
         styles.container,
         {
-          backgroundColor: theme.surface,
+          backgroundColor: isDark ? '#0A0F1D' : '#FFFFFF',
           borderTopColor: theme.cardBorder
         }
       ]}
@@ -116,18 +106,21 @@ export const TabBar: React.FC<TabBarProps> = ({ currentTab, onSelectTab }) => {
             <TouchableOpacity
               key={tab.key}
               onPress={() => onSelectTab(tab.key)}
-              style={styles.tabButton}
-              activeOpacity={0.7}
+              style={[
+                styles.tabButton,
+                isActive && styles.tabButtonActive
+              ]}
+              activeOpacity={0.8}
             >
               <Ionicons
                 name={isActive ? tab.iconActive : tab.icon}
-                size={21}
-                color={isActive ? theme.gold : theme.textMuted}
+                size={20}
+                color={isActive ? '#FFFFFF' : theme.textMuted}
               />
               <Text
                 style={[
                   styles.label,
-                  { color: isActive ? theme.gold : theme.textMuted },
+                  { color: isActive ? '#FFFFFF' : theme.textMuted },
                   isActive && styles.labelActive
                 ]}
               >
@@ -157,13 +150,17 @@ const styles = StyleSheet.create({
   tabButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 12
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16
+  },
+  tabButtonActive: {
+    backgroundColor: '#00A859'
   },
   label: {
     fontSize: 10,
     fontWeight: '600',
-    marginTop: 3
+    marginTop: 2
   },
   labelActive: {
     fontWeight: '800'

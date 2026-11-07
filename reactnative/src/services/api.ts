@@ -145,10 +145,57 @@ export const authApi = {
   }
 };
 
+export const locationsApi = {
+  getNearby: (lat: number = 12.9716, lng: number = 77.5946, radiusKm: number = 2) => {
+    return request<{
+      userCoordinates: { lat: number; lng: number };
+      effectiveRadiusKm: number;
+      resultsCount: number;
+      locations: any[];
+    }>(`/locations/nearby?lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`);
+  },
+
+  getPublic: () => {
+    return request<any[]>('/locations/public');
+  },
+
+  getPublicById: (id: string) => {
+    return request<any>(`/locations/public/${id}`);
+  },
+
+  uploadPaymentQr: (locationId: string, imageBase64: string, upiId?: string) => {
+    return request<any>(`/locations/${locationId}/upload-qr`, {
+      method: 'POST',
+      body: JSON.stringify({ imageBase64, upiId })
+    });
+  }
+};
+
 export const roomsApi = {
   getRooms: (locationId?: string) => {
     const q = locationId ? `?locationId=${locationId}` : '';
     return request<any[]>(`/rooms${q}`);
+  },
+
+  getPublicRooms: (params: {
+    workspaceType?: string;
+    locationId?: string;
+    maxHourlyRate?: number;
+    minRating?: number;
+    amenity?: string;
+  } = {}) => {
+    const q = new URLSearchParams();
+    if (params.workspaceType) q.append('workspaceType', params.workspaceType);
+    if (params.locationId) q.append('locationId', params.locationId);
+    if (params.maxHourlyRate) q.append('maxHourlyRate', params.maxHourlyRate.toString());
+    if (params.minRating) q.append('minRating', params.minRating.toString());
+    if (params.amenity) q.append('amenity', params.amenity);
+    const qs = q.toString();
+    return request<any[]>(`/rooms/public${qs ? `?${qs}` : ''}`);
+  },
+
+  getPublicRoomById: (id: string) => {
+    return request<any>(`/rooms/public/${id}`);
   },
 
   getRoomById: (id: string) => {
@@ -161,11 +208,12 @@ export const roomsApi = {
 };
 
 export const bookingsApi = {
-  getBookings: (params: { myOnly?: boolean; status?: string; companyId?: string } = {}) => {
+  getBookings: (params: { myOnly?: boolean; status?: string; companyId?: string; tab?: string } = {}) => {
     const q = new URLSearchParams();
     if (params.myOnly) q.append('myOnly', 'true');
     if (params.status) q.append('status', params.status);
     if (params.companyId) q.append('companyId', params.companyId);
+    if (params.tab) q.append('tab', params.tab);
     const qs = q.toString();
     return request<any[]>(`/bookings${qs ? `?${qs}` : ''}`);
   },
@@ -185,10 +233,34 @@ export const bookingsApi = {
     });
   },
 
+  createGuestBooking: (payload: {
+    roomId: string;
+    guestName: string;
+    guestEmail: string;
+    guestPhone: string;
+    bookingType: 'HOURLY' | 'DAY_PASS';
+    startTime: string;
+    endTime: string;
+    attendeeCount?: number;
+    paymentMethod?: string;
+    paymentReference?: string;
+  }) => {
+    return request<any>('/bookings/public/guest', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  confirmGuestBooking: (bookingId: string) => {
+    return request<any>(`/bookings/${bookingId}/confirm-guest`, {
+      method: 'PATCH'
+    });
+  },
+
   cancelBooking: (bookingId: string, reason?: string) => {
     return request<any>(`/bookings/${bookingId}/cancel`, {
       method: 'POST',
-      body: JSON.stringify({ reason: reason || 'Cancelled by client member' })
+      body: JSON.stringify({ reason: reason || 'Cancelled by user' })
     });
   },
 
@@ -319,6 +391,17 @@ export const superAdminPerspectiveApi = {
   getAllInvoices: () => request<any[]>('/billing/invoices')
 };
 
+export const notificationsApi = {
+  getNotifications: () => request<any[]>('/notifications'),
+  markRead: (id: string) => request<any>(`/notifications/${id}/read`, { method: 'POST' }),
+  markAllRead: () => request<any>('/notifications/read-all', { method: 'POST' }),
+  broadcast: (data: { title: string; message: string; roleTarget?: string }) =>
+    request<any>('/notifications/broadcast', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+};
+
 export const mobileApi = {
   getServerUrl: getBaseUrl,
   setServerUrl: setBaseUrl,
@@ -329,7 +412,14 @@ export const mobileApi = {
   getProfile: authApi.getMe,
   logout: authApi.logout,
 
+  locations: locationsApi,
+  getNearbyLocations: locationsApi.getNearby,
+  getPublicLocations: locationsApi.getPublic,
+  getPublicLocationById: locationsApi.getPublicById,
+
   getRooms: roomsApi.getRooms,
+  getPublicRooms: roomsApi.getPublicRooms,
+  getPublicRoomById: roomsApi.getPublicRoomById,
   getRoomById: roomsApi.getRoomById,
   checkAvailability: roomsApi.checkAvailability,
   getRoomAvailability: roomsApi.checkAvailability,
@@ -340,6 +430,8 @@ export const mobileApi = {
     return request<any[]>(`/bookings${q}`);
   },
   createBooking: bookingsApi.createBooking,
+  createGuestBooking: bookingsApi.createGuestBooking,
+  confirmGuestBooking: bookingsApi.confirmGuestBooking,
   cancelBooking: bookingsApi.cancelBooking,
   checkInBooking: bookingsApi.checkInBooking,
 
@@ -354,11 +446,10 @@ export const mobileApi = {
 
   getInvoices: billingApi.getInvoices,
 
-  getNotifications: () => request<any[]>('/notifications'),
-  markNotificationRead: (id: string) =>
-    request<any>(`/notifications/${id}/read`, { method: 'PATCH' }),
-  markAllNotificationsRead: () =>
-    request<any>('/notifications/read-all', { method: 'POST' }),
+  getNotifications: notificationsApi.getNotifications,
+  markNotificationRead: notificationsApi.markRead,
+  markAllNotificationsRead: notificationsApi.markAllRead,
+  broadcastNotification: notificationsApi.broadcast,
 
   tickets: ticketsApi,
   overrides: overridesApi,

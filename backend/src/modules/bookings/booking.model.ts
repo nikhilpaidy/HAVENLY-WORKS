@@ -2,11 +2,11 @@ import mongoose, { Document, Schema, Types } from 'mongoose';
 import { BookingStatus } from '../../types/index.js';
 
 export interface IPricingSnapshot {
-  baseHourlyRate: number; 
-  freeHoursApplied: number; 
-  chargeableHours: number; 
-  additionalHourlyRate: number; 
-  totalAmount: number; 
+  baseHourlyRate: number;
+  freeHoursApplied: number;
+  chargeableHours: number;
+  additionalHourlyRate: number;
+  totalAmount: number;
   currency: string;
 }
 
@@ -15,8 +15,14 @@ export interface IBooking extends Document {
   organizationId: Types.ObjectId;
   locationId: Types.ObjectId;
   roomId: Types.ObjectId;
-  companyId: Types.ObjectId;
-  bookedByUserId: Types.ObjectId;
+  companyId?: Types.ObjectId;
+  bookedByUserId?: Types.ObjectId;
+  isGuestBooking: boolean;
+  guestName?: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  workspaceType: string;
+  bookingType: 'HOURLY' | 'DAY_PASS';
   title: string;
   purpose?: string;
   attendeeCount: number;
@@ -24,6 +30,10 @@ export interface IBooking extends Document {
   endTime: Date;
   durationHours: number;
   status: BookingStatus;
+  paymentMethod: string;
+  paymentStatus: string;
+  paymentProofUrl?: string;
+  paymentReference?: string;
   pricingSnapshot: IPricingSnapshot;
   cancellationReason?: string;
   cancelledAt?: Date;
@@ -40,7 +50,7 @@ const PricingSnapshotSchema = new Schema<IPricingSnapshot>(
     chargeableHours: { type: Number, required: true, default: 0 },
     additionalHourlyRate: { type: Number, required: true, default: 0 },
     totalAmount: { type: Number, required: true, default: 0 },
-    currency: { type: String, required: true, default: 'USD' }
+    currency: { type: String, required: true, default: 'INR' }
   },
   { _id: false }
 );
@@ -74,14 +84,31 @@ const BookingSchema = new Schema<IBooking>(
     companyId: {
       type: Schema.Types.ObjectId,
       ref: 'Company',
-      required: true,
+      required: false,
       index: true
     },
     bookedByUserId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false,
       index: true
+    },
+    isGuestBooking: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
+    guestName: String,
+    guestEmail: String,
+    guestPhone: String,
+    workspaceType: {
+      type: String,
+      default: 'MEETING_ROOM'
+    },
+    bookingType: {
+      type: String,
+      enum: ['HOURLY', 'DAY_PASS'],
+      default: 'HOURLY'
     },
     title: {
       type: String,
@@ -114,6 +141,16 @@ const BookingSchema = new Schema<IBooking>(
       default: BookingStatus.CONFIRMED,
       index: true
     },
+    paymentMethod: {
+      type: String,
+      default: 'ALLOWANCE'
+    },
+    paymentStatus: {
+      type: String,
+      default: 'VERIFIED'
+    },
+    paymentProofUrl: String,
+    paymentReference: String,
     pricingSnapshot: {
       type: PricingSnapshotSchema,
       required: true

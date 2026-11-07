@@ -4,16 +4,15 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
   ScrollView
 } from 'react-native';
 import { mobileApi } from '../services/api';
-import { colors } from '../theme/colors';
-import { Header } from '../components/Header';
+import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { ListRowSkeleton } from '../components/SkeletonLoader';
 
 interface AllowanceScreenProps {
   onOpenNotifications: () => void;
@@ -25,6 +24,8 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
   unreadNotifsCount
 }) => {
   const { user } = useAuth();
+  const { theme, isDark } = useTheme();
+
   const isAdminRole = user?.role === 'SUPER_ADMIN' || user?.role === 'COWORKING_ADMIN';
   const [companies, setCompanies] = useState<any[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(user?.companyId || '');
@@ -44,7 +45,7 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
       setCurrent(curr);
       setLedger(hist?.ledger || []);
     } catch (err) {
-      console.error('Failed to load allowance:', err);
+      console.warn('Failed to load allowance:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -53,434 +54,378 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
 
   useEffect(() => {
     if (isAdminRole) {
-      mobileApi
-        .getCompanies()
-        .then((comps) => {
-          if (comps && comps.length > 0) {
-            setCompanies(comps);
-            const initialId = comps[0]._id;
-            setSelectedCompanyId(initialId);
-            fetchAllowance(initialId);
-          } else {
-            fetchAllowance();
+      mobileApi.getCompanies().then((comps) => {
+        if (comps && comps.length > 0) {
+          setCompanies(comps);
+          if (!selectedCompanyId) {
+            setSelectedCompanyId(comps[0]._id);
+            fetchAllowance(comps[0]._id);
+            return;
           }
-        })
-        .catch(() => fetchAllowance());
+        }
+        fetchAllowance();
+      }).catch(() => fetchAllowance());
     } else {
       fetchAllowance();
     }
-  }, [isAdminRole]);
+  }, [selectedCompanyId]);
 
-  const handleSelectCompany = (cId: string) => {
-    setSelectedCompanyId(cId);
-    fetchAllowance(cId);
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchAllowance();
   };
 
-  const totalGranted = current?.grantedHours ?? current?.totalGrantedHours ?? 20;
-  const availableHours = current?.balanceHours ?? current?.availableHours ?? 20;
-  const consumedHours = current?.consumedHours || 0;
-  const reservedHours = current?.reservedHours || 0;
-  const usedHours = consumedHours + reservedHours;
-  const rawPct = Math.round((usedHours / (totalGranted || 1)) * 100);
-  const percentUsed = isNaN(rawPct) ? 0 : Math.max(0, Math.min(100, rawPct));
+  const granted = current?.totalGrantedHours ?? current?.grantedHours ?? 20;
+  const available = current?.availableHours ?? current?.balanceHours ?? 18;
+  const consumed = current?.consumedHours ?? 2;
+  const reserved = current?.reservedHours ?? 0;
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return 'Recent';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return 'Recent';
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch {
+      return 'Recent';
+    }
+  };
+
+  const renderLedgerItem = ({ item }: { item: any }) => {
+    const isCredit = item.hours > 0;
+    const booking = item.bookingId;
+    const label = booking?.bookingNumber ? `#${booking.bookingNumber}` : item.notes || 'Quota Adjustment';
+
+    return (
+      <View style={[styles.ledgerRow, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+        <View
+          style={[
+            styles.typeIconBox,
+            { backgroundColor: isCredit ? '#DCFCE7' : item.changeType === 'RESERVE' ? '#FEF3C7' : '#F1F5F9' }
+          ]}
+        >
+          <Ionicons
+            name={isCredit ? 'arrow-down' : item.changeType === 'RESERVE' ? 'time' : 'arrow-up'}
+            size={18}
+            color={isCredit ? '#15803D' : item.changeType === 'RESERVE' ? '#B45309' : '#475569'}
+          />
+        </View>
+
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={[styles.ledgerNotes, { color: theme.textPrimary }]} numberOfLines={1}>
+            {label}
+          </Text>
+          <Text style={[styles.ledgerDate, { color: theme.textMuted }]}>
+            {formatDate(item.createdAt)} • Balance after: {item.balanceAfter}h
+          </Text>
+        </View>
+
+        <Text
+          style={[
+            styles.hoursDiff,
+            { color: isCredit ? '#00A859' : item.changeType === 'RESERVE' ? '#D97706' : '#EF4444' }
+          ]}
+        >
+          {isCredit ? `+${item.hours}h` : `${item.hours}h`}
+        </Text>
+      </View>
+    );
+  };
 
   return (
-    <View style={styles.container}>
-      <Header
-        title="Quota & Ledger"
-        subtitle="Allowance Accounting"
-        unreadCount={unreadNotifsCount}
-        onPressNotifications={onOpenNotifications}
-      />
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={styles.header}>
+        <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Workspace Quota</Text>
+        <TouchableOpacity style={styles.notifBtn} onPress={onOpenNotifications}>
+          <Ionicons name="notifications-outline" size={20} color={theme.textPrimary} />
+          {unreadNotifsCount > 0 && <View style={styles.unreadDot} />}
+        </TouchableOpacity>
+      </View>
 
-      {loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={colors.brassLight} />
-        </View>
-      ) : (
-        <FlatList
-          data={ledger}
-          keyExtractor={(item, idx) => item._id || item.id || `ledger-${idx}`}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                fetchAllowance();
-              }}
-              tintColor={colors.brassLight}
-            />
-          }
-          ListHeaderComponent={
-            <View style={styles.headerWrap}>
-              {}
-              {isAdminRole && companies.length > 0 && (
-                <View style={styles.adminSelectorWrap}>
-                  <Text style={styles.adminSelectorLabel}>INSPECT CORPORATE ACCOUNT</Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.companyPillRow}
-                  >
-                    {companies.map((c) => {
-                      const isSel = selectedCompanyId === c._id;
-                      return (
-                        <TouchableOpacity
-                          key={c._id}
-                          onPress={() => handleSelectCompany(c._id)}
-                          style={[
-                            styles.companyPill,
-                            isSel && styles.companyPillActive
-                          ]}
-                        >
-                          <Ionicons
-                            name="business"
-                            size={12}
-                            color={isSel ? '#090D16' : colors.brassLight}
-                            style={{ marginRight: 6 }}
-                          />
-                          <Text
-                            style={[
-                              styles.companyPillText,
-                              isSel && styles.companyPillTextActive
-                            ]}
-                          >
-                            {c.name}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-              )}
-
-              {}
-              <View style={styles.summaryCard}>
-                <Text style={styles.summarySubtitle}>ACTIVE BILLING PERIOD</Text>
-                <Text style={styles.summaryTitle}>Monthly Complimentary Pool</Text>
-
-                <View style={styles.balanceRow}>
-                  <Text style={styles.balanceBig}>{availableHours}h</Text>
-                  <Text style={styles.balanceLabel}>available now</Text>
-                </View>
-
-                {}
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: `${percentUsed}%` }]} />
-                </View>
-                <Text style={styles.progressText}>
-                  {usedHours} of {totalGranted} hours used ({percentUsed}%)
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
+      >
+        {isAdminRole && companies.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.companySelector}
+          >
+            {companies.map((c) => (
+              <TouchableOpacity
+                key={c._id}
+                style={[
+                  styles.compPill,
+                  selectedCompanyId === c._id && styles.compPillActive,
+                  { borderColor: theme.cardBorder }
+                ]}
+                onPress={() => setSelectedCompanyId(c._id)}
+              >
+                <Text
+                  style={[
+                    styles.compPillText,
+                    selectedCompanyId === c._id && { color: '#FFFFFF', fontWeight: '700' }
+                  ]}
+                >
+                  {c.name}
                 </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
 
-                <View style={styles.pillsRow}>
-                  <View style={styles.pill}>
-                    <Text style={styles.pillLabel}>GRANTED</Text>
-                    <Text style={styles.pillVal}>{totalGranted}h</Text>
-                  </View>
-                  <View style={styles.pill}>
-                    <Text style={styles.pillLabel}>RESERVED</Text>
-                    <Text style={[styles.pillVal, { color: colors.info }]}>{reservedHours}h</Text>
-                  </View>
-                  <View style={styles.pill}>
-                    <Text style={styles.pillLabel}>CONSUMED</Text>
-                    <Text style={[styles.pillVal, { color: colors.warning }]}>
-                      {consumedHours}h
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              <Text style={styles.ledgerSectionTitle}>Allowance Transaction History</Text>
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryTop}>
+            <View>
+              <Text style={styles.summaryLabel}>AVAILABLE ALLOWANCE</Text>
+              <Text style={styles.summaryValue}>{available} <Text style={{ fontSize: 18 }}>Hours</Text></Text>
             </View>
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>No allowance ledger entries recorded yet.</Text>
+            <View style={styles.activePill}>
+              <Ionicons name="shield-checkmark" size={14} color="#00A859" style={{ marginRight: 4 }} />
+              <Text style={styles.activePillText}>Active Quota</Text>
             </View>
-          }
-          renderItem={({ item }) => {
-            const changeType = String(item.changeType || item.type || 'GRANT').toUpperCase();
-            const isDeduction = changeType.includes('RESERV') || changeType.includes('CONSUM') || Number(item.hours) < 0;
-            const absHours = Math.abs(Number(item.hours) || 0);
-            const isPositive = !isDeduction;
-            const displayHours = isDeduction ? `-${absHours}` : `+${absHours}`;
-            const dateStr = item.createdAt
-              ? new Date(item.createdAt).toLocaleDateString('en-IN', {
-                  timeZone: 'Asia/Kolkata',
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })
-              : '—';
-            const description = item.notes || item.description || 'Allowance transaction';
+          </View>
 
-            return (
-              <View style={styles.ledgerCard}>
-                <View style={styles.ledgerTop}>
-                  <View
-                    style={[
-                      styles.typeBadge,
-                      changeType === 'GRANT'
-                        ? styles.badgeGrant
-                        : changeType === 'RESERVE' || changeType === 'RESERVATION'
-                        ? styles.badgeReservation
-                        : changeType === 'RELEASE'
-                        ? styles.badgeRelease
-                        : styles.badgeConsumption
-                    ]}
-                  >
-                    <Text style={styles.typeText}>{changeType.replace(/_/g, ' ')}</Text>
-                  </View>
-                  <Text style={styles.dateText}>{dateStr}</Text>
-                </View>
+          <View style={styles.progressContainer}>
+            <View
+              style={[
+                styles.progressBar,
+                { width: `${Math.min(100, Math.max(0, (available / (granted || 1)) * 100))}%` }
+              ]}
+            />
+          </View>
 
-                <View style={styles.deltaRow}>
-                  <Text style={styles.descText}>{description}</Text>
-                  <Text
-                    style={[
-                      styles.deltaText,
-                      isPositive ? styles.deltaPositive : styles.deltaNegative
-                    ]}
-                  >
-                    {displayHours}h
-                  </Text>
-                </View>
+          <View style={styles.statGrid}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNum}>{granted}h</Text>
+              <Text style={styles.statLabel}>Granted</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNum}>{consumed}h</Text>
+              <Text style={styles.statLabel}>Consumed</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNum}>{reserved}h</Text>
+              <Text style={styles.statLabel}>Reserved</Text>
+            </View>
+          </View>
+        </View>
 
-                <View style={styles.balanceAfterRow}>
-                  <Text style={styles.balanceAfterLabel}>Balance After Transaction:</Text>
-                  <Text style={styles.balanceAfterVal}>{item.balanceAfter ?? '—'} hrs</Text>
-                </View>
+        <View style={[styles.policyNotice, { backgroundColor: isDark ? '#121A2D' : '#F0FDF4', borderColor: '#BBF7D0' }]}>
+          <Ionicons name="information-circle" size={20} color="#00A859" style={{ marginRight: 10 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.policyNoticeTitle, { color: theme.textPrimary }]}>No Monthly Reset Policy</Text>
+            <Text style={{ fontSize: 12, color: theme.textSecondary, lineHeight: 18, marginTop: 2 }}>
+              Your granted allowance remains active until fully utilized. When completed, additional bookings are tracked and billed automatically in Indian Rupees (₹) at the end of each month via email invoice.
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.historySection}>
+          <Text style={[styles.historyTitle, { color: theme.textPrimary }]}>Quota Transaction History</Text>
+          {loading ? (
+            <View style={{ marginTop: 10 }}>
+              <ListRowSkeleton />
+              <ListRowSkeleton />
+            </View>
+          ) : ledger.length === 0 ? (
+            <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 12 }}>
+              No transactions recorded yet.
+            </Text>
+          ) : (
+            ledger.map((item) => (
+              <View key={item._id} style={{ marginTop: 10 }}>
+                {renderLedgerItem({ item })}
               </View>
-            );
-          }}
-        />
-      )}
+            ))
+          )}
+        </View>
+      </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: colors.background
+    flex: 1
   },
-  loadingWrap: {
-    flex: 1,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 10
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '800'
+  },
+  notifBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  listContent: {
-    padding: 20
-  },
-  headerWrap: {
-    marginBottom: 16
-  },
-  summaryCard: {
-    backgroundColor: colors.card,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    padding: 20,
-    marginBottom: 20
-  },
-  summarySubtitle: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: colors.brass,
-    letterSpacing: 1.5
-  },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginTop: 2,
-    marginBottom: 14
-  },
-  balanceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 12
-  },
-  balanceBig: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: colors.textPrimary
-  },
-  balanceLabel: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginLeft: 8
-  },
-  progressTrack: {
+  unreadDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
     height: 8,
-    backgroundColor: colors.inputBg,
     borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 6
+    backgroundColor: '#EF4444'
   },
-  progressFill: {
-    height: '100%',
-    backgroundColor: colors.brassLight,
-    borderRadius: 4
-  },
-  progressText: {
-    fontSize: 11,
-    color: colors.textMuted,
-    marginBottom: 16
-  },
-  pillsRow: {
-    flexDirection: 'row',
+  companySelector: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     gap: 8
   },
-  pill: {
-    flex: 1,
-    backgroundColor: colors.inputBg,
-    borderRadius: 12,
-    paddingVertical: 10,
-    alignItems: 'center'
+  compPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    borderWidth: 1
   },
-  pillLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 1
+  compPillActive: {
+    backgroundColor: '#00A859',
+    borderColor: '#00A859'
   },
-  pillVal: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginTop: 2
+  compPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B'
   },
-  ledgerSectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.textPrimary
+  summaryCard: {
+    backgroundColor: '#0A3826',
+    marginHorizontal: 20,
+    borderRadius: 24,
+    padding: 22,
+    marginTop: 10,
+    shadowColor: '#00A859',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 4
   },
-  emptyCard: {
-    padding: 24,
-    alignItems: 'center'
-  },
-  emptyText: {
-    color: colors.textMuted,
-    fontSize: 12
-  },
-  ledgerCard: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    padding: 14,
-    marginBottom: 10
-  },
-  ledgerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8
-  },
-  typeBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6
-  },
-  badgeGrant: {
-    backgroundColor: colors.successBg
-  },
-  badgeReservation: {
-    backgroundColor: colors.infoBg
-  },
-  badgeRelease: {
-    backgroundColor: 'rgba(168, 85, 247, 0.15)'
-  },
-  badgeConsumption: {
-    backgroundColor: colors.warningBg
-  },
-  typeText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: colors.textPrimary
-  },
-  dateText: {
-    fontSize: 10,
-    color: colors.textMuted
-  },
-  deltaRow: {
+  summaryTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8
-  },
-  descText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    flex: 1,
-    marginRight: 12
-  },
-  deltaText: {
-    fontSize: 15,
-    fontWeight: '800'
-  },
-  deltaPositive: {
-    color: colors.success
-  },
-  deltaNegative: {
-    color: colors.warning
-  },
-  balanceAfterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-    paddingTop: 6
-  },
-  balanceAfterLabel: {
-    fontSize: 10,
-    color: colors.textMuted
-  },
-  balanceAfterVal: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.textPrimary
-  },
-  adminSelectorWrap: {
     marginBottom: 16
   },
-  adminSelectorLabel: {
-    fontSize: 9,
+  summaryLabel: {
+    color: '#BBF7D0',
+    fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 1.2,
-    color: colors.brassLight,
-    marginBottom: 8
+    letterSpacing: 0.5
   },
-  companyPillRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingVertical: 2
+  summaryValue: {
+    color: '#FFFFFF',
+    fontSize: 34,
+    fontWeight: '800',
+    marginTop: 4
   },
-  companyPill: {
+  activePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12
   },
-  companyPillActive: {
-    backgroundColor: colors.brassLight,
-    borderColor: colors.brassLight
-  },
-  companyPillText: {
+  activePillText: {
+    color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '600',
-    color: colors.textPrimary
-  },
-  companyPillTextActive: {
-    color: '#090D16',
     fontWeight: '700'
+  },
+  progressContainer: {
+    height: 8,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 18
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#00C261',
+    borderRadius: 4
+  },
+  statGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center'
+  },
+  statItem: {
+    alignItems: 'center'
+  },
+  statNum: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800'
+  },
+  statLabel: {
+    color: '#A7F3D0',
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(255,255,255,0.15)'
+  },
+  policyNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginHorizontal: 20,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1
+  },
+  policyNoticeTitle: {
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  historySection: {
+    paddingHorizontal: 20,
+    marginTop: 24
+  },
+  historyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 6
+  },
+  ledgerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1
+  },
+  typeIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  ledgerNotes: {
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  ledgerDate: {
+    fontSize: 12,
+    marginTop: 2
+  },
+  hoursDiff: {
+    fontSize: 16,
+    fontWeight: '800'
   }
 });

@@ -40,7 +40,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const getCompanyDisplayName = () => {
     if (user?.company?.name) return user.company.name;
     if (user?.organization?.name) return user.organization.name;
-    if (isSuperAdmin) return 'NIK VORA Coworking Infrastructure';
+    if (isSuperAdmin) return 'Hubbly Platform Infrastructure';
     if (isCoworkingAdmin) return 'CWS ONE Coworking Space';
     return 'Aptapace Private Limited';
   };

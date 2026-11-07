@@ -18,6 +18,10 @@ import { AppError } from '../../middleware/errorHandler.js';
 import { BookingStatus, NotificationType, UserRole } from '../../types/index.js';
 import { createAuditLog } from '../audit-logs/audit-log.service.js';
 import { createNotification } from '../notifications/notification.service.js';
+import {
+  sendBookingConfirmationEmail,
+  sendGuestBookingAdminAlert
+} from '../../utils/email.service.js';
 
 export async function createAtomicBooking(params: {
   roomId: string;
@@ -99,47 +103,19 @@ export async function createAtomicBooking(params: {
   const durHours = durationInHours(startTime, endTime);
   const entitlement = await calculateEntitlement(companyId, durHours, startTime);
 
-  const timestamp = Date.now().toString().slice(-6);
-  const randomSuffix = Math.floor(100 + Math.random() * 900);
-  const bookingNumber = `BK-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${timestamp}${randomSuffix}`;
-
-  const slotDates = generateSlotTimes(
-    startTime,
-    endTime,
-    room.slotIntervalMinutes,
-    room.bufferMinutes
-  );
-
-  let session: mongoose.ClientSession | null = null;
-  let useTransaction = false;
-
-  try {
-    session = await mongoose.startSession();
-    session.startTransaction();
-    useTransaction = true;
-  } catch {
-    
-    session = null;
-    useTransaction = false;
+  const user = await User.findById(bookedByUserId);
+  if (!user) {
+    throw new AppError('User not found', 404);
   }
 
-  let createdBooking: IBooking;
+  const slotIntervals = generateSlotTimes(startTime, endTime, room.slotIntervalMinutes);
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
   try {
-    
-    const existingConflicts = await InventorySlot.find({
-      roomId: room._id,
-      slotTime: { $in: slotDates }
-    }).session(session);
+    const bookingNumber = 'BK-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900);
 
-    if (existingConflicts.length > 0) {
-      throw new AppError(
-        'The requested time slot is already reserved. Please select another time.',
-        409
-      );
-    }
-
-    const [bookingDoc] = await Booking.create(
+    const bookingDocs = await Booking.create(
       [
         {
           bookingNumber,
@@ -147,7 +123,10 @@ export async function createAtomicBooking(params: {
           locationId: room.locationId,
           roomId: room._id,
           companyId: company._id,
-          bookedByUserId: new Types.ObjectId(bookedByUserId),
+          bookedByUserId: user._id,
+          isGuestBooking: false,
+          workspaceType: room.workspaceType || 'MEETING_ROOM',
+          bookingType: 'HOURLY',
           title,
           purpose,
           attendeeCount,
@@ -155,108 +134,237 @@ export async function createAtomicBooking(params: {
           endTime,
           durationHours: durHours,
           status: BookingStatus.CONFIRMED,
+          paymentMethod: 'ALLOWANCE',
+          paymentStatus: 'VERIFIED',
           pricingSnapshot: {
             baseHourlyRate: room.hourlyRate,
             freeHoursApplied: entitlement.freeHoursApplied,
             chargeableHours: entitlement.chargeableHours,
             additionalHourlyRate: entitlement.additionalHourlyRate,
             totalAmount: entitlement.totalAmount,
-            currency: entitlement.currency
+            currency: 'INR'
           }
         }
       ],
       { session }
     );
+    const booking = bookingDocs[0];
 
-    createdBooking = bookingDoc;
+    for (const slotStart of slotIntervals) {
+      const slotEnd = new Date(slotStart.getTime() + room.slotIntervalMinutes * 60 * 1000);
+      const existing = await InventorySlot.findOne({
+        roomId: room._id,
+        startTime: slotStart
+      }).session(session);
 
-    const inventoryDocs = slotDates.map((slotTime) => ({
-      roomId: room._id,
-      organizationId: room.organizationId,
-      slotTime,
-      bookingId: bookingDoc._id,
-      companyId: company._id,
-      status: 'CONFIRMED'
-    }));
-
-    await InventorySlot.insertMany(inventoryDocs, { session });
-
-    await reserveAllowance(
-      company._id,
-      bookingDoc._id,
-      entitlement.freeHoursApplied,
-      startTime,
-      session || undefined,
-      bookingDoc.bookingNumber,
-      room.name
-    );
-
-    if (useTransaction && session) {
-      await session.commitTransaction();
-    }
-  } catch (error: any) {
-    if (useTransaction && session) {
-      await session.abortTransaction();
-    } else {
-      
-      if (createdBooking!) {
-        await InventorySlot.deleteMany({ bookingId: createdBooking._id });
-        await Booking.findByIdAndDelete(createdBooking._id);
+      if (existing) {
+        throw new AppError(
+          `Conflict: Slot starting at ${slotStart.toISOString()} is already booked`,
+          409
+        );
       }
-    }
 
-    if (
-      error.code === 11000 ||
-      error.name === 'MongoBulkWriteError' ||
-      error.message?.includes('multi-document transaction') ||
-      error.message?.includes('WriteConflict') ||
-      (error.hasErrorLabel && error.hasErrorLabel('TransientTransactionError'))
-    ) {
-      throw new AppError(
-        'Concurrent booking conflict: This room slot was just booked by another user.',
-        409
+      await InventorySlot.create(
+        [
+          {
+            roomId: room._id,
+            bookingId: booking._id,
+            startTime: slotStart,
+            endTime: slotEnd,
+            dateString: slotStart.toISOString().split('T')[0]
+          }
+        ],
+        { session }
       );
     }
+
+    if (entitlement.freeHoursApplied > 0) {
+      await reserveAllowance(
+        company._id,
+        booking._id,
+        entitlement.freeHoursApplied,
+        startTime,
+        session
+      );
+    }
+
+    await session.commitTransaction();
+
+    await createNotification({
+      recipientUserId: user._id,
+      organizationId: room.organizationId,
+      companyId: company._id,
+      title: 'Booking Confirmed',
+      message: `Your booking for ${room.name} on ${startTime.toLocaleDateString()} at ${startTime.toLocaleTimeString()} has been confirmed. Ref: #${booking.bookingNumber}`,
+      type: NotificationType.BOOKING_CONFIRMED,
+      link: `/bookings/${booking._id}`,
+      metadata: { bookingId: booking._id, roomName: room.name }
+    });
+
+    if (user.email) {
+      sendBookingConfirmationEmail({
+        to: user.email,
+        recipientName: user.name,
+        bookingNumber: booking.bookingNumber,
+        spaceName: room.name,
+        workspaceType: room.workspaceType || 'MEETING_ROOM',
+        startTime,
+        endTime,
+        totalAmount: entitlement.totalAmount,
+        currency: 'INR',
+        isGuest: false
+      }).catch(() => {});
+    }
+
+    await createAuditLog({
+      organizationId: room.organizationId.toString(),
+      userId: user._id.toString(),
+      userEmail: user.email,
+      userRole: user.role,
+      action: 'BOOKING_CREATED',
+      entityType: 'Booking',
+      entityId: booking._id.toString(),
+      ipAddress,
+      userAgent,
+      details: {
+        bookingNumber: booking.bookingNumber,
+        roomId: room._id.toString(),
+        roomName: room.name,
+        freeHoursApplied: entitlement.freeHoursApplied,
+        chargeableHours: entitlement.chargeableHours,
+        totalAmount: entitlement.totalAmount
+      }
+    });
+
+    return booking;
+  } catch (error) {
+    await session.abortTransaction();
     throw error;
   } finally {
-    if (session) {
-      session.endSession();
-    }
+    session.endSession();
+  }
+}
+
+export async function createGuestBooking(params: {
+  roomId: string;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
+  bookingType: 'HOURLY' | 'DAY_PASS';
+  startTime: Date;
+  endTime: Date;
+  attendeeCount?: number;
+  paymentMethod?: string;
+  paymentReference?: string;
+}): Promise<IBooking> {
+  const room = await MeetingRoom.findById(params.roomId).populate('locationId');
+  if (!room || !room.isActive) {
+    throw new AppError('Workspace is inactive or not found', 404);
   }
 
-  const booker = await User.findById(bookedByUserId);
+  const durationHours = Math.max(1, (new Date(params.endTime).getTime() - new Date(params.startTime).getTime()) / (1000 * 60 * 60));
+  const rate = params.bookingType === 'DAY_PASS' ? (room.dailyRate || room.hourlyRate * 6) : room.hourlyRate;
+  const totalAmount = params.bookingType === 'DAY_PASS' ? rate : Math.round(rate * durationHours);
+  const bookingNumber = 'GST-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900);
 
-  await createNotification({
-    recipientUserId: bookedByUserId,
+  const booking = await Booking.create({
+    bookingNumber,
     organizationId: room.organizationId,
-    companyId: company._id,
-    title: 'Booking Confirmed',
-    message: `Your reservation for "${room.name}" on ${startTime.toDateString()} at ${startTime.toLocaleTimeString()} has been confirmed (${bookingNumber}).`,
-    type: NotificationType.BOOKING_CONFIRMED,
-    link: `/client/bookings`
-  });
-
-  await createAuditLog({
-    organizationId: room.organizationId.toString(),
-    userId: bookedByUserId,
-    userEmail: booker?.email || 'user',
-    userRole: booker?.role || 'CLIENT',
-    action: 'BOOKING_CREATED',
-    entityType: 'Booking',
-    entityId: createdBooking._id.toString(),
-    ipAddress,
-    userAgent,
-    details: {
-      bookingNumber,
-      room: room.name,
-      durationHours: durHours,
-      freeHoursApplied: entitlement.freeHoursApplied,
-      chargeableHours: entitlement.chargeableHours,
-      totalAmount: entitlement.totalAmount
+    locationId: room.locationId,
+    roomId: room._id,
+    isGuestBooking: true,
+    guestName: params.guestName,
+    guestEmail: params.guestEmail,
+    guestPhone: params.guestPhone,
+    workspaceType: room.workspaceType || 'HOT_DESK',
+    bookingType: params.bookingType,
+    title: `${params.bookingType === 'DAY_PASS' ? 'Day Pass' : 'Workspace'} Booking - ${params.guestName}`,
+    attendeeCount: params.attendeeCount || 1,
+    startTime: params.startTime,
+    endTime: params.endTime,
+    durationHours,
+    status: BookingStatus.PENDING_CONFIRMATION,
+    paymentMethod: params.paymentMethod || 'UPI_QR',
+    paymentStatus: 'PENDING_VERIFICATION',
+    paymentReference: params.paymentReference,
+    pricingSnapshot: {
+      baseHourlyRate: room.hourlyRate,
+      freeHoursApplied: 0,
+      chargeableHours: durationHours,
+      additionalHourlyRate: room.hourlyRate,
+      totalAmount,
+      currency: 'INR'
     }
   });
 
-  return createdBooking;
+  const adminUser = await User.findOne({ organizationId: room.organizationId, role: UserRole.COWORKING_ADMIN });
+  if (adminUser) {
+    await createNotification({
+      recipientUserId: adminUser._id,
+      organizationId: room.organizationId,
+      title: 'New Guest Booking Received',
+      message: `New booking request from ${params.guestName} (${params.guestPhone}) for ${room.name}. Please call and verify payment.`,
+      type: NotificationType.GUEST_INQUIRY,
+      metadata: { bookingId: booking._id, guestPhone: params.guestPhone }
+    });
+
+    sendGuestBookingAdminAlert({
+      adminEmail: adminUser.email,
+      guestName: params.guestName,
+      guestEmail: params.guestEmail,
+      guestPhone: params.guestPhone,
+      spaceName: room.name,
+      workspaceType: room.workspaceType || 'HOT_DESK',
+      bookingNumber,
+      totalAmount,
+      currency: 'INR',
+      bookingDate: new Date(params.startTime).toLocaleDateString('en-IN')
+    }).catch(() => {});
+  }
+
+  if (params.guestEmail) {
+    sendBookingConfirmationEmail({
+      to: params.guestEmail,
+      recipientName: params.guestName,
+      bookingNumber,
+      spaceName: room.name,
+      workspaceType: room.workspaceType || 'HOT_DESK',
+      startTime: params.startTime,
+      endTime: params.endTime,
+      totalAmount,
+      currency: 'INR',
+      isGuest: true
+    }).catch(() => {});
+  }
+
+  return booking;
+}
+
+export async function confirmGuestBooking(bookingId: string, adminUserId: string): Promise<IBooking> {
+  const booking = await Booking.findById(bookingId).populate('roomId');
+  if (!booking) {
+    throw new AppError('Booking not found', 404);
+  }
+  booking.status = BookingStatus.CONFIRMED;
+  booking.paymentStatus = 'VERIFIED';
+  await booking.save();
+
+  if (booking.guestEmail) {
+    sendBookingConfirmationEmail({
+      to: booking.guestEmail,
+      recipientName: booking.guestName || 'Guest',
+      bookingNumber: booking.bookingNumber,
+      spaceName: (booking.roomId as any)?.name || 'Workspace',
+      workspaceType: booking.workspaceType,
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      totalAmount: booking.pricingSnapshot.totalAmount,
+      currency: 'INR',
+      isGuest: true
+    }).catch(() => {});
+  }
+
+  return booking;
 }
 
 export async function cancelBooking(params: {
@@ -269,7 +377,7 @@ export async function cancelBooking(params: {
 }): Promise<IBooking> {
   const { bookingId, userId, userRole, userCompanyId, reason, ipAddress } = params;
 
-  const booking = await Booking.findById(bookingId).populate('roomId');
+  const booking = await Booking.findById(bookingId);
   if (!booking) {
     throw new AppError('Booking not found', 404);
   }
@@ -277,24 +385,27 @@ export async function cancelBooking(params: {
   if (booking.status === BookingStatus.CANCELLED) {
     throw new AppError('Booking is already cancelled', 400);
   }
+  if (booking.status === BookingStatus.COMPLETED) {
+    throw new AppError('Completed bookings cannot be cancelled', 400);
+  }
 
-  if (userRole !== UserRole.SUPER_ADMIN && userRole !== UserRole.COWORKING_ADMIN) {
-    if (booking.companyId.toString() !== userCompanyId) {
-      throw new AppError('Unauthorized: You cannot cancel bookings for another company', 403);
-    }
+  if (
+    userRole !== UserRole.SUPER_ADMIN &&
+    userRole !== UserRole.COWORKING_ADMIN &&
+    booking.companyId &&
+    booking.companyId.toString() !== userCompanyId
+  ) {
+    throw new AppError('Unauthorized to cancel this booking', 403);
   }
 
   await InventorySlot.deleteMany({ bookingId: booking._id });
 
-  if (booking.pricingSnapshot.freeHoursApplied > 0) {
+  if (booking.pricingSnapshot.freeHoursApplied > 0 && booking.companyId) {
     await releaseAllowance(
       booking.companyId,
       booking._id,
       booking.pricingSnapshot.freeHoursApplied,
-      booking.startTime,
-      booking.status === BookingStatus.COMPLETED,
-      undefined,
-      booking.bookingNumber
+      booking.startTime
     );
   }
 
@@ -304,16 +415,18 @@ export async function cancelBooking(params: {
   booking.cancelledBy = new Types.ObjectId(userId);
   await booking.save();
 
-  const user = await User.findById(userId);
-  await createNotification({
-    recipientUserId: booking.bookedByUserId,
-    organizationId: booking.organizationId,
-    companyId: booking.companyId,
-    title: 'Booking Cancelled',
-    message: `Booking ${booking.bookingNumber} was cancelled. Any reserved allowance hours have been restored.`,
-    type: NotificationType.BOOKING_CANCELLED
-  });
+  if (booking.bookedByUserId) {
+    await createNotification({
+      recipientUserId: booking.bookedByUserId,
+      organizationId: booking.organizationId,
+      companyId: booking.companyId,
+      title: 'Booking Cancelled',
+      message: `Booking ${booking.bookingNumber} was cancelled. Any reserved allowance hours have been restored.`,
+      type: NotificationType.BOOKING_CANCELLED
+    });
+  }
 
+  const user = await User.findById(userId);
   await createAuditLog({
     organizationId: booking.organizationId.toString(),
     userId,

@@ -1,10 +1,64 @@
 import { Request, Response, NextFunction } from 'express';
-import { createAtomicBooking, cancelBooking, checkInBooking } from './booking.service.js';
+import {
+  createAtomicBooking,
+  cancelBooking,
+  checkInBooking,
+  createGuestBooking,
+  confirmGuestBooking
+} from './booking.service.js';
 import { Booking } from './booking.model.js';
 import { Company } from '../companies/company.model.js';
 import { apiSuccess } from '../../utils/response.js';
 import { AppError } from '../../middleware/errorHandler.js';
 import { BookingStatus, UserRole } from '../../types/index.js';
+
+export async function createGuestBookingHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const {
+      roomId,
+      guestName,
+      guestEmail,
+      guestPhone,
+      bookingType,
+      startTime,
+      endTime,
+      attendeeCount,
+      paymentMethod,
+      paymentReference
+    } = req.body;
+
+    if (!roomId || !guestName || !guestPhone || !startTime || !endTime) {
+      throw new AppError('roomId, guestName, guestPhone, startTime, and endTime are required', 400);
+    }
+
+    const booking = await createGuestBooking({
+      roomId,
+      guestName,
+      guestEmail: guestEmail || 'guest@hubbly.com',
+      guestPhone,
+      bookingType: bookingType || 'DAY_PASS',
+      startTime: new Date(startTime),
+      endTime: new Date(endTime),
+      attendeeCount: attendeeCount ? parseInt(attendeeCount, 10) : 1,
+      paymentMethod: paymentMethod || 'UPI_QR',
+      paymentReference
+    });
+
+    return apiSuccess(res, booking, 'Guest booking received. Awaiting admin confirmation.', 201);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function confirmGuestBookingHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = req.params.id as string;
+    const booking = await confirmGuestBooking(id, req.user!.userId);
+    return apiSuccess(res, booking, 'Guest booking confirmed successfully');
+  } catch (error) {
+    next(error);
+  }
+}
 
 export async function createBookingHandler(req: Request, res: Response, next: NextFunction) {
   try {
@@ -75,9 +129,7 @@ export async function getBookingsHandler(req: Request, res: Response, next: Next
     } else if (req.user?.role === UserRole.COWORKING_ADMIN) {
       query.organizationId = req.user.organizationId;
     } else {
-      
       query.companyId = req.user?.companyId;
-
       if (req.user?.role === UserRole.EMPLOYEE) {
         query.bookedByUserId = req.user.userId;
       }
@@ -92,28 +144,28 @@ export async function getBookingsHandler(req: Request, res: Response, next: Next
     }
     if (req.query.status) query.status = req.query.status;
 
+    if (req.query.tab === 'ONGOING') {
+      query.status = { $in: [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN, BookingStatus.PENDING_CONFIRMATION] };
+      query.endTime = { $gte: new Date() };
+    } else if (req.query.tab === 'COMPLETED') {
+      query.$or = [
+        { status: BookingStatus.COMPLETED },
+        { status: { $in: [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN] }, endTime: { $lt: new Date() } }
+      ];
+    } else if (req.query.tab === 'CANCELLED') {
+      query.status = BookingStatus.CANCELLED;
+    }
+
     if (req.query.startDate && req.query.endDate) {
       query.startTime = {
         $gte: new Date(req.query.startDate as string),
         $lte: new Date(req.query.endDate as string)
       };
-    } else if (req.query.date) {
-      const d = req.query.date as string;
-      const startOfDay = new Date(`${d}T00:00:00.000Z`);
-      const endOfDay = new Date(`${d}T23:59:59.999Z`);
-      query.startTime = { $gte: startOfDay, $lte: endOfDay };
-    }
-
-    if (req.query.scope === 'upcoming') {
-      query.startTime = { $gte: new Date() };
-      query.status = { $in: [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN] };
-    } else if (req.query.scope === 'past') {
-      query.startTime = { $lt: new Date() };
     }
 
     const bookings = await Booking.find(query)
-      .populate('roomId', 'name code capacity hourlyRate photos amenities')
-      .populate('locationId', 'name city timezone')
+      .populate('roomId', 'name code capacity hourlyRate dailyRate photos amenities workspaceType rating')
+      .populate('locationId', 'name city timezone address managerName managerPhone paymentQrCodeUrl')
       .populate('companyId', 'name')
       .populate('bookedByUserId', 'name email')
       .sort({ startTime: -1 })
@@ -147,6 +199,7 @@ export async function getBookingByIdHandler(req: Request, res: Response, next: N
     if (
       req.user?.role !== UserRole.SUPER_ADMIN &&
       req.user?.role !== UserRole.COWORKING_ADMIN &&
+      booking.companyId &&
       booking.companyId.toString() !== req.user?.companyId
     ) {
       throw new AppError('Unauthorized access to this booking', 403);

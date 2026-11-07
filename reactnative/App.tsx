@@ -7,6 +7,7 @@ import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { TabBar, TabKey } from './src/components/TabBar';
 import { mobileApi } from './src/services/api';
 
+import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { DashboardScreen } from './src/screens/DashboardScreen';
 import { RoomsScreen } from './src/screens/RoomsScreen';
@@ -21,6 +22,8 @@ import { StaffScreen } from './src/screens/StaffScreen';
 const MainApp: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const { theme, isDark } = useTheme();
+
+  const [authStep, setAuthStep] = useState<'onboarding' | 'login' | 'guest_explore'>('onboarding');
   const [currentTab, setCurrentTab] = useState<TabKey>('dashboard');
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -44,13 +47,31 @@ const MainApp: React.FC = () => {
   if (isLoading) {
     return (
       <View style={[styles.splashContainer, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.gold} />
+        <ActivityIndicator size="large" color="#00A859" />
       </View>
     );
   }
 
-  if (!isAuthenticated) {
-    return <LoginScreen />;
+  if (!isAuthenticated && authStep === 'onboarding') {
+    return (
+      <SafeAreaView style={[styles.safeContainer, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <OnboardingScreen
+          onGetStarted={() => setAuthStep('login')}
+          onSignIn={() => setAuthStep('login')}
+          onExploreNearby={() => setAuthStep('guest_explore')}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (!isAuthenticated && authStep === 'login') {
+    return (
+      <SafeAreaView style={[styles.safeContainer, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <LoginScreen onBackToExplore={() => setAuthStep('onboarding')} />
+      </SafeAreaView>
+    );
   }
 
   if (showNotifications) {
@@ -203,7 +224,7 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     flex: 1,
-    backgroundColor: '#090D16',
+    backgroundColor: '#0A0F1D',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24
@@ -211,10 +232,10 @@ const styles = StyleSheet.create({
   errorBox: {
     width: '100%',
     padding: 24,
-    borderRadius: 20,
-    backgroundColor: '#141A29',
+    borderRadius: 22,
+    backgroundColor: '#121A2D',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: '#1E293B',
     alignItems: 'center'
   },
   errorIcon: {
@@ -234,14 +255,14 @@ const styles = StyleSheet.create({
     marginBottom: 20
   },
   retryButton: {
-    backgroundColor: '#C5A880',
+    backgroundColor: '#00A859',
     paddingVertical: 12,
     paddingHorizontal: 24,
-    borderRadius: 12
+    borderRadius: 14
   },
   retryButtonText: {
-    color: '#090D16',
-    fontSize: 13,
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '700'
   }
 });

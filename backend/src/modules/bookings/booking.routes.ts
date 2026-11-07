@@ -4,11 +4,16 @@ import {
   getBookingsHandler,
   getBookingByIdHandler,
   cancelBookingHandler,
-  checkInBookingHandler
+  checkInBookingHandler,
+  createGuestBookingHandler,
+  confirmGuestBookingHandler
 } from './booking.controller.js';
-import { authenticateJwt } from '../../middleware/auth.js';
+import { authenticateJwt, requireRole } from '../../middleware/auth.js';
+import { UserRole } from '../../types/index.js';
 
 const router = Router();
+
+router.post('/public/guest', createGuestBookingHandler);
 
 router.use(authenticateJwt);
 
@@ -17,5 +22,10 @@ router.get('/', getBookingsHandler);
 router.get('/:id', getBookingByIdHandler);
 router.post('/:id/cancel', cancelBookingHandler);
 router.post('/:id/check-in', checkInBookingHandler);
+router.patch(
+  '/:id/confirm-guest',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.COWORKING_ADMIN),
+  confirmGuestBookingHandler
+);
 
 export default router;

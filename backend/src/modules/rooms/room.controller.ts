@@ -5,6 +5,52 @@ import { AppError } from '../../middleware/errorHandler.js';
 import { UserRole } from '../../types/index.js';
 import { createAuditLog } from '../audit-logs/audit-log.service.js';
 
+export async function getPublicRooms(req: Request, res: Response, next: NextFunction) {
+  try {
+    let query: any = { isActive: true };
+
+    if (req.query.locationId) {
+      query.locationId = req.query.locationId;
+    }
+    if (req.query.workspaceType && req.query.workspaceType !== 'ALL') {
+      query.workspaceType = req.query.workspaceType;
+    }
+    if (req.query.minCapacity) {
+      query.capacity = { $gte: parseInt(req.query.minCapacity as string, 10) };
+    }
+    if (req.query.maxHourlyRate) {
+      query.hourlyRate = { $lte: parseFloat(req.query.maxHourlyRate as string) };
+    }
+    if (req.query.minRating) {
+      query.rating = { $gte: parseFloat(req.query.minRating as string) };
+    }
+    if (req.query.amenity) {
+      query.amenities = req.query.amenity;
+    }
+
+    const rooms = await MeetingRoom.find(query)
+      .populate('locationId', 'name city state timezone address managerName managerPhone paymentQrCodeUrl upiId')
+      .sort({ rating: -1, hourlyRate: 1 });
+
+    return apiSuccess(res, rooms);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getPublicRoomById(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const room = await MeetingRoom.findById(id).populate('locationId');
+    if (!room) {
+      throw new AppError('Workspace not found', 404);
+    }
+    return apiSuccess(res, room);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getRooms(req: Request, res: Response, next: NextFunction) {
   try {
     let query: any = { isActive: true };
@@ -28,6 +74,10 @@ export async function getRooms(req: Request, res: Response, next: NextFunction) 
       query.locationId = req.query.locationId;
     }
 
+    if (req.query.workspaceType && req.query.workspaceType !== 'ALL') {
+      query.workspaceType = req.query.workspaceType;
+    }
+
     if (req.query.minCapacity) {
       query.capacity = { $gte: parseInt(req.query.minCapacity as string, 10) };
     }
@@ -37,7 +87,7 @@ export async function getRooms(req: Request, res: Response, next: NextFunction) 
     }
 
     const rooms = await MeetingRoom.find(query)
-      .populate('locationId', 'name city timezone businessHours')
+      .populate('locationId', 'name city timezone businessHours managerName managerPhone paymentQrCodeUrl upiId')
       .sort({ capacity: 1, name: 1 });
 
     return apiSuccess(res, rooms);

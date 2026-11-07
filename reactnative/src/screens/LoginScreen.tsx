@@ -11,202 +11,196 @@ import {
   ScrollView,
   SafeAreaView
 } from 'react-native';
-import { useAuth } from '../context/AuthContext';
-import { colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../theme/ThemeContext';
 
-export const LoginScreen: React.FC = () => {
+interface LoginScreenProps {
+  onBackToExplore?: () => void;
+}
+
+export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToExplore }) => {
   const { login } = useAuth();
-  const [email, setEmail] = useState('aptapace@gmail.com');
-  const [password, setPassword] = useState('Apta@2026');
+  const { theme, isDark } = useTheme();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      setError('Please provide your corporate email and password.');
+    if (!email.trim() || !password) {
+      setError('Please enter your email and password.');
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
-      await login(email.trim(), password);
+      await login(email.trim().toLowerCase(), password);
     } catch (err: any) {
       setError(
-        err.message ||
-          'Authentication failed. Please verify your corporate credentials.'
+        err.message || 'Authentication failed. Please verify your credentials and try again.'
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const setTestAccount = (userEmail: string, userPass: string) => {
-    setEmail(userEmail);
-    setPassword(userPass);
-    setError(null);
-  };
-
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {onBackToExplore && (
+            <TouchableOpacity
+              style={[styles.backBtn, { borderColor: theme.cardBorder }]}
+              onPress={onBackToExplore}
+            >
+              <Ionicons name="chevron-back" size={20} color={theme.textPrimary} />
+            </TouchableOpacity>
+          )}
+
           <View style={styles.brandContainer}>
             <View style={styles.logoBadge}>
-              <Ionicons name="business" size={28} color={colors.brassLight} />
+              <Ionicons name="business" size={30} color="#FFFFFF" />
             </View>
-            <Text style={styles.brandTitle}>AURA</Text>
-            <Text style={styles.brandSubtitle}>EXECUTIVE COWORKING PLATFORM</Text>
-            <Text style={styles.tagline}>
-              Mobile Client Portal • Meeting Room Reservations & Quotas
+            <Text style={[styles.brandTitle, { color: theme.textPrimary }]}>
+              Hubbly <Text style={{ color: '#00A859' }}>Coworking</Text>
+            </Text>
+            <Text style={[styles.brandSubtitle, { color: theme.textSecondary }]}>
+              Sign in to manage bookings, teams & quotas
             </Text>
           </View>
 
           {error && (
-            <View style={styles.errorBox}>
-              <Ionicons name="alert-circle" size={18} color={colors.danger} />
-              <View style={{ flex: 1, marginLeft: 8 }}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
+            <View style={[styles.errorBox, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2' }]}>
+              <Ionicons name="alert-circle" size={18} color="#EF4444" />
+              <Text style={styles.errorText}>{error}</Text>
             </View>
           )}
 
-          <View style={styles.formCard}>
+          <View
+            style={[
+              styles.formCard,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.cardBorder
+              }
+            ]}
+          >
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Corporate Email</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Email Address</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  {
+                    backgroundColor: theme.inputBg,
+                    borderColor: theme.inputBorder
+                  }
+                ]}
+              >
+                <Ionicons
+                  name="mail-outline"
+                  size={18}
+                  color={theme.textMuted}
+                  style={styles.inputIcon}
+                />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: theme.textPrimary }]}
                   placeholder="name@company.com"
-                  placeholderTextColor={colors.textMuted}
+                  placeholderTextColor={theme.textMuted}
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(val) => {
+                    setEmail(val);
+                    if (error) setError(null);
+                  }}
                   autoCapitalize="none"
+                  autoCorrect={false}
                   keyboardType="email-address"
                 />
               </View>
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Password</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  {
+                    backgroundColor: theme.inputBg,
+                    borderColor: theme.inputBorder
+                  }
+                ]}
+              >
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={18}
+                  color={theme.textMuted}
+                  style={styles.inputIcon}
+                />
                 <TextInput
-                  style={styles.input}
-                  placeholder="••••••••••••"
-                  placeholderTextColor={colors.textMuted}
+                  style={[styles.input, { color: theme.textPrimary }]}
+                  placeholder="Enter your password"
+                  placeholderTextColor={theme.textMuted}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(val) => {
+                    setPassword(val);
+                    if (error) setError(null);
+                  }}
                   secureTextEntry={!showPassword}
+                  autoCapitalize="none"
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeButton}
+                  style={styles.eyeIcon}
                 >
                   <Ionicons
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                     size={18}
-                    color={colors.textMuted}
+                    color={theme.textMuted}
                   />
                 </TouchableOpacity>
               </View>
             </View>
 
             <TouchableOpacity
+              style={[
+                styles.submitButton,
+                loading && { opacity: 0.7 }
+              ]}
               onPress={handleLogin}
               disabled={loading}
-              style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-              activeOpacity={0.8}
+              activeOpacity={0.88}
             >
               {loading ? (
-                <ActivityIndicator color="#090D16" size="small" />
+                <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={styles.loginButtonText}>Sign In to Workspace</Text>
+                <Text style={styles.submitButtonText}>Sign In</Text>
               )}
             </TouchableOpacity>
           </View>
 
-          <View style={styles.demoSection}>
-            <Text style={styles.demoTitle}>QUICK FILL PRODUCTION ACCOUNTS</Text>
-
+          {onBackToExplore && (
             <TouchableOpacity
-              onPress={() => setTestAccount('aptapace@gmail.com', 'Apta@2026')}
-              style={[
-                styles.demoButton,
-                email === 'aptapace@gmail.com' && styles.demoButtonActive
-              ]}
+              style={styles.guestLink}
+              onPress={onBackToExplore}
+              activeOpacity={0.7}
             >
-              <View style={styles.demoRow}>
-                <View style={styles.demoDotClient} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.demoName}>Client Owner (Aptapace Private Limited)</Text>
-                  <Text style={styles.demoEmail}>aptapace@gmail.com • 20h Monthly Allowance</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={14} color={colors.brassLight} />
-              </View>
+              <Ionicons name="compass-outline" size={16} color="#00A859" style={{ marginRight: 6 }} />
+              <Text style={styles.guestLinkText}>Continue as Guest / Explore Nearby</Text>
             </TouchableOpacity>
+          )}
 
-            <TouchableOpacity
-              onPress={() => setTestAccount('client@aptapace.com', 'Client@123')}
-              style={[
-                styles.demoButton,
-                email === 'client@aptapace.com' && styles.demoButtonActive
-              ]}
-            >
-              <View style={styles.demoRow}>
-                <View style={styles.demoDotClient} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.demoName}>Client Member (Aptapace Team)</Text>
-                  <Text style={styles.demoEmail}>client@aptapace.com • Booking Manager</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={14} color={colors.brassLight} />
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setTestAccount('support@cwsone.com', 'Cws@2026')}
-              style={[
-                styles.demoButton,
-                email === 'support@cwsone.com' && styles.demoButtonActive
-              ]}
-            >
-              <View style={styles.demoRow}>
-                <View style={styles.demoDotAdmin} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.demoName}>Coworking Admin (CWS ONE)</Text>
-                  <Text style={styles.demoEmail}>support@cwsone.com • Facility Hub Director</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={14} color={colors.brassLight} />
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setTestAccount('paidynikhil@gmail.com', 'Nikhil@123')}
-              style={[
-                styles.demoButton,
-                email === 'paidynikhil@gmail.com' && styles.demoButtonActive
-              ]}
-            >
-              <View style={styles.demoRow}>
-                <View style={styles.demoDotSuper} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.demoName}>Platform Super Admin (Nikhil Paidy)</Text>
-                  <Text style={styles.demoEmail}>paidynikhil@gmail.com • Global Governance</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={14} color={colors.brassLight} />
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.footerNote}>
-            <Text style={styles.footerText}>CWS ONE Workspace Ecosystem • Powered by Aura OS</Text>
-          </View>
+          <Text style={[styles.securityNotice, { color: theme.textMuted }]}>
+            Protected by enterprise encryption • Hubbly Coworking Platform
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -215,189 +209,141 @@ export const LoginScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   safeArea: {
-    flex: 1,
-    backgroundColor: colors.background
+    flex: 1
   },
   keyboardView: {
     flex: 1
   },
   scrollContent: {
-    padding: 24,
-    justifyContent: 'center',
-    minHeight: '100%'
+    flexGrow: 1,
+    paddingHorizontal: 22,
+    paddingBottom: 30,
+    justifyContent: 'center'
   },
-  brandContainer: {
-    alignItems: 'center',
-    marginBottom: 32
-  },
-  logoBadge: {
-    width: 60,
-    height: 60,
+  backBtn: {
+    alignSelf: 'flex-start',
+    width: 40,
+    height: 40,
     borderRadius: 20,
-    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16
   },
+  brandContainer: {
+    alignItems: 'center',
+    marginBottom: 24
+  },
+  logoBadge: {
+    width: 58,
+    height: 58,
+    borderRadius: 20,
+    backgroundColor: '#00A859',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+    shadowColor: '#00A859',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 4
+  },
   brandTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
-    color: colors.brassLight,
-    letterSpacing: 4
+    letterSpacing: -0.5,
+    marginBottom: 6
   },
   brandSubtitle: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 2,
-    marginTop: 4
-  },
-  tagline: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 8,
+    fontSize: 14,
     textAlign: 'center'
   },
   errorBox: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    alignItems: 'center',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    padding: 14,
-    marginBottom: 20
+    borderColor: '#FCA5A5',
+    padding: 12,
+    marginBottom: 18
   },
   errorText: {
+    color: '#DC2626',
     fontSize: 13,
-    color: colors.danger,
-    lineHeight: 18
+    marginLeft: 8,
+    flex: 1,
+    fontWeight: '500'
   },
   formCard: {
-    backgroundColor: colors.card,
-    borderRadius: 20,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: colors.cardBorder,
-    padding: 20,
-    marginBottom: 24
+    padding: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2
   },
   inputGroup: {
     marginBottom: 18
   },
   label: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-    color: colors.textMuted,
-    marginBottom: 8,
-    textTransform: 'uppercase'
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.inputBg,
-    borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
-    paddingHorizontal: 12,
-    height: 48
+    borderRadius: 14,
+    height: 50,
+    paddingHorizontal: 14
   },
   inputIcon: {
     marginRight: 10
   },
   input: {
     flex: 1,
-    color: colors.textPrimary,
-    fontSize: 14
+    fontSize: 15,
+    height: '100%'
   },
-  eyeButton: {
+  eyeIcon: {
     padding: 6
   },
-  loginButton: {
-    backgroundColor: colors.brassLight,
-    borderRadius: 12,
-    height: 48,
+  submitButton: {
+    backgroundColor: '#00A859',
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8
-  },
-  loginButtonDisabled: {
-    opacity: 0.6
-  },
-  loginButtonText: {
-    color: '#090D16',
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.5
-  },
-  demoSection: {
-    marginBottom: 24
-  },
-  demoTitle: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-    color: colors.textMuted,
-    marginBottom: 12,
-    textAlign: 'center'
-  },
-  demoButton: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    padding: 12,
-    marginBottom: 8
-  },
-  demoButtonActive: {
-    borderColor: colors.brass,
-    backgroundColor: 'rgba(217, 168, 92, 0.08)'
-  },
-  demoRow: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  demoDotClient: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.success,
-    marginRight: 10
-  },
-  demoDotAdmin: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.brassLight,
-    marginRight: 10
-  },
-  demoDotSuper: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#8B5CF6',
-    marginRight: 10
-  },
-  demoName: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textPrimary
-  },
-  demoEmail: {
-    fontSize: 11,
-    color: colors.textMuted,
-    marginTop: 2
-  },
-  footerNote: {
-    alignItems: 'center',
     marginTop: 8,
-    marginBottom: 24
+    shadowColor: '#00A859',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 4
   },
-  footerText: {
-    fontSize: 11,
-    color: colors.textMuted,
-    textAlign: 'center'
+  submitButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700'
+  },
+  guestLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    paddingVertical: 8
+  },
+  guestLinkText: {
+    color: '#00A859',
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  securityNotice: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 24
   }
 });

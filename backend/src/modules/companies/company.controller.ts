@@ -7,6 +7,7 @@ import { AppError } from '../../middleware/errorHandler.js';
 import { UserRole } from '../../types/index.js';
 import { createAuditLog } from '../audit-logs/audit-log.service.js';
 import { getBillingPeriod } from '../../utils/date.js';
+import { sendClientWelcomeEmail } from '../../utils/email.service.js';
 import bcrypt from 'bcryptjs';
 
 export async function getCompanies(req: Request, res: Response, next: NextFunction) {
@@ -102,8 +103,9 @@ export async function createCompany(req: Request, res: Response, next: NextFunct
     });
 
     let ownerUser = null;
-    if (ownerEmail && ownerPassword) {
-      const passwordHash = await bcrypt.hash(ownerPassword, 10);
+    if (ownerEmail) {
+      const generatedPassword = ownerPassword || `Client@${Math.floor(1000 + Math.random() * 9000)}`;
+      const passwordHash = await bcrypt.hash(generatedPassword, 10);
       ownerUser = await User.create({
         email: ownerEmail.toLowerCase().trim(),
         passwordHash,
@@ -113,6 +115,14 @@ export async function createCompany(req: Request, res: Response, next: NextFunct
         companyId: company._id,
         isActive: true
       });
+
+      sendClientWelcomeEmail({
+        to: ownerEmail.toLowerCase().trim(),
+        companyName: company.name,
+        clientName: ownerName || company.name + ' Admin',
+        email: ownerEmail.toLowerCase().trim(),
+        temporaryPassword: generatedPassword
+      }).catch(() => {});
     }
 
     await createAuditLog({
