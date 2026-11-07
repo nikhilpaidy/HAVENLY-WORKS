@@ -15,7 +15,6 @@ import { mobileApi } from '../services/api';
 import { useTheme } from '../theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
-import { SafeImage } from '../components/SafeImage';
 import { ListRowSkeleton } from '../components/SkeletonLoader';
 import { RoomReviewModal } from '../components/RoomReviewModal';
 import { Header } from '../components/Header';
@@ -34,9 +33,20 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
   const { user } = useAuth();
   const { theme, isDark } = useTheme();
 
-  const isCoworkingAdmin = user?.role === 'COWORKING_ADMIN';
+  const role = user?.role;
+  const isSuperAdmin = role === 'SUPER_ADMIN';
+  const isCoworkingAdmin = role === 'COWORKING_ADMIN';
+  const isManagerRole = isSuperAdmin || isCoworkingAdmin;
 
+  const [viewMode, setViewMode] = useState<'HIERARCHY' | 'ALL_FEED'>('HIERARCHY');
   const [activeTab, setActiveTab] = useState<'ONGOING' | 'COMPLETED' | 'CANCELLED'>('ONGOING');
+
+  const [superAdminAdmins, setSuperAdminAdmins] = useState<any[]>([]);
+  const [selectedAdmin, setSelectedAdmin] = useState<any | null>(null);
+
+  const [adminCompanies, setAdminCompanies] = useState<any[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState<any | null>(null);
+
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -49,9 +59,28 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
   const [reviewRoomName, setReviewRoomName] = useState('');
   const [reviewBookingId, setReviewBookingId] = useState('');
 
+  const loadHierarchyData = async () => {
+    try {
+      if (isSuperAdmin) {
+        const admins = await mobileApi.getSuperAdminAdmins();
+        setSuperAdminAdmins(admins || []);
+      } else if (isCoworkingAdmin) {
+        const comps = await mobileApi.getCompanies();
+        setAdminCompanies(comps || []);
+      }
+    } catch (err) {
+      console.warn('Hierarchy load error:', err);
+    }
+  };
+
   const fetchBookings = async () => {
     try {
-      const data = await mobileApi.getBookings({ tab: activeTab });
+      setLoading(true);
+      const params: any = { tab: activeTab };
+      if (isManagerRole && viewMode === 'HIERARCHY' && selectedCompany) {
+        params.companyId = selectedCompany._id;
+      }
+      const data = await mobileApi.getBookings(params);
       setBookings(data || []);
     } catch (err) {
       console.warn('Failed to load bookings:', err);
@@ -62,11 +91,23 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
   };
 
   useEffect(() => {
-    fetchBookings();
-  }, [activeTab]);
+    loadHierarchyData();
+  }, [role]);
+
+  useEffect(() => {
+    if (!isManagerRole || viewMode === 'ALL_FEED' || (viewMode === 'HIERARCHY' && selectedCompany)) {
+      fetchBookings();
+    } else {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [activeTab, viewMode, selectedCompany]);
 
   const onRefresh = () => {
     setRefreshing(true);
+    if (isManagerRole) {
+      loadHierarchyData();
+    }
     fetchBookings();
   };
 
@@ -120,6 +161,7 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
   const renderBookingCard = ({ item }: { item: any }) => {
     const room = item.roomId || {};
     const loc = item.locationId || {};
+    const company = item.companyId || {};
     const isPending = item.status === 'PENDING_CONFIRMATION';
     const isRemindActive = reminders[item._id] ?? true;
 
@@ -138,6 +180,15 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
           )}
         </View>
 
+        {isManagerRole && company.name && (
+          <View style={styles.companyBadgeRow}>
+            <Ionicons name="business" size={13} color="#00A859" style={{ marginRight: 5 }} />
+            <Text style={[styles.companyBadgeText, { color: theme.textSecondary }]}>
+              Client: <Text style={{ fontWeight: '700', color: theme.textPrimary }}>{company.name}</Text>
+            </Text>
+          </View>
+        )}
+
         <Text style={[styles.spaceName, { color: theme.textPrimary }]}>
           {room.name || item.title}
         </Text>
@@ -154,6 +205,7 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
           <TouchableOpacity
             style={styles.adminConfirmBtn}
             onPress={() => handleConfirmGuest(item)}
+            activeOpacity={0.8}
           >
             <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
             <Text style={styles.adminConfirmText}>Verify QR & Confirm Booking</Text>
@@ -200,6 +252,7 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
           <TouchableOpacity
             style={styles.cancelLink}
             onPress={() => handleCancelBooking(item)}
+            activeOpacity={0.8}
           >
             <Text style={styles.cancelLinkText}>Cancel Booking</Text>
           </TouchableOpacity>
@@ -208,59 +261,404 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
     );
   };
 
+  const renderSuperAdminDrill = () => {
+    if (!selectedAdmin) {
+      return (
+        <ScrollView
+          style={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
+        >
+          <View style={styles.sectionHeaderCard}>
+            <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
+              Coworking Operators ({superAdminAdmins.length})
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+              Select an operator to inspect their client companies & reservations
+            </Text>
+          </View>
+
+          {superAdminAdmins.map((adm) => (
+            <TouchableOpacity
+              key={adm._id}
+              style={[styles.hierarchyCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
+              onPress={() => setSelectedAdmin(adm)}
+              activeOpacity={0.85}
+            >
+              <View style={styles.hierarchyAvatar}>
+                <Ionicons name="business" size={22} color="#00A859" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.hierarchyTitle, { color: theme.textPrimary }]}>{adm.name}</Text>
+                <Text style={[styles.hierarchySub, { color: theme.textMuted }]}>{adm.email}</Text>
+                <Text style={{ fontSize: 12, color: '#00A859', fontWeight: '700', marginTop: 2 }}>
+                  {adm.organizationId?.name || 'Coworking Hub'}
+                </Text>
+                <View style={styles.miniStatsRow}>
+                  <Text style={[styles.miniStatPill, { color: theme.textSecondary }]}>
+                    {adm.locations?.length || 0} Hubs
+                  </Text>
+                  <Text style={[styles.miniStatPill, { color: theme.textSecondary }]}>
+                    {adm.companies?.length || 0} Client Companies
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={theme.textMuted} />
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      );
+    }
+
+    if (!selectedCompany) {
+      const companies = selectedAdmin.companies || [];
+      return (
+        <ScrollView
+          style={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
+        >
+          <TouchableOpacity
+            style={styles.backBreadcrumb}
+            onPress={() => setSelectedAdmin(null)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="arrow-back" size={16} color="#00A859" style={{ marginRight: 6 }} />
+            <Text style={styles.backBreadcrumbText}>Back to All Operators</Text>
+          </TouchableOpacity>
+
+          <View style={styles.sectionHeaderCard}>
+            <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
+              {selectedAdmin.name} - Client Companies ({companies.length})
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+              Select a client company to view their ongoing, completed & cancelled bookings
+            </Text>
+          </View>
+
+          {companies.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="people-outline" size={44} color={theme.textMuted} />
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                No client companies onboarded for this operator.
+              </Text>
+            </View>
+          ) : (
+            companies.map((comp: any) => (
+              <TouchableOpacity
+                key={comp._id}
+                style={[styles.hierarchyCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
+                onPress={() => setSelectedCompany(comp)}
+                activeOpacity={0.85}
+              >
+                <View style={styles.hierarchyAvatar}>
+                  <Ionicons name="briefcase" size={20} color="#00A859" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.hierarchyTitle, { color: theme.textPrimary }]}>{comp.name}</Text>
+                  <Text style={[styles.hierarchySub, { color: theme.textMuted }]}>{comp.billingEmail}</Text>
+                  <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                    Hub: {comp.locationId?.name || 'Assigned Location'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={theme.textMuted} />
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
+      );
+    }
+
+    return (
+      <View style={{ flex: 1 }}>
+        <TouchableOpacity
+          style={styles.backBreadcrumb}
+          onPress={() => setSelectedCompany(null)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="arrow-back" size={16} color="#00A859" style={{ marginRight: 6 }} />
+          <Text style={styles.backBreadcrumbText}>Back to {selectedAdmin.name} Clients</Text>
+        </TouchableOpacity>
+
+        <View style={[styles.tabBar, { borderBottomColor: theme.cardBorder }]}>
+          {(['ONGOING', 'COMPLETED', 'CANCELLED'] as const).map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.tabItem, activeTab === tab && styles.tabItemActive]}
+              onPress={() => setActiveTab(tab)}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: activeTab === tab ? '#00A859' : theme.textSecondary },
+                  activeTab === tab && { fontWeight: '700' }
+                ]}
+              >
+                {tab === 'ONGOING' ? 'Ongoing' : tab === 'COMPLETED' ? 'Completed' : 'Cancelled'}
+              </Text>
+              {activeTab === tab && <View style={styles.tabIndicator} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {loading ? (
+          <View style={{ padding: 20 }}>
+            <ListRowSkeleton />
+            <ListRowSkeleton />
+          </View>
+        ) : bookings.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="calendar-outline" size={44} color={theme.textMuted} />
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              No {activeTab.toLowerCase()} reservations for {selectedCompany.name}.
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={bookings}
+            keyExtractor={(item) => item._id}
+            renderItem={renderBookingCard}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
+          />
+        )}
+      </View>
+    );
+  };
+
+  const renderCoworkingAdminDrill = () => {
+    if (!selectedCompany) {
+      return (
+        <ScrollView
+          style={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
+        >
+          <View style={styles.sectionHeaderCard}>
+            <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
+              Client Companies ({adminCompanies.length})
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+              Select a client to inspect their reservations or switch to All Feed
+            </Text>
+          </View>
+
+          {adminCompanies.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="people-outline" size={44} color={theme.textMuted} />
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                No client companies registered yet.
+              </Text>
+            </View>
+          ) : (
+            adminCompanies.map((comp) => (
+              <TouchableOpacity
+                key={comp._id}
+                style={[styles.hierarchyCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
+                onPress={() => setSelectedCompany(comp)}
+                activeOpacity={0.85}
+              >
+                <View style={styles.hierarchyAvatar}>
+                  <Ionicons name="business" size={20} color="#00A859" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.hierarchyTitle, { color: theme.textPrimary }]}>{comp.name}</Text>
+                  <Text style={[styles.hierarchySub, { color: theme.textMuted }]}>{comp.billingEmail}</Text>
+                  <Text style={{ fontSize: 12, color: '#00A859', fontWeight: '700', marginTop: 2 }}>
+                    Allowance: {comp.allowanceConfig?.annualFreeHours || 240}h / yr
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={theme.textMuted} />
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
+      );
+    }
+
+    return (
+      <View style={{ flex: 1 }}>
+        <TouchableOpacity
+          style={styles.backBreadcrumb}
+          onPress={() => setSelectedCompany(null)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="arrow-back" size={16} color="#00A859" style={{ marginRight: 6 }} />
+          <Text style={styles.backBreadcrumbText}>Back to All Client Companies</Text>
+        </TouchableOpacity>
+
+        <View style={[styles.tabBar, { borderBottomColor: theme.cardBorder }]}>
+          {(['ONGOING', 'COMPLETED', 'CANCELLED'] as const).map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.tabItem, activeTab === tab && styles.tabItemActive]}
+              onPress={() => setActiveTab(tab)}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: activeTab === tab ? '#00A859' : theme.textSecondary },
+                  activeTab === tab && { fontWeight: '700' }
+                ]}
+              >
+                {tab === 'ONGOING' ? 'Ongoing' : tab === 'COMPLETED' ? 'Completed' : 'Cancelled'}
+              </Text>
+              {activeTab === tab && <View style={styles.tabIndicator} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {loading ? (
+          <View style={{ padding: 20 }}>
+            <ListRowSkeleton />
+            <ListRowSkeleton />
+          </View>
+        ) : bookings.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="calendar-outline" size={44} color={theme.textMuted} />
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              No {activeTab.toLowerCase()} reservations for {selectedCompany.name}.
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={bookings}
+            keyExtractor={(item) => item._id}
+            renderItem={renderBookingCard}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
+          />
+        )}
+      </View>
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header
-        title="My Bookings"
-        subtitle="Reservations & History"
+        title={isSuperAdmin ? 'Platform Bookings' : isCoworkingAdmin ? 'Hub Bookings' : 'My Bookings'}
+        subtitle={
+          isSuperAdmin
+            ? 'Operator & Client Governance'
+            : isCoworkingAdmin
+            ? 'Client Reservations & Call Verification'
+            : 'Reservations & Quota Usage'
+        }
         onOpenDrawer={onOpenDrawer}
         unreadNotifsCount={unreadNotifsCount}
         onOpenNotifications={onOpenNotifications}
       />
 
-      <View style={[styles.tabBar, { borderBottomColor: theme.cardBorder }]}>
-        {(['ONGOING', 'COMPLETED', 'CANCELLED'] as const).map((tab) => (
+      {isManagerRole && (
+        <View style={styles.modeToggleRow}>
           <TouchableOpacity
-            key={tab}
-            style={[styles.tabItem, activeTab === tab && styles.tabItemActive]}
-            onPress={() => setActiveTab(tab)}
+            style={[
+              styles.modePill,
+              viewMode === 'HIERARCHY' && styles.modePillActive,
+              { borderColor: theme.cardBorder }
+            ]}
+            onPress={() => {
+              setViewMode('HIERARCHY');
+              setSelectedCompany(null);
+            }}
+            activeOpacity={0.8}
           >
+            <Ionicons
+              name="git-network-outline"
+              size={14}
+              color={viewMode === 'HIERARCHY' ? '#FFFFFF' : theme.textSecondary}
+              style={{ marginRight: 6 }}
+            />
             <Text
               style={[
-                styles.tabText,
-                { color: activeTab === tab ? '#00A859' : theme.textSecondary },
-                activeTab === tab && { fontWeight: '700' }
+                styles.modePillText,
+                { color: viewMode === 'HIERARCHY' ? '#FFFFFF' : theme.textSecondary }
               ]}
             >
-              {tab === 'ONGOING' ? 'Ongoing' : tab === 'COMPLETED' ? 'Completed' : 'Cancelled'}
+              {isSuperAdmin ? 'Operators Hierarchy' : 'Clients Drilldown'}
             </Text>
-            {activeTab === tab && <View style={styles.tabIndicator} />}
           </TouchableOpacity>
-        ))}
-      </View>
 
-      {loading ? (
-        <View style={{ padding: 20 }}>
-          <ListRowSkeleton />
-          <ListRowSkeleton />
-          <ListRowSkeleton />
+          <TouchableOpacity
+            style={[
+              styles.modePill,
+              viewMode === 'ALL_FEED' && styles.modePillActive,
+              { borderColor: theme.cardBorder }
+            ]}
+            onPress={() => setViewMode('ALL_FEED')}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="list-outline"
+              size={14}
+              color={viewMode === 'ALL_FEED' ? '#FFFFFF' : theme.textSecondary}
+              style={{ marginRight: 6 }}
+            />
+            <Text
+              style={[
+                styles.modePillText,
+                { color: viewMode === 'ALL_FEED' ? '#FFFFFF' : theme.textSecondary }
+              ]}
+            >
+              All Clients Feed
+            </Text>
+          </TouchableOpacity>
         </View>
-      ) : bookings.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="calendar-outline" size={48} color={theme.textMuted} />
-          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-            No {activeTab.toLowerCase()} bookings found.
-          </Text>
-        </View>
+      )}
+
+      {isSuperAdmin && viewMode === 'HIERARCHY' ? (
+        renderSuperAdminDrill()
+      ) : isCoworkingAdmin && viewMode === 'HIERARCHY' ? (
+        renderCoworkingAdminDrill()
       ) : (
-        <FlatList
-          data={bookings}
-          keyExtractor={(item) => item._id}
-          renderItem={renderBookingCard}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
-        />
+        <View style={{ flex: 1 }}>
+          <View style={[styles.tabBar, { borderBottomColor: theme.cardBorder }]}>
+            {(['ONGOING', 'COMPLETED', 'CANCELLED'] as const).map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tabItem, activeTab === tab && styles.tabItemActive]}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    { color: activeTab === tab ? '#00A859' : theme.textSecondary },
+                    activeTab === tab && { fontWeight: '700' }
+                  ]}
+                >
+                  {tab === 'ONGOING' ? 'Ongoing' : tab === 'COMPLETED' ? 'Completed' : 'Cancelled'}
+                </Text>
+                {activeTab === tab && <View style={styles.tabIndicator} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {loading ? (
+            <View style={{ padding: 20 }}>
+              <ListRowSkeleton />
+              <ListRowSkeleton />
+              <ListRowSkeleton />
+            </View>
+          ) : bookings.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="calendar-outline" size={48} color={theme.textMuted} />
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                No {activeTab.toLowerCase()} bookings found.
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={bookings}
+              keyExtractor={(item) => item._id}
+              renderItem={renderBookingCard}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
+            />
+          )}
+        </View>
       )}
 
       <Modal
@@ -299,46 +697,52 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
               </View>
 
               <View style={styles.receiptRow}>
-                <Text style={[styles.receiptLabel, { color: theme.textMuted }]}>Date & Time</Text>
+                <Text style={[styles.receiptLabel, { color: theme.textMuted }]}>Start Time</Text>
                 <Text style={[styles.receiptValue, { color: theme.textPrimary }]}>
                   {formatDate(selectedReceipt?.startTime)}
                 </Text>
               </View>
 
               <View style={styles.receiptRow}>
-                <Text style={[styles.receiptLabel, { color: theme.textMuted }]}>Status</Text>
-                <Text style={{ fontWeight: '700', color: selectedReceipt?.status === 'CANCELLED' ? '#EF4444' : '#00A859' }}>
-                  {selectedReceipt?.status}
+                <Text style={[styles.receiptLabel, { color: theme.textMuted }]}>End Time</Text>
+                <Text style={[styles.receiptValue, { color: theme.textPrimary }]}>
+                  {formatDate(selectedReceipt?.endTime)}
                 </Text>
               </View>
 
               <View style={styles.receiptRow}>
-                <Text style={[styles.receiptLabel, { color: theme.textMuted }]}>Payment Method</Text>
+                <Text style={[styles.receiptLabel, { color: theme.textMuted }]}>Attendees</Text>
                 <Text style={[styles.receiptValue, { color: theme.textPrimary }]}>
-                  {selectedReceipt?.paymentMethod || 'UPI QR Code'}
+                  {selectedReceipt?.attendeeCount || 1} Person
                 </Text>
               </View>
 
-              <View style={[styles.receiptTotalBox, { backgroundColor: isDark ? '#0A0F1D' : '#F0FDF4' }]}>
-                <Text style={{ fontSize: 13, color: '#166534', fontWeight: '600' }}>Amount Paid / Quota</Text>
-                <Text style={styles.receiptTotalAmount}>
-                  ₹{(selectedReceipt?.pricingSnapshot?.totalAmount || 0).toLocaleString('en-IN')}
+              <View style={styles.receiptRow}>
+                <Text style={[styles.receiptLabel, { color: theme.textMuted }]}>Status</Text>
+                <Text style={[styles.receiptValue, { color: '#00A859', fontWeight: '800' }]}>
+                  {selectedReceipt?.status}
                 </Text>
               </View>
-
-              <Text style={{ fontSize: 11, color: theme.textMuted, textAlign: 'center', marginTop: 14 }}>
-                Show this digital receipt upon entry at the reception desk.
-              </Text>
             </ScrollView>
+
+            <TouchableOpacity
+              style={styles.closeReceiptBtn}
+              onPress={() => setSelectedReceipt(null)}
+              activeOpacity={0.88}
+            >
+              <Text style={styles.closeReceiptBtnText}>Done</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
+
       <RoomReviewModal
         visible={reviewModalVisible}
+        onClose={() => setReviewModalVisible(false)}
         roomId={reviewRoomId}
         roomName={reviewRoomName}
         bookingId={reviewBookingId}
-        onClose={() => setReviewModalVisible(false)}
+        onReviewSubmitted={() => fetchBookings()}
       />
     </View>
   );
@@ -348,33 +752,88 @@ const styles = StyleSheet.create({
   container: {
     flex: 1
   },
-  header: {
+  modeToggleRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    gap: 10
+  },
+  modePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1
+  },
+  modePillActive: {
+    backgroundColor: '#00A859',
+    borderColor: '#00A859'
+  },
+  modePillText: {
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  backBreadcrumb: {
+    flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 10
+    paddingVertical: 10
   },
-  headerTitle: {
-    fontSize: 22,
+  backBreadcrumbText: {
+    color: '#00A859',
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  sectionHeaderCard: {
+    paddingHorizontal: 20,
+    marginBottom: 12
+  },
+  sectionHeading: {
+    fontSize: 16,
     fontWeight: '800'
   },
-  notifBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  sectionSubtitle: {
+    fontSize: 12,
+    marginTop: 2
+  },
+  hierarchyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 12,
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1
+  },
+  hierarchyAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,168,89,0.12)',
     alignItems: 'center',
     justifyContent: 'center'
   },
-  unreadDot: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444'
+  hierarchyTitle: {
+    fontSize: 15,
+    fontWeight: '700'
+  },
+  hierarchySub: {
+    fontSize: 12,
+    marginTop: 1
+  },
+  miniStatsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6
+  },
+  miniStatPill: {
+    fontSize: 11,
+    fontWeight: '600',
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6
   },
   tabBar: {
     flexDirection: 'row',
@@ -389,7 +848,7 @@ const styles = StyleSheet.create({
   tabItemActive: {},
   tabText: {
     fontSize: 14,
-    fontWeight: '600'
+    fontWeight: '500'
   },
   tabIndicator: {
     position: 'absolute',
@@ -402,7 +861,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 20,
-    paddingBottom: 90
+    paddingBottom: 100
   },
   card: {
     borderRadius: 20,
@@ -419,27 +878,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10
+    marginBottom: 8
   },
   typeBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 12
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8
   },
   typeBadgeText: {
-    fontSize: 12,
-    fontWeight: '700'
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase'
   },
   pendingTag: {
     backgroundColor: '#FEF3C7',
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: 8
   },
   pendingTagText: {
-    color: '#B45309',
+    color: '#D97706',
     fontSize: 11,
-    fontWeight: '600'
+    fontWeight: '700'
+  },
+  companyBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6
+  },
+  companyBadgeText: {
+    fontSize: 12
   },
   spaceName: {
     fontSize: 17,
@@ -448,19 +916,33 @@ const styles = StyleSheet.create({
   },
   addressText: {
     fontSize: 13,
-    marginBottom: 14
+    marginBottom: 12
   },
   timeSection: {
-    marginBottom: 16
+    marginBottom: 14
   },
   timeLabel: {
-    fontSize: 12,
-    fontWeight: '500'
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 2
   },
   timeValue: {
     fontSize: 14,
+    fontWeight: '700'
+  },
+  adminConfirmBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#D97706',
+    paddingVertical: 9,
+    borderRadius: 12,
+    marginBottom: 12
+  },
+  adminConfirmText: {
+    color: '#FFFFFF',
     fontWeight: '700',
-    marginTop: 2
+    fontSize: 12
   },
   cardFooter: {
     flexDirection: 'row',
@@ -469,39 +951,37 @@ const styles = StyleSheet.create({
   },
   receiptBtn: {
     backgroundColor: '#00A859',
-    paddingHorizontal: 22,
-    paddingVertical: 10,
-    borderRadius: 20
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12
   },
   receiptBtnText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700'
   },
+  remindRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  remindText: {
+    fontSize: 13,
+    fontWeight: '500'
+  },
   rateReviewBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FEF3C7',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
     paddingVertical: 9,
     borderRadius: 12,
-    marginTop: 10
+    marginTop: 12
   },
   rateReviewBtnText: {
-    color: '#B45309',
-    fontSize: 12,
-    fontWeight: '700'
-  },
-  remindRow: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  remindText: {
-    fontSize: 13,
-    fontWeight: '500',
-    marginRight: 8
+    color: '#D97706',
+    fontWeight: '700',
+    fontSize: 12
   },
   cancelLink: {
     alignSelf: 'center',
@@ -509,22 +989,8 @@ const styles = StyleSheet.create({
   },
   cancelLinkText: {
     color: '#EF4444',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600'
-  },
-  adminConfirmBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#059669',
-    paddingVertical: 10,
-    borderRadius: 14,
-    marginBottom: 12
-  },
-  adminConfirmText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 13
   },
   emptyContainer: {
     alignItems: 'center',
@@ -533,31 +999,31 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    marginTop: 10
+    marginTop: 12,
+    textAlign: 'center'
   },
   receiptBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end'
+    justifyContent: 'center',
+    padding: 20
   },
   receiptCard: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderRadius: 24,
     borderWidth: 1,
-    padding: 24,
-    paddingBottom: 40
+    padding: 20
   },
   receiptHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20
+    marginBottom: 16
   },
   receiptBadge: {
     color: '#00A859',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 0.5
+    letterSpacing: 1
   },
   receiptTitle: {
     fontSize: 18,
@@ -567,8 +1033,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.06)'
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.08)'
   },
   receiptLabel: {
     fontSize: 13
@@ -577,16 +1043,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600'
   },
-  receiptTotalBox: {
-    padding: 16,
-    borderRadius: 16,
+  closeReceiptBtn: {
+    backgroundColor: '#00A859',
+    height: 44,
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 16
   },
-  receiptTotalAmount: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#00A859',
-    marginTop: 4
+  closeReceiptBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700'
   }
 });

@@ -187,7 +187,26 @@ export const locationsApi = {
       method: 'POST',
       body: JSON.stringify({ imageBase64, upiId })
     });
-  }
+  },
+
+  createLocation: (payload: {
+    name: string;
+    address: {
+      street: string;
+      city: string;
+      state?: string;
+      country?: string;
+      postalCode?: string;
+    };
+    timezone?: string;
+    managerName?: string;
+    managerPhone?: string;
+    upiId?: string;
+  }) =>
+    request<any>('/locations', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
 };
 
 export const roomsApi = {
@@ -195,6 +214,22 @@ export const roomsApi = {
     const q = locationId ? `?locationId=${locationId}` : '';
     return request<any[]>(`/rooms${q}`);
   },
+
+  createRoom: (payload: {
+    name: string;
+    workspaceType: string;
+    capacity: number;
+    hourlyRate: number;
+    dailyRate?: number;
+    amenities?: string[];
+    description?: string;
+    locationId?: string;
+    photos?: string[];
+  }) =>
+    request<any>('/rooms', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
 
   getPublicRooms: (params: {
     workspaceType?: string;
@@ -308,7 +343,22 @@ export const bookingsApi = {
 };
 
 export const companiesApi = {
-  getCompanies: () => request<any[]>('/companies')
+  getCompanies: () => request<any[]>('/companies'),
+  createCompany: (payload: {
+    name: string;
+    billingEmail: string;
+    phone?: string;
+    gstin?: string;
+    pan?: string;
+    locationId?: string;
+    allowanceConfig?: {
+      annualFreeHours: number;
+    };
+  }) =>
+    request<any>('/companies', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
 };
 
 export const allowancesApi = {
@@ -489,6 +539,33 @@ export const mobileApi = {
       body: JSON.stringify(payload)
     }),
   getCompanies: companiesApi.getCompanies,
+  createCompany: companiesApi.createCompany,
+  createLocation: locationsApi.createLocation,
+  createRoom: roomsApi.createRoom,
+  createWorkspaceType: (payload: {
+    name: string;
+    code?: string;
+    description?: string;
+    capacityDefault?: number;
+    hourlyRateDefault?: number;
+    icon?: string;
+  }) =>
+    request<any>('/workspace-types', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+  getSupportContact: () => request<any>('/legal/support'),
+  updateSupportContact: (payload: {
+    supportHotline?: string;
+    supportEmail?: string;
+    emergencyContact?: string;
+    whatsappNumber?: string;
+    operatingHours?: string;
+  }) =>
+    request<any>('/legal/support', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    }),
   getSuperAdminAdmins: () => request<any[]>('/super-admin/admins'),
   getWorkspaceTypes: async () => {
     try {

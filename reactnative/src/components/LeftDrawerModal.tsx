@@ -9,7 +9,8 @@ import {
   Animated,
   ScrollView,
   TextInput,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -57,7 +58,28 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
   const { user, isGuest } = useAuth();
   const { theme, isDark, setThemeMode } = useTheme();
 
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isCoworkingAdmin = user?.role === 'COWORKING_ADMIN';
+  const isManagerRole = isSuperAdmin || isCoworkingAdmin;
+
   const [searchQuery, setSearchQuery] = useState('');
+
+  const [showOnboardModal, setShowOnboardModal] = useState(false);
+  const [compName, setCompName] = useState('');
+  const [compEmail, setCompEmail] = useState('');
+  const [compPhone, setCompPhone] = useState('');
+  const [compGstin, setCompGstin] = useState('');
+  const [compFreeHours, setCompFreeHours] = useState('240');
+  const [onboarding, setOnboarding] = useState(false);
+
+  const [showAddHubModal, setShowAddHubModal] = useState(false);
+  const [hubName, setHubName] = useState('');
+  const [hubStreet, setHubStreet] = useState('');
+  const [hubCity, setHubCity] = useState('Hyderabad');
+  const [hubManager, setHubManager] = useState('');
+  const [hubPhone, setHubPhone] = useState('');
+  const [hubUpi, setHubUpi] = useState('');
+  const [addingHub, setAddingHub] = useState(false);
 
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -98,6 +120,68 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
     setTimeout(callback, 220);
   };
 
+  const handleOnboardCompany = async () => {
+    if (!compName.trim() || !compEmail.trim()) {
+      Alert.alert('Validation Error', 'Company name and billing email are required.');
+      return;
+    }
+    setOnboarding(true);
+    try {
+      await mobileApi.createCompany({
+        name: compName.trim(),
+        billingEmail: compEmail.trim().toLowerCase(),
+        phone: compPhone.trim() || undefined,
+        gstin: compGstin.trim() || undefined,
+        allowanceConfig: {
+          annualFreeHours: parseInt(compFreeHours, 10) || 240
+        }
+      });
+      setShowOnboardModal(false);
+      setCompName('');
+      setCompEmail('');
+      setCompPhone('');
+      setCompGstin('');
+      Alert.alert('Company Registered', `Client company "${compName.trim()}" onboarded with ${compFreeHours} annual free hours.`);
+    } catch (err: any) {
+      Alert.alert('Registration Error', err.message || 'Could not onboard company.');
+    } finally {
+      setOnboarding(false);
+    }
+  };
+
+  const handleAddHub = async () => {
+    if (!hubName.trim() || !hubStreet.trim()) {
+      Alert.alert('Validation Error', 'Hub name and street address are required.');
+      return;
+    }
+    setAddingHub(true);
+    try {
+      await mobileApi.createLocation({
+        name: hubName.trim(),
+        address: {
+          street: hubStreet.trim(),
+          city: hubCity.trim() || 'Hyderabad',
+          country: 'India'
+        },
+        timezone: 'Asia/Kolkata',
+        managerName: hubManager.trim() || undefined,
+        managerPhone: hubPhone.trim() || undefined,
+        upiId: hubUpi.trim() || undefined
+      });
+      setShowAddHubModal(false);
+      setHubName('');
+      setHubStreet('');
+      setHubManager('');
+      setHubPhone('');
+      setHubUpi('');
+      Alert.alert('Coworking Hub Added', `Hub "${hubName.trim()}" published successfully.`);
+    } catch (err: any) {
+      Alert.alert('Create Error', err.message || 'Could not add coworking hub.');
+    } finally {
+      setAddingHub(false);
+    }
+  };
+
   const handleDeleteAccount = () => {
     Alert.alert(
       'Deactivate Account',
@@ -122,20 +206,25 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
     );
   };
 
+  const filterMatches = (title: string) => {
+    if (!searchQuery.trim()) return true;
+    return title.toLowerCase().includes(searchQuery.toLowerCase().trim());
+  };
+
   const getRoleLabel = () => {
-    if (isGuest || !user) return 'Guest Explorer';
-    switch (user.role) {
+    if (isGuest) return 'Guest';
+    switch (user?.role) {
       case 'SUPER_ADMIN':
         return 'Super Admin';
       case 'SUPER_ADMIN_STAFF':
         return 'Platform Staff';
       case 'COWORKING_ADMIN':
-        return 'Hub Admin';
+        return 'Coworking Admin';
       case 'COWORKING_ADMIN_STAFF':
         return 'Hub Staff';
       case 'COMPANY_OWNER':
         return 'Company Owner';
-      case 'COMPANY_STAFF':
+      case 'EMPLOYEE':
         return 'Company Staff';
       default:
         return 'Member';
@@ -146,11 +235,6 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
     user?.role === 'SUPER_ADMIN' ||
     user?.role === 'COWORKING_ADMIN' ||
     user?.role === 'COMPANY_OWNER';
-
-  const filterMatches = (label: string) => {
-    if (!searchQuery.trim()) return true;
-    return label.toLowerCase().includes(searchQuery.toLowerCase());
-  };
 
   return (
     <Modal
@@ -173,30 +257,26 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
             styles.drawerContent,
             {
               width: DRAWER_WIDTH,
-              backgroundColor: isDark ? '#0B1120' : '#FFFFFF',
-              borderColor: isDark ? '#1E293B' : '#E2E8F0',
+              backgroundColor: isDark ? '#0A0F1D' : '#FFFFFF',
+              borderRightColor: isDark ? '#1E293B' : '#E2E8F0',
               transform: [{ translateX: slideAnim }]
             }
           ]}
         >
-          <View style={styles.brandHeader}>
+          <View style={styles.header}>
             <View style={styles.brandRow}>
-              <HavenlyLogo width={36} height={36} color="#00A859" />
-              <View style={styles.brandTitleWrap}>
-                <Text style={[styles.brandTitle, { color: theme.textPrimary }]}>
-                  HavenlyWork
-                </Text>
-                <Text style={styles.brandTagline}>
-                  SPACE FOR TOGETHERNESS
-                </Text>
+              <HavenlyLogo variant="icon" size={32} />
+              <View style={{ marginLeft: 10 }}>
+                <Text style={[styles.brandName, { color: theme.textPrimary }]}>HavenlyWork</Text>
+                <Text style={styles.brandTagline}>SPACE FOR TOGETHERNESS</Text>
               </View>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={22} color={theme.textMuted} />
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
+              <Ionicons name="close" size={22} color={theme.textPrimary} />
             </TouchableOpacity>
           </View>
 
-          <View style={[styles.searchBox, { backgroundColor: isDark ? '#162032' : '#F8FAFC', borderColor: theme.inputBorder }]}>
+          <View style={[styles.searchBox, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
             <Ionicons name="search-outline" size={17} color={theme.textMuted} style={{ marginRight: 8 }} />
             <TextInput
               style={[styles.searchInput, { color: theme.textPrimary }]}
@@ -262,14 +342,14 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
                 onPress={() => handleAction(onOpenBookings)}
                 activeOpacity={0.7}
               >
-                <Ionicons name="calendar-outline" size={20} color={isDark ? '#94A3B8' : '#475569'} style={styles.itemIcon} />
+                <Ionicons name="bookmark-outline" size={20} color={isDark ? '#94A3B8' : '#475569'} style={styles.itemIcon} />
                 <Text style={[styles.itemLabel, { color: theme.textPrimary }]}>
-                  My Reservations
+                  {isSuperAdmin ? 'Platform Bookings' : isCoworkingAdmin ? 'Hub Bookings' : 'My Reservations'}
                 </Text>
               </TouchableOpacity>
             )}
 
-            {filterMatches('Workspace Quota Allowances') && (
+            {filterMatches('Allowance Quota Usage') && (
               <TouchableOpacity
                 style={styles.navItem}
                 onPress={() => handleAction(onOpenQuota)}
@@ -277,17 +357,43 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
               >
                 <Ionicons name="pie-chart-outline" size={20} color={isDark ? '#94A3B8' : '#475569'} style={styles.itemIcon} />
                 <Text style={[styles.itemLabel, { color: theme.textPrimary }]}>
-                  Allowance & Quota
+                  {isSuperAdmin ? 'Platform Quotas' : isCoworkingAdmin ? 'Client Quotas' : 'Allowance & Quota'}
                 </Text>
               </TouchableOpacity>
             )}
 
             <View style={[styles.divider, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]} />
 
-            {filterMatches('Operations Helpdesk Staff Invoices') && (
+            {filterMatches('Operations Helpdesk Staff Invoices Onboard Hub') && (
               <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
                 FACILITY OPERATIONS
               </Text>
+            )}
+
+            {isManagerRole && filterMatches('Onboard Client Company Registration') && (
+              <TouchableOpacity
+                style={styles.navItem}
+                onPress={() => setShowOnboardModal(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="business-outline" size={20} color="#00A859" style={styles.itemIcon} />
+                <Text style={[styles.itemLabel, { color: '#00A859', fontWeight: '700' }]}>
+                  + Onboard Client Company
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {isSuperAdmin && filterMatches('Add Coworking Hub Location') && (
+              <TouchableOpacity
+                style={styles.navItem}
+                onPress={() => setShowAddHubModal(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="map-outline" size={20} color="#0284C7" style={styles.itemIcon} />
+                <Text style={[styles.itemLabel, { color: '#0284C7', fontWeight: '700' }]}>
+                  + Add Coworking Hub
+                </Text>
+              </TouchableOpacity>
             )}
 
             {filterMatches('Helpdesk Complaints Service Tickets') && (
@@ -345,7 +451,7 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
               >
                 <Ionicons name="call-outline" size={20} color={isDark ? '#94A3B8' : '#475569'} style={styles.itemIcon} />
                 <Text style={[styles.itemLabel, { color: theme.textPrimary }]}>
-                  Customer Support Hotline
+                  Customer Support Helpline
                 </Text>
               </TouchableOpacity>
             )}
@@ -418,8 +524,8 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
                   onPress={handleDeleteAccount}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="trash-outline" size={20} color="#DC2626" style={styles.itemIcon} />
-                  <Text style={[styles.itemLabel, { color: '#DC2626' }]}>
+                  <Ionicons name="trash-outline" size={20} color="#EF4444" style={styles.itemIcon} />
+                  <Text style={[styles.itemLabel, { color: '#EF4444' }]}>
                     Deactivate Account
                   </Text>
                 </TouchableOpacity>
@@ -463,6 +569,188 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
           </View>
         </Animated.View>
       </View>
+
+      <Modal
+        visible={showOnboardModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowOnboardModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Onboard Client Company</Text>
+                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                  Register enterprise office & allocate annual free quota
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowOnboardModal(false)}>
+                <Ionicons name="close" size={24} color={theme.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Company Legal Name</Text>
+              <TextInput
+                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={compName}
+                onChangeText={setCompName}
+                placeholder="e.g. Acme Technologies Pvt Ltd"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Billing / Admin Email</Text>
+              <TextInput
+                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={compEmail}
+                onChangeText={setCompEmail}
+                placeholder="admin@acme.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Contact Phone</Text>
+              <TextInput
+                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={compPhone}
+                onChangeText={setCompPhone}
+                placeholder="+91 98450 12345"
+                keyboardType="phone-pad"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>GSTIN (Optional)</Text>
+              <TextInput
+                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={compGstin}
+                onChangeText={setCompGstin}
+                placeholder="36AABCB1234F1Z8"
+                autoCapitalize="characters"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Annual Free Quota (Hours / Year)</Text>
+              <TextInput
+                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={compFreeHours}
+                onChangeText={setCompFreeHours}
+                placeholder="240"
+                keyboardType="number-pad"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              <TouchableOpacity
+                style={styles.modalSubmitBtn}
+                onPress={handleOnboardCompany}
+                disabled={onboarding}
+                activeOpacity={0.85}
+              >
+                {onboarding ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.modalSubmitText}>Register & Activate Company</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showAddHubModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddHubModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Add Coworking Hub</Text>
+                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                  Create new facility location & on-site manager profile
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowAddHubModal(false)}>
+                <Ionicons name="close" size={24} color={theme.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Hub / Facility Name</Text>
+              <TextInput
+                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={hubName}
+                onChangeText={setHubName}
+                placeholder="e.g. Madhapur Tech Campus"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Street Address & Locality</Text>
+              <TextInput
+                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={hubStreet}
+                onChangeText={setHubStreet}
+                placeholder="Plot 45, Cyber Hills, Madhapur"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>City</Text>
+              <TextInput
+                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={hubCity}
+                onChangeText={setHubCity}
+                placeholder="Hyderabad"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>On-Site Manager Name</Text>
+              <TextInput
+                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={hubManager}
+                onChangeText={setHubManager}
+                placeholder="Olivia Bennett"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Manager Contact Phone</Text>
+              <TextInput
+                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={hubPhone}
+                onChangeText={setHubPhone}
+                placeholder="+91 98450 12345"
+                keyboardType="phone-pad"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>UPI ID for Guest QR Receipts (Optional)</Text>
+              <TextInput
+                style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                value={hubUpi}
+                onChangeText={setHubUpi}
+                placeholder="havenlywork@okhdfcbank"
+                autoCapitalize="none"
+                placeholderTextColor={theme.textMuted}
+              />
+
+              <TouchableOpacity
+                style={[styles.modalSubmitBtn, { backgroundColor: '#0284C7' }]}
+                onPress={handleAddHub}
+                disabled={addingHub}
+                activeOpacity={0.85}
+              >
+                {addingHub ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.modalSubmitText}>Publish Coworking Hub</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 };
@@ -486,7 +774,7 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 20
   },
-  brandHeader: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -497,17 +785,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center'
   },
-  brandTitleWrap: {
-    marginLeft: 10
-  },
-  brandTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.3
+  brandName: {
+    fontSize: 17,
+    fontWeight: '800'
   },
   brandTagline: {
-    fontSize: 8,
-    fontWeight: '800',
+    fontSize: 9,
+    fontWeight: '700',
     letterSpacing: 0.8,
     color: '#00A859',
     marginTop: 1
@@ -518,27 +802,26 @@ const styles = StyleSheet.create({
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 18,
+    marginHorizontal: 16,
+    marginBottom: 12,
     paddingHorizontal: 12,
     height: 40,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 8
+    borderRadius: 12
   },
   searchInput: {
     flex: 1,
-    fontSize: 13
+    fontSize: 13,
+    paddingVertical: 0
   },
   menuScroll: {
     paddingHorizontal: 14,
-    paddingTop: 8,
     paddingBottom: 24
   },
   sectionTitle: {
     fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 0.8,
-    marginTop: 8,
+    letterSpacing: 1,
+    marginTop: 12,
     marginBottom: 6,
     paddingHorizontal: 8
   },
@@ -546,7 +829,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     borderRadius: 12,
     marginBottom: 2
   },
@@ -619,5 +902,54 @@ const styles = StyleSheet.create({
     color: '#00A859',
     fontSize: 10,
     fontWeight: '800'
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end'
+  },
+  modalCard: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    padding: 22,
+    paddingBottom: 40
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16
+  },
+  modalTitle: {
+    fontSize: 19,
+    fontWeight: '800'
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
+    marginTop: 8
+  },
+  inputField: {
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    marginBottom: 4
+  },
+  modalSubmitBtn: {
+    backgroundColor: '#00A859',
+    height: 46,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18
+  },
+  modalSubmitText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700'
   }
 });

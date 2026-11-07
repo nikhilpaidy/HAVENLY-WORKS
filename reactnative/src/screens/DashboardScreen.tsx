@@ -400,41 +400,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </View>
         )}
 
-        <View
-          style={[
-            styles.promoCard,
-            {
-              backgroundColor: isDark ? '#1E293B' : '#F0FDF4',
-              borderColor: isDark ? '#334155' : '#DCFCE7'
-            }
-          ]}
-        >
-          <View style={styles.promoTextCol}>
-            <View style={styles.promoBadge}>
-              <Text style={styles.promoBadgeText}>#SpecialForYou</Text>
-            </View>
-            <Text style={[styles.promoTitle, { color: theme.textPrimary }]}>
-              Get Special Offer
-            </Text>
-            <Text style={[styles.promoSubtitle, { color: theme.textSecondary }]}>
-              Up to 25% OFF on booking desks & conference rooms today
-            </Text>
-            <TouchableOpacity
-              style={styles.promoButton}
-              onPress={() => onNavigate('rooms')}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.promoButtonText}>Explore Spaces</Text>
-              <Ionicons name="arrow-forward" size={13} color="#FFFFFF" style={{ marginLeft: 4 }} />
-            </TouchableOpacity>
-          </View>
-          <SafeImage
-            uri="https://images.unsplash.com/photo-1497366216548-37526070297c?w=360&q=80"
-            style={styles.promoImage}
-            borderRadius={16}
-          />
-        </View>
-
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
           {categories.map((c) => (
             <TouchableOpacity
@@ -1290,65 +1255,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center'
-  },
-  promoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 8,
-    padding: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2
-  },
-  promoTextCol: {
-    flex: 1,
-    paddingRight: 12
-  },
-  promoBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(0, 168, 89, 0.14)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    marginBottom: 6
-  },
-  promoBadgeText: {
-    color: '#00A859',
-    fontSize: 11,
-    fontWeight: '800'
-  },
-  promoTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 4
-  },
-  promoSubtitle: {
-    fontSize: 12,
-    lineHeight: 16,
-    marginBottom: 10
-  },
-  promoButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#00A859',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12
-  },
-  promoButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700'
-  },
-  promoImage: {
-    width: 90,
-    height: 90
   }
 });

@@ -1,16 +1,47 @@
 import { Router, Request, Response } from 'express';
 import { apiSuccess } from '../../utils/response.js';
+import { authenticateJwt, requireRole } from '../../middleware/auth.js';
+import { UserRole } from '../../types/index.js';
 
 const router = Router();
+
+let supportHotlineConfig = {
+  supportHotline: '+91 (040) 4892-7100',
+  supportEmail: 'support@havenlywork.com',
+  emergencyContact: '+91 98490 12345',
+  whatsappNumber: '+91 98490 12345',
+  operatingHours: '24/7 Helpline & On-Site Concierge'
+};
+
+router.get('/support', (_req: Request, res: Response) => {
+  return apiSuccess(res, supportHotlineConfig);
+});
+
+router.put(
+  '/support',
+  authenticateJwt,
+  requireRole(UserRole.SUPER_ADMIN, UserRole.COWORKING_ADMIN),
+  (req: Request, res: Response) => {
+    const { supportHotline, supportEmail, emergencyContact, whatsappNumber, operatingHours } = req.body;
+    if (supportHotline) supportHotlineConfig.supportHotline = supportHotline.trim();
+    if (supportEmail) supportHotlineConfig.supportEmail = supportEmail.trim();
+    if (emergencyContact) supportHotlineConfig.emergencyContact = emergencyContact.trim();
+    if (whatsappNumber) supportHotlineConfig.whatsappNumber = whatsappNumber.trim();
+    if (operatingHours) supportHotlineConfig.operatingHours = operatingHours.trim();
+    return apiSuccess(res, supportHotlineConfig, 'Helpline updated successfully');
+  }
+);
 
 router.get('/', (_req: Request, res: Response) => {
   return apiSuccess(res, {
     appName: 'HavenlyWork',
     tagline: 'SPACE FOR TOGETHERNESS',
     version: '2.4.0',
-    supportHotline: '+91 (040) 4892-7100',
-    supportEmail: 'support@havenlywork.com',
-    emergencyContact: '+91 98490 12345',
+    supportHotline: supportHotlineConfig.supportHotline,
+    supportEmail: supportHotlineConfig.supportEmail,
+    emergencyContact: supportHotlineConfig.emergencyContact,
+    whatsappNumber: supportHotlineConfig.whatsappNumber,
+    operatingHours: supportHotlineConfig.operatingHours,
     termsOfService: {
       lastUpdated: 'November 2026',
       sections: [

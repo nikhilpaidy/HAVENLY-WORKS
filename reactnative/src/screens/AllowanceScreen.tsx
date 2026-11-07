@@ -29,18 +29,40 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
   const { user } = useAuth();
   const { theme, isDark } = useTheme();
 
-  const isAdminRole = user?.role === 'SUPER_ADMIN' || user?.role === 'COWORKING_ADMIN';
-  const [companies, setCompanies] = useState<any[]>([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>(user?.companyId || '');
+  const role = user?.role;
+  const isSuperAdmin = role === 'SUPER_ADMIN';
+  const isCoworkingAdmin = role === 'COWORKING_ADMIN';
+  const isManagerRole = isSuperAdmin || isCoworkingAdmin;
+
+  const [superAdminAdmins, setSuperAdminAdmins] = useState<any[]>([]);
+  const [selectedAdmin, setSelectedAdmin] = useState<any | null>(null);
+
+  const [adminCompanies, setAdminCompanies] = useState<any[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState<any | null>(null);
 
   const [current, setCurrent] = useState<any>(null);
   const [ledger, setLedger] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchAllowance = async (overrideCompId?: string) => {
+  const loadHierarchyData = async () => {
     try {
-      const cId = overrideCompId !== undefined ? overrideCompId : (isAdminRole ? selectedCompanyId : user?.companyId);
+      if (isSuperAdmin) {
+        const admins = await mobileApi.getSuperAdminAdmins();
+        setSuperAdminAdmins(admins || []);
+      } else if (isCoworkingAdmin) {
+        const comps = await mobileApi.getCompanies();
+        setAdminCompanies(comps || []);
+      }
+    } catch (err) {
+      console.warn('Hierarchy load error in quota:', err);
+    }
+  };
+
+  const fetchAllowance = async (targetCompId?: string) => {
+    try {
+      setLoading(true);
+      const cId = targetCompId || (isManagerRole ? selectedCompany?._id : user?.companyId);
       const [curr, hist] = await Promise.all([
         mobileApi.getCurrentAllowance(cId || undefined),
         mobileApi.getAllowanceHistory(cId || undefined)
@@ -56,31 +78,31 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
   };
 
   useEffect(() => {
-    if (isAdminRole) {
-      mobileApi.getCompanies().then((comps) => {
-        if (comps && comps.length > 0) {
-          setCompanies(comps);
-          if (!selectedCompanyId) {
-            setSelectedCompanyId(comps[0]._id);
-            fetchAllowance(comps[0]._id);
-            return;
-          }
-        }
-        fetchAllowance();
-      }).catch(() => fetchAllowance());
-    } else {
+    loadHierarchyData();
+  }, [role]);
+
+  useEffect(() => {
+    if (!isManagerRole) {
       fetchAllowance();
+    } else if (selectedCompany) {
+      fetchAllowance(selectedCompany._id);
+    } else {
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, [selectedCompanyId]);
+  }, [selectedCompany, role]);
 
   const onRefresh = () => {
     setRefreshing(true);
+    if (isManagerRole) {
+      loadHierarchyData();
+    }
     fetchAllowance();
   };
 
-  const granted = current?.totalGrantedHours ?? current?.grantedHours ?? 20;
-  const available = current?.availableHours ?? current?.balanceHours ?? 18;
-  const consumed = current?.consumedHours ?? 2;
+  const granted = current?.totalGrantedHours ?? current?.grantedHours ?? 240;
+  const available = current?.availableHours ?? current?.balanceHours ?? 240;
+  const consumed = current?.consumedHours ?? 0;
   const reserved = current?.reservedHours ?? 0;
 
   const formatDate = (dateStr?: string) => {
@@ -135,119 +157,328 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
     );
   };
 
-  return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <Header
-        title="Workspace Quota"
-        subtitle="Annual Enterprise Allowances"
-        onOpenDrawer={onOpenDrawer}
-        unreadNotifsCount={unreadNotifsCount}
-        onOpenNotifications={onOpenNotifications}
-      />
+  const renderQuotaMetrics = () => (
+    <>
+      <View style={styles.summaryCard}>
+        <View style={styles.summaryTop}>
+          <View>
+            <Text style={styles.summaryLabel}>ANNUAL COMPLIMENTARY ALLOWANCE</Text>
+            <Text style={styles.summaryValue}>{available} <Text style={{ fontSize: 18 }}>Hours</Text></Text>
+          </View>
+          <View style={styles.activePill}>
+            <Ionicons name="shield-checkmark" size={14} color="#00A859" style={{ marginRight: 4 }} />
+            <Text style={styles.activePillText}>Active Quota</Text>
+          </View>
+        </View>
 
+        <View style={styles.progressContainer}>
+          <View
+            style={[
+              styles.progressBar,
+              { width: `${Math.min(100, Math.max(0, (available / (granted || 1)) * 100))}%` }
+            ]}
+          />
+        </View>
+
+        <View style={styles.statGrid}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNum}>{granted}h</Text>
+            <Text style={styles.statLabel}>Annual Grant</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNum}>{consumed}h</Text>
+            <Text style={styles.statLabel}>Consumed</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNum}>{reserved}h</Text>
+            <Text style={styles.statLabel}>Reserved</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={[styles.infoBanner, { backgroundColor: isDark ? '#111827' : '#F0FDF4', borderColor: isDark ? '#1F2937' : '#DCFCE7' }]}>
+        <Ionicons name="information-circle" size={20} color="#00A859" style={{ marginRight: 10 }} />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.infoTitle, { color: theme.textPrimary }]}>Annual Complimentary Policy</Text>
+          <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+            Complimentary room hours are allocated annually and remain valid throughout your active enterprise term without arbitrary monthly forfeiture.
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.ledgerHeader}>
+        <Text style={[styles.ledgerTitle, { color: theme.textPrimary }]}>Quota Transaction Ledger</Text>
+        <Text style={{ fontSize: 12, color: theme.textMuted }}>{ledger.length} entries</Text>
+      </View>
+
+      {loading ? (
+        <View style={{ paddingHorizontal: 20 }}>
+          <ListRowSkeleton />
+          <ListRowSkeleton />
+        </View>
+      ) : ledger.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="time-outline" size={40} color={theme.textMuted} />
+          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+            No quota deductions recorded yet.
+          </Text>
+        </View>
+      ) : (
+        <View style={{ paddingHorizontal: 20 }}>
+          {ledger.map((item) => (
+            <View key={item._id || Math.random().toString()}>
+              {renderLedgerItem({ item })}
+            </View>
+          ))}
+        </View>
+      )}
+    </>
+  );
+
+  const renderSuperAdminView = () => {
+    if (!selectedAdmin) {
+      return (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
+        >
+          <View style={styles.sectionHeaderCard}>
+            <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
+              Coworking Operators ({superAdminAdmins.length})
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+              Select an operator to inspect their client company allowances
+            </Text>
+          </View>
+
+          {superAdminAdmins.map((adm) => (
+            <TouchableOpacity
+              key={adm._id}
+              style={[styles.hierarchyCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
+              onPress={() => setSelectedAdmin(adm)}
+              activeOpacity={0.85}
+            >
+              <View style={styles.hierarchyAvatar}>
+                <Ionicons name="pie-chart" size={22} color="#00A859" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.hierarchyTitle, { color: theme.textPrimary }]}>{adm.name}</Text>
+                <Text style={[styles.hierarchySub, { color: theme.textMuted }]}>{adm.email}</Text>
+                <Text style={{ fontSize: 12, color: '#00A859', fontWeight: '700', marginTop: 2 }}>
+                  {adm.organizationId?.name || 'Coworking Hub'}
+                </Text>
+                <View style={styles.miniStatsRow}>
+                  <Text style={[styles.miniStatPill, { color: theme.textSecondary }]}>
+                    {adm.companies?.length || 0} Client Companies
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={theme.textMuted} />
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      );
+    }
+
+    if (!selectedCompany) {
+      const companies = selectedAdmin.companies || [];
+      return (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
+        >
+          <TouchableOpacity
+            style={styles.backBreadcrumb}
+            onPress={() => setSelectedAdmin(null)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="arrow-back" size={16} color="#00A859" style={{ marginRight: 6 }} />
+            <Text style={styles.backBreadcrumbText}>Back to Operators</Text>
+          </TouchableOpacity>
+
+          <View style={styles.sectionHeaderCard}>
+            <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
+              {selectedAdmin.name} - Client Quotas ({companies.length})
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+              Select a client to view annual complimentary quota and usage ledger
+            </Text>
+          </View>
+
+          {companies.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="people-outline" size={44} color={theme.textMuted} />
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                No client companies onboarded for this operator.
+              </Text>
+            </View>
+          ) : (
+            companies.map((comp: any) => (
+              <TouchableOpacity
+                key={comp._id}
+                style={[styles.hierarchyCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
+                onPress={() => setSelectedCompany(comp)}
+                activeOpacity={0.85}
+              >
+                <View style={styles.hierarchyAvatar}>
+                  <Ionicons name="business" size={20} color="#00A859" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.hierarchyTitle, { color: theme.textPrimary }]}>{comp.name}</Text>
+                  <Text style={[styles.hierarchySub, { color: theme.textMuted }]}>{comp.billingEmail}</Text>
+                  <Text style={{ fontSize: 12, color: '#00A859', fontWeight: '700', marginTop: 2 }}>
+                    Annual Allowance: {comp.allowanceConfig?.annualFreeHours || 240}h / yr
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={theme.textMuted} />
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
+      );
+    }
+
+    return (
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
       >
-        {isAdminRole && companies.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.companySelector}
-          >
-            {companies.map((c) => (
-              <TouchableOpacity
-                key={c._id}
-                style={[
-                  styles.compPill,
-                  selectedCompanyId === c._id && styles.compPillActive,
-                  { borderColor: theme.cardBorder }
-                ]}
-                onPress={() => setSelectedCompanyId(c._id)}
-              >
-                <Text
-                  style={[
-                    styles.compPillText,
-                    selectedCompanyId === c._id && { color: '#FFFFFF', fontWeight: '700' }
-                  ]}
-                >
-                  {c.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
+        <TouchableOpacity
+          style={styles.backBreadcrumb}
+          onPress={() => setSelectedCompany(null)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="arrow-back" size={16} color="#00A859" style={{ marginRight: 6 }} />
+          <Text style={styles.backBreadcrumbText}>Back to {selectedAdmin.name} Clients</Text>
+        </TouchableOpacity>
 
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryTop}>
-            <View>
-              <Text style={styles.summaryLabel}>AVAILABLE ALLOWANCE</Text>
-              <Text style={styles.summaryValue}>{available} <Text style={{ fontSize: 18 }}>Hours</Text></Text>
-            </View>
-            <View style={styles.activePill}>
-              <Ionicons name="shield-checkmark" size={14} color="#00A859" style={{ marginRight: 4 }} />
-              <Text style={styles.activePillText}>Active Quota</Text>
-            </View>
-          </View>
-
-          <View style={styles.progressContainer}>
-            <View
-              style={[
-                styles.progressBar,
-                { width: `${Math.min(100, Math.max(0, (available / (granted || 1)) * 100))}%` }
-              ]}
-            />
-          </View>
-
-          <View style={styles.statGrid}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNum}>{granted}h</Text>
-              <Text style={styles.statLabel}>Granted</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNum}>{consumed}h</Text>
-              <Text style={styles.statLabel}>Consumed</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNum}>{reserved}h</Text>
-              <Text style={styles.statLabel}>Reserved</Text>
-            </View>
-          </View>
+        <View style={styles.sectionHeaderCard}>
+          <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
+            {selectedCompany.name} Quota Details
+          </Text>
+          <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+            Annual meeting room hours allocation and consumption history
+          </Text>
         </View>
 
-        <View style={[styles.policyNotice, { backgroundColor: isDark ? '#121A2D' : '#F0FDF4', borderColor: '#BBF7D0' }]}>
-          <Ionicons name="information-circle" size={20} color="#00A859" style={{ marginRight: 10 }} />
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.policyNoticeTitle, { color: theme.textPrimary }]}>No Monthly Reset Policy</Text>
-            <Text style={{ fontSize: 12, color: theme.textSecondary, lineHeight: 18, marginTop: 2 }}>
-              Your granted allowance remains active until fully utilized. When completed, additional bookings are tracked and billed automatically in Indian Rupees (₹) at the end of each month via email invoice.
+        {renderQuotaMetrics()}
+      </ScrollView>
+    );
+  };
+
+  const renderCoworkingAdminView = () => {
+    if (!selectedCompany) {
+      return (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
+        >
+          <View style={styles.sectionHeaderCard}>
+            <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
+              Client Companies Quotas ({adminCompanies.length})
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+              Select a client to monitor their annual allowance usage and ledger
             </Text>
           </View>
-        </View>
 
-        <View style={styles.historySection}>
-          <Text style={[styles.historyTitle, { color: theme.textPrimary }]}>Quota Transaction History</Text>
-          {loading ? (
-            <View style={{ marginTop: 10 }}>
-              <ListRowSkeleton />
-              <ListRowSkeleton />
+          {adminCompanies.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="people-outline" size={44} color={theme.textMuted} />
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                No client companies registered yet.
+              </Text>
             </View>
-          ) : ledger.length === 0 ? (
-            <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 12 }}>
-              No transactions recorded yet.
-            </Text>
           ) : (
-            ledger.map((item) => (
-              <View key={item._id} style={{ marginTop: 10 }}>
-                {renderLedgerItem({ item })}
-              </View>
+            adminCompanies.map((comp) => (
+              <TouchableOpacity
+                key={comp._id}
+                style={[styles.hierarchyCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
+                onPress={() => setSelectedCompany(comp)}
+                activeOpacity={0.85}
+              >
+                <View style={styles.hierarchyAvatar}>
+                  <Ionicons name="business" size={20} color="#00A859" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.hierarchyTitle, { color: theme.textPrimary }]}>{comp.name}</Text>
+                  <Text style={[styles.hierarchySub, { color: theme.textMuted }]}>{comp.billingEmail}</Text>
+                  <Text style={{ fontSize: 12, color: '#00A859', fontWeight: '700', marginTop: 2 }}>
+                    Annual Free Hours: {comp.allowanceConfig?.annualFreeHours || 240}h / yr
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={theme.textMuted} />
+              </TouchableOpacity>
             ))
           )}
+        </ScrollView>
+      );
+    }
+
+    return (
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
+      >
+        <TouchableOpacity
+          style={styles.backBreadcrumb}
+          onPress={() => setSelectedCompany(null)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="arrow-back" size={16} color="#00A859" style={{ marginRight: 6 }} />
+          <Text style={styles.backBreadcrumbText}>Back to All Client Quotas</Text>
+        </TouchableOpacity>
+
+        <View style={styles.sectionHeaderCard}>
+          <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
+            {selectedCompany.name} Quota Details
+          </Text>
+          <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+            Complimentary allowance usage and transaction history
+          </Text>
         </View>
+
+        {renderQuotaMetrics()}
       </ScrollView>
+    );
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <Header
+        title={isSuperAdmin ? 'Platform Quota' : isCoworkingAdmin ? 'Client Quotas' : 'Workspace Quota'}
+        subtitle={
+          isSuperAdmin
+            ? 'Operator & Corporate Allowances'
+            : isCoworkingAdmin
+            ? 'Client Annual Complimentary Hours'
+            : 'Annual Enterprise Allowances'
+        }
+        onOpenDrawer={onOpenDrawer}
+        unreadNotifsCount={unreadNotifsCount}
+        onOpenNotifications={onOpenNotifications}
+      />
+
+      {isSuperAdmin ? (
+        renderSuperAdminView()
+      ) : isCoworkingAdmin ? (
+        renderCoworkingAdminView()
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
+        >
+          {renderQuotaMetrics()}
+        </ScrollView>
+      )}
     </View>
   );
 };
@@ -256,63 +487,77 @@ const styles = StyleSheet.create({
   container: {
     flex: 1
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  sectionHeaderCard: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 10
+    marginTop: 10,
+    marginBottom: 12
   },
-  headerTitle: {
-    fontSize: 22,
+  sectionHeading: {
+    fontSize: 16,
     fontWeight: '800'
   },
-  notifBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  sectionSubtitle: {
+    fontSize: 12,
+    marginTop: 2
+  },
+  backBreadcrumb: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center'
-  },
-  unreadDot: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444'
-  },
-  companySelector: {
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    gap: 8
+    paddingVertical: 10
   },
-  compPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+  backBreadcrumbText: {
+    color: '#00A859',
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  hierarchyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 12,
+    padding: 14,
     borderRadius: 18,
     borderWidth: 1
   },
-  compPillActive: {
-    backgroundColor: '#00A859',
-    borderColor: '#00A859'
+  hierarchyAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,168,89,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  compPillText: {
-    fontSize: 13,
+  hierarchyTitle: {
+    fontSize: 15,
+    fontWeight: '700'
+  },
+  hierarchySub: {
+    fontSize: 12,
+    marginTop: 1
+  },
+  miniStatsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6
+  },
+  miniStatPill: {
+    fontSize: 11,
     fontWeight: '600',
-    color: '#64748B'
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6
   },
   summaryCard: {
-    backgroundColor: '#0A3826',
     marginHorizontal: 20,
+    marginTop: 14,
     borderRadius: 24,
-    padding: 22,
-    marginTop: 10,
-    shadowColor: '#00A859',
+    padding: 20,
+    backgroundColor: '#0F172A',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 4
   },
@@ -323,49 +568,53 @@ const styles = StyleSheet.create({
     marginBottom: 16
   },
   summaryLabel: {
-    color: '#BBF7D0',
+    color: 'rgba(255,255,255,0.7)',
     fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.5
+    fontWeight: '700',
+    letterSpacing: 0.6
   },
   summaryValue: {
     color: '#FFFFFF',
-    fontSize: 34,
-    fontWeight: '800',
+    fontSize: 32,
+    fontWeight: '900',
     marginTop: 4
   },
   activePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(0,168,89,0.2)',
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 4,
     borderRadius: 12
   },
   activePillText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+    color: '#34D399',
+    fontSize: 11,
     fontWeight: '700'
   },
   progressContainer: {
     height: 8,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     borderRadius: 4,
     overflow: 'hidden',
-    marginBottom: 18
+    marginBottom: 20
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#00C261',
+    backgroundColor: '#00A859',
     borderRadius: 4
   },
   statGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center'
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)'
   },
   statItem: {
-    alignItems: 'center'
+    alignItems: 'center',
+    flex: 1
   },
   statNum: {
     color: '#FFFFFF',
@@ -373,62 +622,79 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   statLabel: {
-    color: '#A7F3D0',
+    color: 'rgba(255,255,255,0.6)',
     fontSize: 11,
-    fontWeight: '500',
     marginTop: 2
   },
   statDivider: {
     width: 1,
     height: 24,
-    backgroundColor: 'rgba(255,255,255,0.15)'
+    backgroundColor: 'rgba(255,255,255,0.1)'
   },
-  policyNotice: {
+  infoBanner: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginHorizontal: 20,
     marginTop: 16,
-    padding: 16,
+    padding: 14,
     borderRadius: 18,
     borderWidth: 1
   },
-  policyNoticeTitle: {
-    fontSize: 14,
-    fontWeight: '700'
+  infoTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 2
   },
-  historySection: {
+  infoText: {
+    fontSize: 12,
+    lineHeight: 16
+  },
+  ledgerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    marginTop: 24
+    marginTop: 20,
+    marginBottom: 12
   },
-  historyTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 6
+  ledgerTitle: {
+    fontSize: 16,
+    fontWeight: '800'
   },
   ledgerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
     borderRadius: 16,
-    borderWidth: 1
+    borderWidth: 1,
+    marginBottom: 10
   },
   typeIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center'
   },
   ledgerNotes: {
     fontSize: 14,
-    fontWeight: '600'
+    fontWeight: '700'
   },
   ledgerDate: {
-    fontSize: 12,
+    fontSize: 11,
     marginTop: 2
   },
   hoursDiff: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800'
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40
+  },
+  emptyText: {
+    fontSize: 13,
+    marginTop: 8
   }
 });
