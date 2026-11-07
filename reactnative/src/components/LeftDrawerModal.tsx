@@ -66,6 +66,7 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
 
   const [locations, setLocations] = useState<any[]>([]);
   const [selectedHubId, setSelectedHubId] = useState('');
+  const [hubSearchQuery, setHubSearchQuery] = useState('');
 
   const [showOnboardModal, setShowOnboardModal] = useState(false);
   const [compName, setCompName] = useState('');
@@ -672,30 +673,56 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
 
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 460 }}>
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Assigned Coworking Hub</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-                {locations.map((loc) => {
-                  const isSelected = selectedHubId === loc._id;
-                  return (
-                    <TouchableOpacity
-                      key={loc._id}
-                      style={[
-                        styles.hubOptionChip,
-                        isSelected && styles.hubOptionActive,
-                        { borderColor: theme.cardBorder }
-                      ]}
-                      onPress={() => setSelectedHubId(loc._id)}
-                    >
-                      <Text
+              <View style={[styles.hubSearchRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+                <Ionicons name="search" size={15} color={theme.textMuted} style={{ marginRight: 6 }} />
+                <TextInput
+                  style={[styles.hubSearchInput, { color: theme.textPrimary }]}
+                  placeholder="Search hub by name or area..."
+                  placeholderTextColor={theme.textMuted}
+                  value={hubSearchQuery}
+                  onChangeText={setHubSearchQuery}
+                />
+                {hubSearchQuery ? (
+                  <TouchableOpacity onPress={() => setHubSearchQuery('')}>
+                    <Ionicons name="close-circle" size={16} color={theme.textMuted} />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                {locations
+                  .filter((loc) => {
+                    if (!hubSearchQuery.trim()) return true;
+                    const q = hubSearchQuery.toLowerCase();
+                    return (
+                      loc.name?.toLowerCase().includes(q) ||
+                      loc.address?.city?.toLowerCase().includes(q) ||
+                      loc.address?.street?.toLowerCase().includes(q)
+                    );
+                  })
+                  .map((loc) => {
+                    const isSelected = selectedHubId === loc._id;
+                    return (
+                      <TouchableOpacity
+                        key={loc._id}
                         style={[
-                          styles.hubOptionText,
-                          { color: isSelected ? '#FFFFFF' : theme.textPrimary }
+                          styles.hubOptionChip,
+                          isSelected && styles.hubOptionActive,
+                          { borderColor: theme.cardBorder }
                         ]}
+                        onPress={() => setSelectedHubId(loc._id)}
                       >
-                        {loc.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                        <Text
+                          style={[
+                            styles.hubOptionText,
+                            { color: isSelected ? '#FFFFFF' : theme.textPrimary }
+                          ]}
+                        >
+                          {loc.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
               </ScrollView>
 
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Company Legal Name</Text>
@@ -1236,5 +1263,19 @@ const styles = StyleSheet.create({
   hubOptionText: {
     fontSize: 12,
     fontWeight: '600'
+  },
+  hubSearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    marginBottom: 8
+  },
+  hubSearchInput: {
+    flex: 1,
+    fontSize: 12,
+    paddingVertical: 4
   }
 });

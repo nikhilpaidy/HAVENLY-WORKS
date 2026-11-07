@@ -55,6 +55,10 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
   const [roomType, setRoomType] = useState('HOT_DESK');
   const [roomCapacity, setRoomCapacity] = useState('4');
   const [roomHourlyRate, setRoomHourlyRate] = useState('450');
+  const [roomDailyRate, setRoomDailyRate] = useState('1800');
+  const [roomFloor, setRoomFloor] = useState('');
+  const [roomFloorManagerName, setRoomFloorManagerName] = useState('');
+  const [roomFloorManagerPhone, setRoomFloorManagerPhone] = useState('');
   const [roomDesc, setRoomDesc] = useState('');
   const [roomPhotos, setRoomPhotos] = useState<string[]>([]);
   const [creatingRoom, setCreatingRoom] = useState(false);
@@ -66,6 +70,10 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
   const [editHubId, setEditHubId] = useState('');
   const [editCapacity, setEditCapacity] = useState('4');
   const [editHourlyRate, setEditHourlyRate] = useState('450');
+  const [editDailyRate, setEditDailyRate] = useState('1800');
+  const [editFloor, setEditFloor] = useState('');
+  const [editFloorManagerName, setEditFloorManagerName] = useState('');
+  const [editFloorManagerPhone, setEditFloorManagerPhone] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [editPhotos, setEditPhotos] = useState<string[]>([]);
   const [updatingRoom, setUpdatingRoom] = useState(false);
@@ -179,12 +187,20 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
         locationId: selectedHubId || undefined,
         capacity: parseInt(roomCapacity, 10) || 1,
         hourlyRate: parseFloat(roomHourlyRate) || 300,
+        dailyRate: parseFloat(roomDailyRate) || (parseFloat(roomHourlyRate) || 300) * 5,
+        floor: roomFloor.trim() || undefined,
+        floorManagerName: roomFloorManagerName.trim() || undefined,
+        floorManagerPhone: roomFloorManagerPhone.trim() || undefined,
         description: roomDesc.trim() || undefined,
         photos: uploadedUrls.length > 0 ? uploadedUrls : undefined,
         amenities: ['High-speed Wi-Fi', 'Power Outlets', 'Ergonomic Seating', 'Air Conditioning']
       });
       setShowAddRoomModal(false);
       setRoomName('');
+      setRoomFloor('');
+      setRoomFloorManagerName('');
+      setRoomFloorManagerPhone('');
+      setRoomDailyRate('1800');
       setRoomDesc('');
       setRoomPhotos([]);
       Alert.alert('Success', 'Workspace created successfully.');
@@ -210,6 +226,10 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
         locationId: editHubId || undefined,
         capacity: parseInt(editCapacity, 10) || 1,
         hourlyRate: parseFloat(editHourlyRate) || 300,
+        dailyRate: parseFloat(editDailyRate) || (parseFloat(editHourlyRate) || 300) * 5,
+        floor: editFloor.trim() || undefined,
+        floorManagerName: editFloorManagerName.trim() || undefined,
+        floorManagerPhone: editFloorManagerPhone.trim() || undefined,
         description: editDesc.trim() || undefined,
         photos: uploadedUrls
       });
@@ -310,7 +330,7 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
           <View style={styles.locRow}>
             <Ionicons name="location-outline" size={14} color="#00A859" style={{ marginRight: 4 }} />
             <Text style={[styles.locText, { color: theme.textSecondary }]} numberOfLines={1}>
-              {loc.address?.street || 'Madhapur Main Rd'}, {loc.city || 'Hyderabad'}
+              {item.floor ? `${item.floor} • ` : ''}{loc.address?.street || 'Madhapur Main Rd'}, {loc.city || 'Hyderabad'}
             </Text>
           </View>
 
@@ -337,6 +357,10 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
                     setEditHubId(item.locationId?._id || item.locationId || (locations[0]?._id || ''));
                     setEditCapacity(String(item.capacity || 4));
                     setEditHourlyRate(String(item.hourlyRate || 450));
+                    setEditDailyRate(item.dailyRate ? String(item.dailyRate) : String((item.hourlyRate || 450) * 5));
+                    setEditFloor(item.floor || '');
+                    setEditFloorManagerName(item.floorManagerName || '');
+                    setEditFloorManagerPhone(item.floorManagerPhone || '');
                     setEditDesc(item.description || '');
                     setEditPhotos(Array.isArray(item.photos) ? [...item.photos] : []);
                     setShowEditRoomModal(true);
@@ -567,6 +591,54 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
                 </View>
               </View>
 
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Floor (e.g. Floor 3)</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={roomFloor}
+                    onChangeText={setRoomFloor}
+                    placeholder="Floor 3"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Day Pass Rate (₹)</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={roomDailyRate}
+                    onChangeText={setRoomDailyRate}
+                    placeholder="1800"
+                    keyboardType="number-pad"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Floor Manager Name</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={roomFloorManagerName}
+                    onChangeText={setRoomFloorManagerName}
+                    placeholder="Vikram Rao"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Manager Phone</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={roomFloorManagerPhone}
+                    onChangeText={setRoomFloorManagerPhone}
+                    placeholder="+91 98450 11223"
+                    keyboardType="phone-pad"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+              </View>
+
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 6 }}>
                 <Text style={[styles.fieldLabel, { color: theme.textSecondary, marginTop: 0 }]}>
                   Workspace Photos ({roomPhotos.length}/10)
@@ -730,6 +802,54 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
                     onChangeText={setEditHourlyRate}
                     placeholder="450"
                     keyboardType="number-pad"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Floor (e.g. Floor 3)</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={editFloor}
+                    onChangeText={setEditFloor}
+                    placeholder="Floor 3"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Day Pass Rate (₹)</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={editDailyRate}
+                    onChangeText={setEditDailyRate}
+                    placeholder="1800"
+                    keyboardType="number-pad"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Floor Manager Name</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={editFloorManagerName}
+                    onChangeText={setEditFloorManagerName}
+                    placeholder="Vikram Rao"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Manager Phone</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={editFloorManagerPhone}
+                    onChangeText={setEditFloorManagerPhone}
+                    placeholder="+91 98450 11223"
+                    keyboardType="phone-pad"
                     placeholderTextColor={theme.textMuted}
                   />
                 </View>

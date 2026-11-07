@@ -46,7 +46,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
         items: [
           { label: 'Coworking Admins', to: '/super-admin/admins', icon: UserCheck },
           { label: 'Hub Organizations', to: '/super-admin/organizations', icon: Building },
-          { label: 'Workspace Types', to: '/admin/workspace-types', icon: Layers },
+          { label: 'Workspace Types', to: '/super-admin/workspace-types', icon: Layers },
           { label: 'Operations Staff', to: '/super-admin/staff', icon: Shield }
         ]
       },

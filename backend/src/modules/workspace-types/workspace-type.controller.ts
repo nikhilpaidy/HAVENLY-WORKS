@@ -73,7 +73,7 @@ export async function createWorkspaceType(req: Request, res: Response, next: Nex
     }
 
     const finalCode = (code || name).trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
-    const organizationId = req.user?.organizationId || undefined;
+    const organizationId = req.user?.role === UserRole.SUPER_ADMIN ? undefined : req.user?.organizationId;
 
     const existing = await WorkspaceType.findOne({
       code: finalCode,

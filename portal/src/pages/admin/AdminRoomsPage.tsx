@@ -27,6 +27,11 @@ interface Room {
   } | string;
   capacity: number;
   hourlyRate: number;
+  dailyRate?: number;
+  workspaceType?: string;
+  floor?: string;
+  floorManagerName?: string;
+  floorManagerPhone?: string;
   bufferMinutes: number;
   slotIntervalMinutes: number;
   amenities: string[];
@@ -57,8 +62,14 @@ export const AdminRoomsPage: React.FC = () => {
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [name, setName] = useState('');
   const [locationId, setLocationId] = useState('');
+  const [workspaceType, setWorkspaceType] = useState('HOT_DESK');
+  const [workspaceTypes, setWorkspaceTypes] = useState<any[]>([]);
   const [capacity, setCapacity] = useState(8);
   const [hourlyRate, setHourlyRate] = useState(1200);
+  const [dailyRate, setDailyRate] = useState(4800);
+  const [floor, setFloor] = useState('');
+  const [floorManagerName, setFloorManagerName] = useState('');
+  const [floorManagerPhone, setFloorManagerPhone] = useState('');
   const [bufferMinutes, setBufferMinutes] = useState(15);
   const [slotIntervalMinutes, setSlotIntervalMinutes] = useState(30);
   const [amenitiesInput, setAmenitiesInput] = useState('4K Video Bar, Whiteboard, High-Speed Wi-Fi');
@@ -77,14 +88,19 @@ export const AdminRoomsPage: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [roomsData, locsData] = await Promise.all([
+      const [roomsData, locsData, typesData] = await Promise.all([
         adminApi.getRooms(selectedLocation !== 'all' ? { locationId: selectedLocation } : {}),
-        adminApi.getLocations()
+        adminApi.getLocations(),
+        adminApi.getWorkspaceTypes().catch(() => [])
       ]);
       setRooms(roomsData);
       setLocations(locsData);
+      setWorkspaceTypes(typesData || []);
       if (locsData.length > 0 && !locationId) {
         setLocationId(locsData[0]._id);
+      }
+      if (typesData && typesData.length > 0 && !workspaceType) {
+        setWorkspaceType(typesData[0].code);
       }
       setError(null);
     } catch (err: any) {
@@ -102,8 +118,13 @@ export const AdminRoomsPage: React.FC = () => {
     setEditingRoom(null);
     setName('');
     setLocationId(locations[0]?._id || '');
+    setWorkspaceType(workspaceTypes[0]?.code || 'HOT_DESK');
     setCapacity(8);
     setHourlyRate(1200);
+    setDailyRate(4800);
+    setFloor('Floor 2');
+    setFloorManagerName('');
+    setFloorManagerPhone('');
     setBufferMinutes(15);
     setSlotIntervalMinutes(30);
     setAmenitiesInput('4K Video Bar, Whiteboard, Acoustic Paneling');
@@ -117,8 +138,13 @@ export const AdminRoomsPage: React.FC = () => {
     setName(room.name);
     const locId = typeof room.locationId === 'object' ? room.locationId._id : room.locationId;
     setLocationId(locId);
+    setWorkspaceType(room.workspaceType || 'HOT_DESK');
     setCapacity(room.capacity);
     setHourlyRate(room.hourlyRate);
+    setDailyRate(room.dailyRate || room.hourlyRate * 5);
+    setFloor(room.floor || '');
+    setFloorManagerName(room.floorManagerName || '');
+    setFloorManagerPhone(room.floorManagerPhone || '');
     setBufferMinutes(room.bufferMinutes || 15);
     setSlotIntervalMinutes(room.slotIntervalMinutes || 30);
     setAmenitiesInput(room.amenities ? room.amenities.join(', ') : '');
@@ -135,8 +161,13 @@ export const AdminRoomsPage: React.FC = () => {
     const payload = {
       name,
       locationId,
+      workspaceType: workspaceType || 'HOT_DESK',
       capacity: Number(capacity),
       hourlyRate: Number(hourlyRate),
+      dailyRate: Number(dailyRate),
+      floor: floor.trim() || undefined,
+      floorManagerName: floorManagerName.trim() || undefined,
+      floorManagerPhone: floorManagerPhone.trim() || undefined,
       bufferMinutes: Number(bufferMinutes),
       slotIntervalMinutes: Number(slotIntervalMinutes),
       amenities: amenitiesInput
@@ -339,6 +370,13 @@ export const AdminRoomsPage: React.FC = () => {
                       </p>
                     )}
 
+                    <div className="flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-lg bg-emerald-500/5 border border-emerald-500/10 text-slate-600 dark:text-slate-300">
+                      <span>{room.floor || 'General Floor'}</span>
+                      <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                        Contact: {room.floorManagerName || 'Hub Manager'} {room.floorManagerPhone ? `(${room.floorManagerPhone})` : ''}
+                      </span>
+                    </div>
+
                     {/* Room Specs */}
                     <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 text-xs">
                       <div className="flex items-center space-x-2 text-slate-600 dark:text-slate-300">
@@ -426,28 +464,58 @@ export const AdminRoomsPage: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Location *
-                </label>
-                <select
-                  required
-                  value={locationId}
-                  onChange={(e) => setLocationId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-[#B6925A]"
-                >
-                  {locations.map((loc) => (
-                    <option key={loc._id} value={loc._id}>
-                      {loc.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Capacity (people) *
+                    Location *
+                  </label>
+                  <select
+                    required
+                    value={locationId}
+                    onChange={(e) => setLocationId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-[#B6925A]"
+                  >
+                    {locations.map((loc) => (
+                      <option key={loc._id} value={loc._id}>
+                        {loc.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Workspace Type *
+                  </label>
+                  <select
+                    required
+                    value={workspaceType}
+                    onChange={(e) => setWorkspaceType(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-[#B6925A]"
+                  >
+                    {workspaceTypes.length > 0 ? (
+                      workspaceTypes.map((wt) => (
+                        <option key={wt._id || wt.code} value={wt.code}>
+                          {wt.name}
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="HOT_DESK">Hot Desk</option>
+                        <option value="DEDICATED_DESK">Dedicated Desk</option>
+                        <option value="MEETING_ROOM">Meeting Room</option>
+                        <option value="CONFERENCE_ROOM">Conference Room</option>
+                        <option value="PRIVATE_OFFICE">Private Office</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Capacity (Seats) *
                   </label>
                   <input
                     type="number"
@@ -461,7 +529,7 @@ export const AdminRoomsPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Default Hourly Rate (₹/hr) *
+                    Hourly Rate (₹) *
                   </label>
                   <input
                     type="number"
@@ -472,6 +540,63 @@ export const AdminRoomsPage: React.FC = () => {
                     onChange={(e) => setHourlyRate(Number(e.target.value))}
                     className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-[#B6925A]"
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Day Pass Rate (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={dailyRate}
+                    onChange={(e) => setDailyRate(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-[#B6925A]"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-3">
+                <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                  Floor & Dedicated Operations Contact
+                </div>
+                <div className="grid grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                      Floor (e.g. Floor 3)
+                    </label>
+                    <input
+                      type="text"
+                      value={floor}
+                      onChange={(e) => setFloor(e.target.value)}
+                      placeholder="Floor 3"
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                      Floor Manager Name
+                    </label>
+                    <input
+                      type="text"
+                      value={floorManagerName}
+                      onChange={(e) => setFloorManagerName(e.target.value)}
+                      placeholder="Vikram Rao"
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                      Manager Phone
+                    </label>
+                    <input
+                      type="text"
+                      value={floorManagerPhone}
+                      onChange={(e) => setFloorManagerPhone(e.target.value)}
+                      placeholder="+91 98450 11223"
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 

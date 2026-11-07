@@ -42,7 +42,7 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
   const [readMore, setReadMore] = useState(false);
 
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [bookingMode, setBookingMode] = useState<'HOURLY' | 'DAY_PASS'>('DAY_PASS');
+  const [bookingMode, setBookingMode] = useState<'HOURLY' | 'DAY_PASS'>('HOURLY');
   const [guestName, setGuestName] = useState(currentUser?.name || '');
   const [guestPhone, setGuestPhone] = useState(currentUser?.phone || '');
   const [guestEmail, setGuestEmail] = useState(currentUser?.email || '');
@@ -50,13 +50,21 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hoursCount, setHoursCount] = useState(2);
 
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{ id: string; sender: 'user' | 'manager'; text: string; time: string }>>([]);
+  const [chatInput, setChatInput] = useState('');
+
   if (!space) return null;
 
   const loc = space.locationId || space;
-  const managerName = loc.managerName || 'Olivia Bennett';
-  const managerPhone = loc.managerPhone || '+91 98450 12345';
+  const isFloorManager = Boolean(space.floorManagerName);
+  const managerName = space.floorManagerName || loc.managerName || (loc.name ? `${loc.name} Hub Manager` : 'Facility Manager');
+  const managerRole = isFloorManager
+    ? `${space.floor ? `Floor ${space.floor} Manager` : 'Floor Manager'} • ${loc.name || 'Campus'}`
+    : `Hub Operations Manager • ${loc.name || 'Campus'}`;
+  const managerPhone = space.floorManagerPhone || loc.managerPhone || loc.phone || '+91 98450 12345';
   const managerAvatar = loc.managerAvatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&q=80';
-  const upiId = loc.upiId || 'cwsone@icici';
+  const upiId = loc.upiId || 'havenlywork@okhdfcbank';
   const qrCodeUrl = loc.paymentQrCodeUrl || '/uploads/cws-upi-qr.png';
   const rate = space.hourlyRate || loc.minHourlyRate || 350;
   const dayRate = space.dailyRate || rate * 5;
@@ -74,15 +82,43 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
     Linking.openURL(`tel:${managerPhone}`);
   };
 
-  const handleChatManager = () => {
-    Alert.alert(
-      `Contact ${managerName}`,
-      `Call or WhatsApp Workspace Manager at ${managerPhone}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Call', onPress: handleCallManager }
-      ]
-    );
+  const handleOpenChat = () => {
+    if (chatMessages.length === 0) {
+      setChatMessages([
+        {
+          id: 'welcome',
+          sender: 'manager',
+          text: `Hello! I am ${managerName}, ${managerRole}. How can I assist you with ${space.name || 'this workspace'}?`,
+          time: 'Just now'
+        }
+      ]);
+    }
+    setShowChatModal(true);
+  };
+
+  const handleSendMessage = () => {
+    if (!chatInput.trim()) return;
+    const text = chatInput.trim();
+    const userMsg = {
+      id: String(Date.now()),
+      sender: 'user' as const,
+      text,
+      time: 'Just now'
+    };
+    setChatMessages((prev) => [...prev, userMsg]);
+    setChatInput('');
+
+    setTimeout(() => {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          id: String(Date.now() + 1),
+          sender: 'manager',
+          text: `Thank you for reaching out! I've noted your inquiry regarding "${space.name}". I'll prepare this workspace or reach out directly at your contact.`,
+          time: 'Just now'
+        }
+      ]);
+    }, 900);
   };
 
   const handleConfirmReservation = async () => {
@@ -222,12 +258,6 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
 
           <View style={styles.infoSection}>
             <View style={styles.badgeRow}>
-              {space.saveBadge ? (
-                <View style={styles.saveBadge}>
-                  <Ionicons name="checkmark-circle" size={14} color="#00A859" />
-                  <Text style={styles.saveBadgeText}>{space.saveBadge}</Text>
-                </View>
-              ) : null}
               <View style={styles.ratingBadge}>
                 <Ionicons name="star" size={15} color="#F59E0B" />
                 <Text style={[styles.ratingText, { color: theme.textPrimary }]}>
@@ -296,10 +326,12 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
                       <Text style={[styles.managerName, { color: theme.textPrimary }]}>{managerName}</Text>
                       <Ionicons name="checkmark-circle" size={15} color="#00A859" style={{ marginLeft: 4 }} />
                     </View>
-                    <Text style={[styles.managerRole, { color: theme.textMuted }]}>Workspace Manager</Text>
+                    <Text style={[styles.managerRole, { color: theme.textMuted }]}>
+                      {managerRole}
+                    </Text>
                   </View>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TouchableOpacity style={styles.iconCircle} onPress={handleChatManager}>
+                    <TouchableOpacity style={styles.iconCircle} onPress={handleOpenChat}>
                       <Ionicons name="chatbubble-ellipses-outline" size={18} color="#00A859" />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.iconCircle} onPress={handleCallManager}>
@@ -368,7 +400,7 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
         <View style={[styles.bottomBar, { backgroundColor: theme.card, borderTopColor: theme.cardBorder }]}>
           <View>
             <Text style={[styles.bottomPriceLabel, { color: theme.textMuted }]}>
-              {bookingMode === 'DAY_PASS' ? 'Day Pass' : 'From'}
+              {bookingMode === 'DAY_PASS' ? 'Day Pass' : 'Hourly Rate'}
             </Text>
             <Text style={[styles.bottomPrice, { color: theme.textPrimary }]}>
               ₹{bookingMode === 'DAY_PASS' ? dayRate.toLocaleString('en-IN') : rate.toLocaleString('en-IN')}
@@ -404,14 +436,6 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
               <ScrollView style={{ maxHeight: 480 }}>
                 <View style={styles.modeToggleRow}>
                   <TouchableOpacity
-                    style={[styles.modeTogglePill, bookingMode === 'DAY_PASS' && styles.modeToggleActive]}
-                    onPress={() => setBookingMode('DAY_PASS')}
-                  >
-                    <Text style={[styles.modeToggleText, bookingMode === 'DAY_PASS' && { color: '#FFFFFF' }]}>
-                      Day Pass (₹{dayRate})
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
                     style={[styles.modeTogglePill, bookingMode === 'HOURLY' && styles.modeToggleActive]}
                     onPress={() => setBookingMode('HOURLY')}
                   >
@@ -419,13 +443,23 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
                       Hourly (₹{rate}/hr)
                     </Text>
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modeTogglePill, bookingMode === 'DAY_PASS' && styles.modeToggleActive]}
+                    onPress={() => setBookingMode('DAY_PASS')}
+                  >
+                    <Text style={[styles.modeToggleText, bookingMode === 'DAY_PASS' && { color: '#FFFFFF' }]}>
+                      Day Pass (₹{dayRate})
+                    </Text>
+                  </TouchableOpacity>
                 </View>
 
                 {bookingMode === 'HOURLY' && (
                   <View style={{ marginBottom: 16 }}>
-                    <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Duration: {hoursCount} Hours</Text>
+                    <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                      Duration: {hoursCount} {hoursCount === 1 ? 'Hour' : 'Hours'}
+                    </Text>
                     <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
-                      {[1, 2, 4, 8].map((h) => (
+                      {[1, 2, 3, 4, 6].map((h) => (
                         <TouchableOpacity
                           key={h}
                           style={[
@@ -440,6 +474,52 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
                       ))}
                     </View>
                   </View>
+                )}
+
+                {currentUser && currentUser.companyId ? (
+                  <View style={[styles.quotaAlertBox, { backgroundColor: isDark ? '#0A2518' : '#F0FDF4', borderColor: '#00A859' }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <Ionicons name="layers" size={18} color="#00A859" style={{ marginRight: 8 }} />
+                      <Text style={[styles.quotaAlertTitle, { color: '#00A859' }]}>Annual Free Quota Allowance</Text>
+                    </View>
+                    <Text style={[styles.quotaAlertText, { color: theme.textSecondary }]}>
+                      {bookingMode === 'DAY_PASS'
+                        ? `1 Day Pass counts as 8 hours deducted from ${currentUser.company?.name || 'your company'}'s annual free quota (240 hrs/yr). Zero out-of-pocket charge.`
+                        : `Hourly booking: 1 hour = 1 quota hour (${hoursCount} hours will be deducted from ${currentUser.company?.name || 'your company'}'s annual free quota). Zero out-of-pocket charge.`}
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                    <View style={[styles.paymentQrBox, { backgroundColor: isDark ? '#0A0F1D' : '#F0FDF4', borderColor: '#00A859' }]}>
+                      <Text style={styles.qrTitle}>Pay with UPI QR Code</Text>
+                      <Text style={styles.qrSubtitle}>
+                        Total Payable: ₹{totalAmount.toLocaleString('en-IN')} ({bookingMode === 'DAY_PASS' ? 'Full Day Pass' : `${hoursCount} hrs @ ₹${rate}/hr`})
+                      </Text>
+
+                      <View style={styles.qrImageWrapper}>
+                        <SafeImage
+                          uri={`https://tqsb1xz0-6018.inc1.devtunnels.ms${qrCodeUrl}`}
+                          style={{ width: 140, height: 140 }}
+                          borderRadius={12}
+                        />
+                      </View>
+                      <Text style={styles.upiIdText}>UPI ID: {upiId}</Text>
+                      <Text style={{ fontSize: 11, color: '#166534', textAlign: 'center', marginTop: 4 }}>
+                        Scan with GPay, PhonePe, or Paytm
+                      </Text>
+                    </View>
+
+                    <View style={styles.fieldGroup}>
+                      <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>UPI Reference / UTR Number (Optional)</Text>
+                      <TextInput
+                        style={[styles.fieldInput, { color: theme.textPrimary, borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}
+                        placeholder="e.g. 339482019482"
+                        placeholderTextColor={theme.textMuted}
+                        value={upiRef}
+                        onChangeText={setUpiRef}
+                      />
+                    </View>
+                  </>
                 )}
 
                 <View style={styles.fieldGroup}>
@@ -465,47 +545,6 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
                   />
                 </View>
 
-                <View style={styles.fieldGroup}>
-                  <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Email Address</Text>
-                  <TextInput
-                    style={[styles.fieldInput, { color: theme.textPrimary, borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}
-                    placeholder="email@domain.com"
-                    placeholderTextColor={theme.textMuted}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    value={guestEmail}
-                    onChangeText={setGuestEmail}
-                  />
-                </View>
-
-                <View style={[styles.paymentQrBox, { backgroundColor: isDark ? '#0A0F1D' : '#F0FDF4', borderColor: '#00A859' }]}>
-                  <Text style={styles.qrTitle}>Pay with UPI QR Code</Text>
-                  <Text style={styles.qrSubtitle}>Total Payable: ₹{totalAmount.toLocaleString('en-IN')}</Text>
-
-                  <View style={styles.qrImageWrapper}>
-                    <SafeImage
-                      uri={`https://tqsb1xz0-6018.inc1.devtunnels.ms${qrCodeUrl}`}
-                      style={{ width: 140, height: 140 }}
-                      borderRadius={12}
-                    />
-                  </View>
-                  <Text style={styles.upiIdText}>UPI ID: {upiId}</Text>
-                  <Text style={{ fontSize: 11, color: '#166534', textAlign: 'center', marginTop: 4 }}>
-                    Scan with GPay, PhonePe, or Paytm
-                  </Text>
-                </View>
-
-                <View style={styles.fieldGroup}>
-                  <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>UPI Reference / UTR Number (Optional)</Text>
-                  <TextInput
-                    style={[styles.fieldInput, { color: theme.textPrimary, borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}
-                    placeholder="e.g. 339482019482"
-                    placeholderTextColor={theme.textMuted}
-                    value={upiRef}
-                    onChangeText={setUpiRef}
-                  />
-                </View>
-
                 <TouchableOpacity
                   style={[styles.submitBookBtn, isSubmitting && { opacity: 0.7 }]}
                   onPress={handleConfirmReservation}
@@ -514,10 +553,91 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
                   {isSubmitting ? (
                     <ActivityIndicator color="#FFFFFF" size="small" />
                   ) : (
-                    <Text style={styles.submitBookBtnText}>Confirm Reservation (₹{totalAmount})</Text>
+                    <Text style={styles.submitBookBtnText}>
+                      {currentUser && currentUser.companyId
+                        ? `Confirm Reservation (${bookingMode === 'DAY_PASS' ? '8 hrs' : `${hoursCount} hrs`} Quota)`
+                        : `Confirm Reservation (₹${totalAmount})`}
+                    </Text>
                   )}
                 </TouchableOpacity>
               </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal
+          visible={showChatModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowChatModal(false)}
+        >
+          <View style={styles.chatModalOverlay}>
+            <View style={[styles.chatModalSheet, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+              <View style={styles.chatModalHeader}>
+                <SafeImage uri={managerAvatar} style={styles.chatHeaderAvatar} borderRadius={20} />
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={[styles.chatHeaderName, { color: theme.textPrimary }]}>{managerName}</Text>
+                  <Text style={{ fontSize: 11, color: '#00A859', fontWeight: '600' }}>
+                    {managerRole} (Online)
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.chatCloseBtn}
+                  onPress={() => setShowChatModal(false)}
+                >
+                  <Ionicons name="close" size={22} color={theme.textPrimary} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.chatMessagesScroll} contentContainerStyle={{ paddingVertical: 12 }}>
+                {chatMessages.map((msg) => {
+                  const isUser = msg.sender === 'user';
+                  return (
+                    <View
+                      key={msg.id}
+                      style={[
+                        styles.chatBubble,
+                        isUser ? styles.chatBubbleUser : [styles.chatBubbleManager, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.chatBubbleText,
+                          { color: isUser ? '#FFFFFF' : theme.textPrimary }
+                        ]}
+                      >
+                        {msg.text}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.chatBubbleTime,
+                          { color: isUser ? 'rgba(255,255,255,0.7)' : theme.textMuted }
+                        ]}
+                      >
+                        {msg.time}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+
+              <View style={[styles.chatInputRow, { borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}>
+                <TextInput
+                  style={[styles.chatInputField, { color: theme.textPrimary }]}
+                  placeholder={`Message ${managerName}...`}
+                  placeholderTextColor={theme.textMuted}
+                  value={chatInput}
+                  onChangeText={setChatInput}
+                  onSubmitEditing={handleSendMessage}
+                />
+                <TouchableOpacity
+                  style={styles.chatSendBtn}
+                  onPress={handleSendMessage}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="paper-plane" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>
@@ -632,23 +752,9 @@ const styles = StyleSheet.create({
   },
   badgeRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     marginBottom: 10
-  },
-  saveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 14
-  },
-  saveBadgeText: {
-    color: '#15803D',
-    fontSize: 12,
-    fontWeight: '700',
-    marginLeft: 4
   },
   ratingBadge: {
     flexDirection: 'row',
@@ -937,5 +1043,101 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700'
+  },
+  quotaAlertBox: {
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 14
+  },
+  quotaAlertTitle: {
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  quotaAlertText: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 4
+  },
+  chatModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end'
+  },
+  chatModalSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    padding: 18,
+    maxHeight: '75%'
+  },
+  chatModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.1)'
+  },
+  chatHeaderAvatar: {
+    width: 40,
+    height: 40
+  },
+  chatHeaderName: {
+    fontSize: 15,
+    fontWeight: '700'
+  },
+  chatCloseBtn: {
+    padding: 4
+  },
+  chatMessagesScroll: {
+    maxHeight: 280
+  },
+  chatBubble: {
+    maxWidth: '80%',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 10
+  },
+  chatBubbleUser: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#00A859',
+    borderBottomRightRadius: 4
+  },
+  chatBubbleManager: {
+    alignSelf: 'flex-start',
+    borderBottomLeftRadius: 4
+  },
+  chatBubbleText: {
+    fontSize: 13,
+    lineHeight: 18
+  },
+  chatBubbleTime: {
+    fontSize: 10,
+    marginTop: 4,
+    textAlign: 'right'
+  },
+  chatInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginTop: 10
+  },
+  chatInputField: {
+    flex: 1,
+    fontSize: 13,
+    paddingVertical: 6
+  },
+  chatSendBtn: {
+    backgroundColor: '#00A859',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 6
   }
 });

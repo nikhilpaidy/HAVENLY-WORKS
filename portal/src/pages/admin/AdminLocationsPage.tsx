@@ -31,6 +31,9 @@ interface Location {
     country: string;
   };
   timezone: string;
+  managerName?: string;
+  managerPhone?: string;
+  managerEmail?: string;
   isActive: boolean;
   operatingHours: OperatingHour[];
   createdAt: string;
@@ -52,7 +55,10 @@ export const AdminLocationsPage: React.FC = () => {
   const [stateName, setStateName] = useState('');
   const [postalCode, setPostalCode] = useState('');
   const [country, setCountry] = useState('USA');
-  const [timezone, setTimezone] = useState('America/New_York');
+  const [timezone, setTimezone] = useState('Asia/Kolkata');
+  const [managerName, setManagerName] = useState('');
+  const [managerPhone, setManagerPhone] = useState('');
+  const [managerEmail, setManagerEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const fetchLocations = async () => {
@@ -79,8 +85,11 @@ export const AdminLocationsPage: React.FC = () => {
     setCity('');
     setStateName('');
     setPostalCode('');
-    setCountry('USA');
-    setTimezone('America/New_York');
+    setCountry('India');
+    setTimezone('Asia/Kolkata');
+    setManagerName('');
+    setManagerPhone('');
+    setManagerEmail('');
     setIsModalOpen(true);
   };
 
@@ -91,8 +100,11 @@ export const AdminLocationsPage: React.FC = () => {
     setCity(loc.address?.city || '');
     setStateName(loc.address?.state || '');
     setPostalCode(loc.address?.postalCode || '');
-    setCountry(loc.address?.country || 'USA');
-    setTimezone(loc.timezone || 'America/New_York');
+    setCountry(loc.address?.country || 'India');
+    setTimezone(loc.timezone || 'Asia/Kolkata');
+    setManagerName(loc.managerName || '');
+    setManagerPhone(loc.managerPhone || '');
+    setManagerEmail(loc.managerEmail || '');
     setIsModalOpen(true);
   };
 
@@ -110,7 +122,10 @@ export const AdminLocationsPage: React.FC = () => {
         postalCode,
         country
       },
-      timezone
+      timezone,
+      managerName: managerName.trim() || undefined,
+      managerPhone: managerPhone.trim() || undefined,
+      managerEmail: managerEmail.trim() || undefined
     };
 
     try {
@@ -218,6 +233,12 @@ export const AdminLocationsPage: React.FC = () => {
                     <Clock className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
                     <span>Timezone: {loc.timezone}</span>
                   </div>
+                  {loc.managerName && (
+                    <div className="flex items-center space-x-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+                      <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>Manager: {loc.managerName} {loc.managerPhone ? `(${loc.managerPhone})` : ''}</span>
+                    </div>
+                  )}
                 </div>
 
                 {loc.operatingHours && loc.operatingHours.length > 0 && (
@@ -361,14 +382,58 @@ export const AdminLocationsPage: React.FC = () => {
                   onChange={(e) => setTimezone(e.target.value)}
                   className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-[#B6925A]"
                 >
+                  <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
                   <option value="America/New_York">America/New_York (EST/EDT)</option>
                   <option value="America/Chicago">America/Chicago (CST/CDT)</option>
                   <option value="America/Denver">America/Denver (MST/MDT)</option>
                   <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
                   <option value="Europe/London">Europe/London (GMT/BST)</option>
                   <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
-                  <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
                 </select>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white mb-2">
+                  Hub Operations Manager
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Manager Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={managerName}
+                      onChange={(e) => setManagerName(e.target.value)}
+                      placeholder="e.g. Olivia Bennett"
+                      className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-[#B6925A]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Manager Phone
+                    </label>
+                    <input
+                      type="text"
+                      value={managerPhone}
+                      onChange={(e) => setManagerPhone(e.target.value)}
+                      placeholder="+91 98450 12345"
+                      className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-[#B6925A]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Manager Email
+                    </label>
+                    <input
+                      type="email"
+                      value={managerEmail}
+                      onChange={(e) => setManagerEmail(e.target.value)}
+                      placeholder="manager@havenlywork.com"
+                      className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-1 focus:ring-[#B6925A]"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="pt-4 flex items-center justify-end space-x-3">

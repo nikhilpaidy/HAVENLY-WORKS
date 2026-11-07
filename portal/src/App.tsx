@@ -74,17 +74,17 @@ export const App: React.FC = () => {
               <Route path="dashboard" element={<SuperAdminDashboardPage />} />
               <Route path="admins" element={<SuperAdminAdminsPage />} />
               <Route path="organizations" element={<SuperAdminOrganizationsPage />} />
+              <Route path="workspace-types" element={<AdminWorkspaceTypesPage />} />
               <Route path="staff" element={<SuperAdminStaffPage />} />
               <Route path="reports" element={<SuperAdminReportsPage />} />
               <Route path="blogs" element={<SuperAdminBlogCMSPage />} />
               <Route path="audit-logs" element={<SuperAdminAuditLogsPage />} />
             </Route>
 
-            {/* Coworking Admin Protected Routes */}
             <Route
               path="/admin"
               element={
-                <ProtectedRoute allowedRoles={[UserRole.COWORKING_ADMIN, UserRole.COWORKING_ADMIN_STAFF]}>
+                <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.COWORKING_ADMIN, UserRole.COWORKING_ADMIN_STAFF]}>
                   <DashboardLayout />
                 </ProtectedRoute>
               }

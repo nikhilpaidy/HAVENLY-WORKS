@@ -19,9 +19,12 @@ export interface IMeetingRoom extends Document {
   capacity: number;
   hourlyRate: number;
   dailyRate?: number;
+  floor?: string;
+  floorManagerName?: string;
+  floorManagerPhone?: string;
+  floorManagerEmail?: string;
   rating: number;
   reviewCount: number;
-  saveBadge?: string;
   photos: string[];
   amenities: string[];
   slotIntervalMinutes: number;
@@ -98,9 +101,21 @@ const MeetingRoomSchema = new Schema<IMeetingRoom>(
       type: Number,
       default: 120
     },
-    saveBadge: {
+    floor: {
       type: String,
-      default: 'Save 10%'
+      trim: true
+    },
+    floorManagerName: {
+      type: String,
+      trim: true
+    },
+    floorManagerPhone: {
+      type: String,
+      trim: true
+    },
+    floorManagerEmail: {
+      type: String,
+      trim: true
     },
     photos: {
       type: [String],

@@ -41,7 +41,7 @@ export async function getPublicRooms(req: Request, res: Response, next: NextFunc
     }
 
     const rooms = await MeetingRoom.find(query)
-      .populate('locationId', 'name city state timezone address managerName managerPhone paymentQrCodeUrl upiId')
+      .populate('locationId', 'name city state timezone address managerName managerPhone managerEmail managerAvatarUrl paymentQrCodeUrl upiId')
       .sort({ rating: -1, hourlyRate: 1 });
 
     return apiSuccess(res, rooms);
@@ -104,7 +104,7 @@ export async function getRooms(req: Request, res: Response, next: NextFunction) 
     }
 
     const rooms = await MeetingRoom.find(query)
-      .populate('locationId', 'name city timezone businessHours managerName managerPhone paymentQrCodeUrl upiId')
+      .populate('locationId', 'name city timezone businessHours managerName managerPhone managerEmail managerAvatarUrl paymentQrCodeUrl upiId')
       .sort({ capacity: 1, name: 1 });
 
     return apiSuccess(res, rooms);

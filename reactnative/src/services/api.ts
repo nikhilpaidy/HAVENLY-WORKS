@@ -236,6 +236,9 @@ export const roomsApi = {
     capacity: number;
     hourlyRate: number;
     dailyRate?: number;
+    floor?: string;
+    floorManagerName?: string;
+    floorManagerPhone?: string;
     amenities?: string[];
     description?: string;
     locationId?: string;
