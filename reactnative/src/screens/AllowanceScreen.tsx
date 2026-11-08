@@ -198,16 +198,6 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
         </View>
       </View>
 
-      <View style={[styles.infoBanner, { backgroundColor: isDark ? '#111827' : '#F0FDF4', borderColor: isDark ? '#1F2937' : '#DCFCE7' }]}>
-        <Ionicons name="information-circle" size={20} color="#00A859" style={{ marginRight: 10 }} />
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.infoTitle, { color: theme.textPrimary }]}>Annual Complimentary Policy</Text>
-          <Text style={[styles.infoText, { color: theme.textSecondary }]}>
-            Complimentary room hours are allocated annually and remain valid throughout your active enterprise term without arbitrary monthly forfeiture.
-          </Text>
-        </View>
-      </View>
-
       <View style={styles.ledgerHeader}>
         <Text style={[styles.ledgerTitle, { color: theme.textPrimary }]}>Quota Transaction Ledger</Text>
         <Text style={{ fontSize: 12, color: theme.textMuted }}>{ledger.length} entries</Text>
@@ -248,9 +238,6 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
           <View style={styles.sectionHeaderCard}>
             <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
               Coworking Operators ({superAdminAdmins.length})
-            </Text>
-            <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-              Select an operator to inspect their client company allowances
             </Text>
           </View>
 
@@ -303,9 +290,6 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
           <View style={styles.sectionHeaderCard}>
             <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
               {selectedAdmin.name} - Client Quotas ({companies.length})
-            </Text>
-            <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-              Select a client to view annual complimentary quota and usage ledger
             </Text>
           </View>
 
@@ -361,9 +345,6 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
           <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
             {selectedCompany.name} Quota Details
           </Text>
-          <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-            Annual meeting room hours allocation and consumption history
-          </Text>
         </View>
 
         {renderQuotaMetrics()}
@@ -382,9 +363,6 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
           <View style={styles.sectionHeaderCard}>
             <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
               Client Companies Quotas ({adminCompanies.length})
-            </Text>
-            <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-              Select a client to monitor their annual allowance usage and ledger
             </Text>
           </View>
 

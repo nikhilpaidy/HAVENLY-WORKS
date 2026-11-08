@@ -115,7 +115,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <View
           style={[
@@ -348,17 +348,16 @@ export const SupportModal: React.FC<SupportModalProps> = ({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'flex-end'
   },
   modalContent: {
-    width: '100%',
-    maxHeight: '85%',
-    borderRadius: 24,
+    height: '88%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     borderWidth: 1,
-    padding: 20
+    padding: 22,
+    paddingBottom: 36
   },
   header: {
     flexDirection: 'row',

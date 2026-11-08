@@ -231,6 +231,8 @@ const MainApp: React.FC = () => {
         }}
         onOpenLegal={() => setShowLegalModal(true)}
         onOpenSupport={() => setShowSupportModal(true)}
+        onOpenNotifications={() => setShowNotifications(true)}
+        unreadNotifsCount={unreadCount}
         onSignOut={async () => {
           await logout();
           setAuthStep('login');

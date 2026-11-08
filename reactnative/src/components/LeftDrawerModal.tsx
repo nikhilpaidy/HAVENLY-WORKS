@@ -35,6 +35,8 @@ interface LeftDrawerModalProps {
   onOpenInvoices: () => void;
   onOpenLegal: () => void;
   onOpenSupport: () => void;
+  onOpenNotifications?: () => void;
+  unreadNotifsCount?: number;
   onSignOut: () => void;
   onSignInRequest: () => void;
 }
@@ -52,6 +54,8 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
   onOpenInvoices,
   onOpenLegal,
   onOpenSupport,
+  onOpenNotifications,
+  unreadNotifsCount = 0,
   onSignOut,
   onSignInRequest
 }) => {
@@ -63,6 +67,8 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
   const isManagerRole = isSuperAdmin || isCoworkingAdmin;
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [workspacesExpanded, setWorkspacesExpanded] = useState(true);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
 
   const [locations, setLocations] = useState<any[]>([]);
   const [selectedHubId, setSelectedHubId] = useState('');
@@ -262,6 +268,7 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
           onPress: async () => {
             try {
               await mobileApi.deleteAccount();
+              setShowAccountMenu(false);
               onClose();
               onSignOut();
               Alert.alert('Account Deactivated', 'Your account has been deactivated successfully.');
@@ -277,26 +284,6 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
   const filterMatches = (title: string) => {
     if (!searchQuery.trim()) return true;
     return title.toLowerCase().includes(searchQuery.toLowerCase().trim());
-  };
-
-  const getRoleLabel = () => {
-    if (isGuest) return 'Guest';
-    switch (user?.role) {
-      case 'SUPER_ADMIN':
-        return 'Super Admin';
-      case 'SUPER_ADMIN_STAFF':
-        return 'Platform Staff';
-      case 'COWORKING_ADMIN':
-        return 'Coworking Admin';
-      case 'COWORKING_ADMIN_STAFF':
-        return 'Hub Staff';
-      case 'COMPANY_OWNER':
-        return 'Company Owner';
-      case 'EMPLOYEE':
-        return 'Company Staff';
-      default:
-        return 'Member';
-    }
   };
 
   const showStaffOption =
@@ -325,38 +312,40 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
             styles.drawerContent,
             {
               width: DRAWER_WIDTH,
-              backgroundColor: isDark ? '#0A0F1D' : '#FFFFFF',
-              borderRightColor: isDark ? '#1E293B' : '#E2E8F0',
+              backgroundColor: isDark ? '#121214' : '#FFFFFF',
+              borderRightColor: isDark ? '#27272A' : '#E2E8F0',
               transform: [{ translateX: slideAnim }]
             }
           ]}
         >
           <View style={styles.header}>
             <View style={styles.brandRow}>
-              <HavenlyLogo variant="icon" size={32} />
-              <View style={{ marginLeft: 10 }}>
-                <Text style={[styles.brandName, { color: theme.textPrimary }]}>HavenlyWork</Text>
-                <Text style={styles.brandTagline}>SPACE FOR TOGETHERNESS</Text>
+              <View style={[styles.brandIconBox, { backgroundColor: '#00A859' }]}>
+                <Ionicons name="business" size={18} color="#FFFFFF" />
               </View>
+              <Text style={[styles.brandName, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
+                HavenlyWork
+              </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-              <Ionicons name="close" size={22} color={theme.textPrimary} />
+              <Ionicons name="close" size={20} color={isDark ? '#94A3B8' : '#64748B'} />
             </TouchableOpacity>
           </View>
 
-          <View style={[styles.searchBox, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
-            <Ionicons name="search-outline" size={17} color={theme.textMuted} style={{ marginRight: 8 }} />
+          <View style={[styles.searchBox, { backgroundColor: isDark ? '#1C1C1E' : '#F4F5F7', borderColor: isDark ? '#2E2E32' : '#E5E7EB' }]}>
             <TextInput
               style={[styles.searchInput, { color: theme.textPrimary }]}
-              placeholder="Search navigation..."
-              placeholderTextColor={theme.textMuted}
+              placeholder="Search"
+              placeholderTextColor={isDark ? '#71717A' : '#9CA3AF'}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
-            {searchQuery.length > 0 && (
+            {searchQuery.length > 0 ? (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={16} color={theme.textMuted} />
+                <Ionicons name="close-circle" size={16} color={isDark ? '#71717A' : '#9CA3AF'} />
               </TouchableOpacity>
+            ) : (
+              <Ionicons name="search-outline" size={16} color={isDark ? '#71717A' : '#9CA3AF'} />
             )}
           </View>
 
@@ -364,292 +353,486 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.menuScroll}
           >
-            {filterMatches('Navigation Explore Workspaces Rooms') && (
-              <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
-                NAVIGATION
-              </Text>
-            )}
-
-            {filterMatches('Explore Workspaces') && (
+            {filterMatches('Due List Reservations Bookings') && (
               <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => handleAction(onOpenExplore)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="compass-outline" size={20} color={isDark ? '#94A3B8' : '#475569'} style={styles.itemIcon} />
-                <Text style={[styles.itemLabel, { color: theme.textPrimary }]}>
-                  Explore Workspaces
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {filterMatches('Workspaces Desks Meeting Rooms') && (
-              <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => handleAction(onOpenRooms)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="grid-outline" size={20} color={isDark ? '#94A3B8' : '#475569'} style={styles.itemIcon} />
-                <Text style={[styles.itemLabel, { color: theme.textPrimary }]}>
-                  Meeting Rooms & Desks
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            <View style={[styles.divider, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]} />
-
-            {filterMatches('My Workspace Bookings Reservations Quota') && (
-              <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
-                MY WORKSPACE
-              </Text>
-            )}
-
-            {filterMatches('Active Reservations Bookings') && (
-              <TouchableOpacity
-                style={styles.navItem}
+                style={styles.navRow}
                 onPress={() => handleAction(onOpenBookings)}
                 activeOpacity={0.7}
               >
-                <Ionicons name="bookmark-outline" size={20} color={isDark ? '#94A3B8' : '#475569'} style={styles.itemIcon} />
-                <Text style={[styles.itemLabel, { color: theme.textPrimary }]}>
-                  {isSuperAdmin ? 'Platform Bookings' : isCoworkingAdmin ? 'Hub Bookings' : 'My Reservations'}
+                <Ionicons
+                  name="document-text-outline"
+                  size={19}
+                  color={isDark ? '#A1A1AA' : '#64748B'}
+                  style={styles.rowIcon}
+                />
+                <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
+                  Due List
                 </Text>
               </TouchableOpacity>
             )}
 
-            {filterMatches('Allowance Quota Usage') && (
+            {filterMatches('Notifications Alerts') && (
               <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => handleAction(onOpenQuota)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="layers-outline" size={20} color={isDark ? '#94A3B8' : '#475569'} style={styles.itemIcon} />
-                <Text style={[styles.itemLabel, { color: theme.textPrimary }]}>
-                  {isSuperAdmin ? 'Platform Quotas' : isCoworkingAdmin ? 'Client Quotas' : 'Allowance & Quota'}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            <View style={[styles.divider, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]} />
-
-            {filterMatches('Operations Helpdesk Staff Invoices Onboard Hub') && (
-              <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
-                FACILITY OPERATIONS
-              </Text>
-            )}
-
-            {isManagerRole && filterMatches('Onboard Client Company Registration') && (
-              <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => setShowOnboardModal(true)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="business-outline" size={20} color="#00A859" style={styles.itemIcon} />
-                <Text style={[styles.itemLabel, { color: '#00A859', fontWeight: '700' }]}>
-                  + Onboard Client Company
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {isSuperAdmin && filterMatches('Add Coworking Hub Location') && (
-              <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => setShowAddHubModal(true)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="map-outline" size={20} color="#0284C7" style={styles.itemIcon} />
-                <Text style={[styles.itemLabel, { color: '#0284C7', fontWeight: '700' }]}>
-                  + Add Coworking Hub
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {isManagerRole && filterMatches('Add Workspace Type Category') && (
-              <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => setShowAddTypeModal(true)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="pricetags-outline" size={20} color="#8B5CF6" style={styles.itemIcon} />
-                <Text style={[styles.itemLabel, { color: '#8B5CF6', fontWeight: '700' }]}>
-                  + Add Workspace Type
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {filterMatches('Helpdesk Complaints Service Tickets') && (
-              <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => handleAction(onOpenHelpdesk)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="chatbubbles-outline" size={20} color={isDark ? '#94A3B8' : '#475569'} style={styles.itemIcon} />
-                <Text style={[styles.itemLabel, { color: theme.textPrimary }]}>
-                  Helpdesk & Complaints
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {showStaffOption && filterMatches('Staff Management') && (
-              <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => handleAction(onOpenStaff)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="people-outline" size={20} color={isDark ? '#94A3B8' : '#475569'} style={styles.itemIcon} />
-                <Text style={[styles.itemLabel, { color: theme.textPrimary }]}>
-                  Staff & Permissions
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {filterMatches('Invoices Billing Receipts') && (
-              <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => handleAction(onOpenInvoices)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="receipt-outline" size={20} color={isDark ? '#94A3B8' : '#475569'} style={styles.itemIcon} />
-                <Text style={[styles.itemLabel, { color: theme.textPrimary }]}>
-                  Invoices & Statements
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            <View style={[styles.divider, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]} />
-
-            {filterMatches('Support Legal Terms Theme') && (
-              <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
-                PREFERENCES & ASSISTANCE
-              </Text>
-            )}
-
-            {filterMatches('Support Hotline 24/7') && (
-              <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => handleAction(onOpenSupport)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="call-outline" size={20} color={isDark ? '#94A3B8' : '#475569'} style={styles.itemIcon} />
-                <Text style={[styles.itemLabel, { color: theme.textPrimary }]}>
-                  Customer Support Helpline
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {filterMatches('Privacy Policy Terms Legal') && (
-              <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => handleAction(onOpenLegal)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="document-text-outline" size={20} color={isDark ? '#94A3B8' : '#475569'} style={styles.itemIcon} />
-                <Text style={[styles.itemLabel, { color: theme.textPrimary }]}>
-                  Privacy & Terms of Service
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {filterMatches('Dark Light Theme Appearance') && (
-              <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => setThemeMode(isDark ? 'light' : 'dark')}
+                style={styles.navRow}
+                onPress={() => handleAction(onOpenNotifications ? onOpenNotifications : onOpenExplore)}
                 activeOpacity={0.7}
               >
                 <Ionicons
-                  name={isDark ? 'sunny-outline' : 'moon-outline'}
-                  size={20}
-                  color={isDark ? '#94A3B8' : '#475569'}
-                  style={styles.itemIcon}
+                  name="notifications-outline"
+                  size={19}
+                  color={isDark ? '#A1A1AA' : '#64748B'}
+                  style={styles.rowIcon}
                 />
-                <Text style={[styles.itemLabel, { color: theme.textPrimary }]}>
-                  {isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
+                  Notifications
                 </Text>
+                {unreadNotifsCount > 0 && (
+                  <View style={styles.badgePill}>
+                    <Text style={styles.badgePillText}>{unreadNotifsCount}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             )}
 
-            <View style={[styles.divider, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]} />
+            <View style={styles.sectionSpacer} />
 
-            {filterMatches('Account Settings Profile Sign In Out') && (
-              <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
-                ACCOUNT
-              </Text>
-            )}
-
-            {filterMatches('Profile Account Details') && (
-              <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => handleAction(onOpenProfile)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="settings-outline" size={20} color={isDark ? '#94A3B8' : '#475569'} style={styles.itemIcon} />
-                <Text style={[styles.itemLabel, { color: theme.textPrimary }]}>
-                  Profile & Settings
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {isGuest ? (
-              <TouchableOpacity
-                style={styles.signInButton}
-                onPress={() => handleAction(onSignInRequest)}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="log-in-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.signInButtonText}>Sign In to Account</Text>
-              </TouchableOpacity>
-            ) : (
+            {filterMatches('Navigation Dashboard Explore') && (
               <>
+                <Text style={[styles.sectionHeading, { color: isDark ? '#71717A' : '#94A3B8' }]}>
+                  Navigation
+                </Text>
                 <TouchableOpacity
-                  style={styles.navItem}
-                  onPress={handleDeleteAccount}
+                  style={styles.navRow}
+                  onPress={() => handleAction(onOpenExplore)}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="trash-outline" size={20} color="#EF4444" style={styles.itemIcon} />
-                  <Text style={[styles.itemLabel, { color: '#EF4444' }]}>
-                    Deactivate Account
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.navItem}
-                  onPress={() => handleAction(onSignOut)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="log-out-outline" size={20} color={isDark ? '#94A3B8' : '#64748B'} style={styles.itemIcon} />
-                  <Text style={[styles.itemLabel, { color: theme.textSecondary }]}>
-                    Sign Out
+                  <Ionicons
+                    name="grid-outline"
+                    size={19}
+                    color={isDark ? '#A1A1AA' : '#64748B'}
+                    style={styles.rowIcon}
+                  />
+                  <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
+                    Dashboard
                   </Text>
                 </TouchableOpacity>
               </>
             )}
+
+            <View style={styles.sectionSpacer} />
+
+            {filterMatches('My tasks Workspaces Desks Meeting Rooms Reservations Quota') && (
+              <>
+                <Text style={[styles.sectionHeading, { color: isDark ? '#71717A' : '#94A3B8' }]}>
+                  My tasks
+                </Text>
+
+                <TouchableOpacity
+                  style={styles.navRow}
+                  onPress={() => setWorkspacesExpanded(!workspacesExpanded)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="document-text-outline"
+                    size={19}
+                    color={isDark ? '#A1A1AA' : '#64748B'}
+                    style={styles.rowIcon}
+                  />
+                  <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
+                    Workspaces & Desks
+                  </Text>
+                  <Ionicons
+                    name={workspacesExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={16}
+                    color={isDark ? '#71717A' : '#94A3B8'}
+                  />
+                </TouchableOpacity>
+
+                {workspacesExpanded && (
+                  <View style={styles.nestedContainer}>
+                    <View style={[styles.verticalTreeLine, { backgroundColor: isDark ? '#27272A' : '#E2E8F0' }]} />
+                    <View style={styles.nestedItemsColumn}>
+                      <TouchableOpacity
+                        style={styles.nestedRow}
+                        onPress={() => handleAction(onOpenRooms)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.nestedLabel, { color: isDark ? '#D4D4D8' : '#475569' }]}>
+                          Meeting Rooms
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.nestedRow}
+                        onPress={() => handleAction(onOpenRooms)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.nestedLabel, { color: isDark ? '#D4D4D8' : '#475569' }]}>
+                          Flex Desks
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.nestedRow}
+                        onPress={() => handleAction(onOpenRooms)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.nestedLabel, { color: isDark ? '#D4D4D8' : '#475569' }]}>
+                          Private Cabins
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
+                {filterMatches('Reservations Bookings') && (
+                  <TouchableOpacity
+                    style={styles.navRow}
+                    onPress={() => handleAction(onOpenBookings)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="bookmark-outline"
+                      size={19}
+                      color={isDark ? '#A1A1AA' : '#64748B'}
+                      style={styles.rowIcon}
+                    />
+                    <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
+                      {isSuperAdmin ? 'Platform Bookings' : isCoworkingAdmin ? 'Hub Bookings' : 'Reservations'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {filterMatches('Quota Allowance') && (
+                  <TouchableOpacity
+                    style={styles.navRow}
+                    onPress={() => handleAction(onOpenQuota)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="layers-outline"
+                      size={19}
+                      color={isDark ? '#A1A1AA' : '#64748B'}
+                      style={styles.rowIcon}
+                    />
+                    <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
+                      {isSuperAdmin ? 'Platform Quotas' : isCoworkingAdmin ? 'Client Quotas' : 'Quota & Allowance'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+
+            <View style={styles.sectionSpacer} />
+
+            {filterMatches('Operations Helpdesk Staff Invoices Onboard Hub Type') && (
+              <>
+                <Text style={[styles.sectionHeading, { color: isDark ? '#71717A' : '#94A3B8' }]}>
+                  My Customers
+                </Text>
+
+                {filterMatches('Helpdesk Complaints') && (
+                  <TouchableOpacity
+                    style={styles.navRow}
+                    onPress={() => handleAction(onOpenHelpdesk)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="chatbubbles-outline"
+                      size={19}
+                      color={isDark ? '#A1A1AA' : '#64748B'}
+                      style={styles.rowIcon}
+                    />
+                    <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
+                      Helpdesk & Complaints
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {showStaffOption && filterMatches('Staff Management') && (
+                  <TouchableOpacity
+                    style={styles.navRow}
+                    onPress={() => handleAction(onOpenStaff)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="people-outline"
+                      size={19}
+                      color={isDark ? '#A1A1AA' : '#64748B'}
+                      style={styles.rowIcon}
+                    />
+                    <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
+                      Staff & Permissions
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {filterMatches('Invoices Billing') && (
+                  <TouchableOpacity
+                    style={styles.navRow}
+                    onPress={() => handleAction(onOpenInvoices)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="receipt-outline"
+                      size={19}
+                      color={isDark ? '#A1A1AA' : '#64748B'}
+                      style={styles.rowIcon}
+                    />
+                    <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
+                      Invoices & Statements
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {isManagerRole && filterMatches('Onboard Client Company') && (
+                  <TouchableOpacity
+                    style={styles.navRow}
+                    onPress={() => setShowOnboardModal(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="business-outline"
+                      size={19}
+                      color="#00A859"
+                      style={styles.rowIcon}
+                    />
+                    <Text style={[styles.rowLabel, { color: '#00A859', fontWeight: '700' }]}>
+                      Onboard Client Company
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {isSuperAdmin && filterMatches('Add Coworking Hub') && (
+                  <TouchableOpacity
+                    style={styles.navRow}
+                    onPress={() => setShowAddHubModal(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="map-outline"
+                      size={19}
+                      color="#0284C7"
+                      style={styles.rowIcon}
+                    />
+                    <Text style={[styles.rowLabel, { color: '#0284C7', fontWeight: '700' }]}>
+                      Add Coworking Hub
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {isManagerRole && filterMatches('Add Workspace Type') && (
+                  <TouchableOpacity
+                    style={styles.navRow}
+                    onPress={() => setShowAddTypeModal(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="pricetags-outline"
+                      size={19}
+                      color="#8B5CF6"
+                      style={styles.rowIcon}
+                    />
+                    <Text style={[styles.rowLabel, { color: '#8B5CF6', fontWeight: '700' }]}>
+                      Add Workspace Type
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+
+            <View style={styles.sectionSpacer} />
+
+            {filterMatches('Account Settings Support Legal Theme') && (
+              <>
+                <Text style={[styles.sectionHeading, { color: isDark ? '#71717A' : '#94A3B8' }]}>
+                  Account
+                </Text>
+
+                {filterMatches('Settings Profile') && (
+                  <TouchableOpacity
+                    style={styles.navRow}
+                    onPress={() => handleAction(onOpenProfile)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="settings-outline"
+                      size={19}
+                      color={isDark ? '#A1A1AA' : '#64748B'}
+                      style={styles.rowIcon}
+                    />
+                    <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
+                      Settings
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {filterMatches('Help Support') && (
+                  <TouchableOpacity
+                    style={styles.navRow}
+                    onPress={() => handleAction(onOpenSupport)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="help-circle-outline"
+                      size={19}
+                      color={isDark ? '#A1A1AA' : '#64748B'}
+                      style={styles.rowIcon}
+                    />
+                    <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
+                      Help
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {filterMatches('Privacy Terms Legal') && (
+                  <TouchableOpacity
+                    style={styles.navRow}
+                    onPress={() => handleAction(onOpenLegal)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="document-outline"
+                      size={19}
+                      color={isDark ? '#A1A1AA' : '#64748B'}
+                      style={styles.rowIcon}
+                    />
+                    <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
+                      Privacy & Policy
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {filterMatches('Theme Appearance') && (
+                  <TouchableOpacity
+                    style={styles.navRow}
+                    onPress={() => setThemeMode(isDark ? 'light' : 'dark')}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={isDark ? 'sunny-outline' : 'moon-outline'}
+                      size={19}
+                      color={isDark ? '#A1A1AA' : '#64748B'}
+                      style={styles.rowIcon}
+                    />
+                    <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
+                      {isDark ? 'Light Appearance' : 'Dark Appearance'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+
+            <View style={{ height: 20 }} />
           </ScrollView>
 
-          <View style={[styles.bottomProfileBar, { borderTopColor: isDark ? '#1E293B' : '#E2E8F0', backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
-            <View style={styles.avatarBorder}>
-              <SafeImage
-                uri={
-                  (user as any)?.avatarUrl ||
-                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80'
-                }
-                style={styles.avatar}
-                borderRadius={18}
-              />
-            </View>
-            <View style={styles.profileMeta}>
-              <Text style={[styles.profileName, { color: theme.textPrimary }]} numberOfLines={1}>
-                {user?.name || (isGuest ? 'Guest Explorer' : 'Member')}
+          <TouchableOpacity
+            style={[
+              styles.userCard,
+              {
+                backgroundColor: isDark ? '#1C1C1E' : '#F8FAFC',
+                borderTopColor: isDark ? '#27272A' : '#E2E8F0'
+              }
+            ]}
+            onPress={() => setShowAccountMenu(true)}
+            activeOpacity={0.85}
+          >
+            <SafeImage
+              uri={
+                (user as any)?.avatarUrl ||
+                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80'
+              }
+              style={styles.userAvatar}
+              borderRadius={18}
+            />
+            <View style={styles.userInfoCol}>
+              <Text style={[styles.userName, { color: isDark ? '#F4F4F5' : '#0F172A' }]} numberOfLines={1}>
+                {user?.name || (isGuest ? 'Guest Explorer' : 'Colton Shierdan')}
               </Text>
-              <Text style={[styles.profileEmail, { color: theme.textMuted }]} numberOfLines={1}>
-                {user?.email || 'Tap to sign in and activate'}
+              <Text style={[styles.userEmail, { color: isDark ? '#71717A' : '#64748B' }]} numberOfLines={1}>
+                {user?.email || (isGuest ? 'Tap to sign in' : 'colton@unimatrixui.com')}
               </Text>
             </View>
-            <View style={styles.roleTag}>
-              <Text style={styles.roleTagText}>{getRoleLabel()}</Text>
-            </View>
-          </View>
+            <Ionicons name="ellipsis-horizontal" size={18} color={isDark ? '#71717A' : '#94A3B8'} />
+          </TouchableOpacity>
         </Animated.View>
       </View>
+
+      <Modal
+        visible={showAccountMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAccountMenu(false)}
+      >
+        <TouchableOpacity
+          style={styles.menuBackdrop}
+          activeOpacity={1}
+          onPress={() => setShowAccountMenu(false)}
+        >
+          <View
+            style={[
+              styles.accountMenuCard,
+              {
+                backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+                borderColor: isDark ? '#2E2E32' : '#E2E8F0'
+              }
+            ]}
+          >
+            <View style={styles.menuHeaderRow}>
+              <Text style={[styles.menuTitle, { color: theme.textPrimary }]}>Account Actions</Text>
+              <TouchableOpacity onPress={() => setShowAccountMenu(false)}>
+                <Ionicons name="close" size={18} color={theme.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            {isGuest ? (
+              <TouchableOpacity
+                style={[styles.accountOptionBtn, { backgroundColor: '#00A859' }]}
+                onPress={() => {
+                  setShowAccountMenu(false);
+                  handleAction(onSignInRequest);
+                }}
+              >
+                <Ionicons name="log-in-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={[styles.accountOptionText, { color: '#FFFFFF' }]}>Sign In to Account</Text>
+              </TouchableOpacity>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={styles.accountOptionRow}
+                  onPress={() => {
+                    setShowAccountMenu(false);
+                    handleAction(onOpenProfile);
+                  }}
+                >
+                  <Ionicons name="person-outline" size={18} color={theme.textPrimary} style={{ marginRight: 10 }} />
+                  <Text style={[styles.accountOptionRowText, { color: theme.textPrimary }]}>Edit Profile</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.accountOptionRow}
+                  onPress={() => {
+                    setShowAccountMenu(false);
+                    handleDeleteAccount();
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={18} color="#EF4444" style={{ marginRight: 10 }} />
+                  <Text style={[styles.accountOptionRowText, { color: '#EF4444' }]}>Deactivate Account</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.accountOptionRow}
+                  onPress={() => {
+                    setShowAccountMenu(false);
+                    handleAction(onSignOut);
+                  }}
+                >
+                  <Ionicons name="log-out-outline" size={18} color={theme.textMuted} style={{ marginRight: 10 }} />
+                  <Text style={[styles.accountOptionRowText, { color: theme.textSecondary }]}>Sign Out</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       <Modal
         visible={showOnboardModal}
@@ -799,26 +982,27 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
                 </View>
               </View>
 
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Annual Free Quota (Hours / Year)</Text>
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary, marginTop: 10 }]}>
+                Annual Complimentary Free Hours
+              </Text>
               <TextInput
                 style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
                 value={compFreeHours}
                 onChangeText={setCompFreeHours}
                 placeholder="240"
-                keyboardType="number-pad"
+                keyboardType="numeric"
                 placeholderTextColor={theme.textMuted}
               />
 
               <TouchableOpacity
-                style={styles.modalSubmitBtn}
+                style={[styles.modalSubmitBtn, onboarding && { opacity: 0.7 }]}
                 onPress={handleOnboardCompany}
                 disabled={onboarding}
-                activeOpacity={0.85}
               >
                 {onboarding ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
-                  <Text style={styles.modalSubmitText}>Register & Activate Company</Text>
+                  <Text style={styles.modalSubmitText}>Complete Company Registration</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -838,7 +1022,7 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
               <View>
                 <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Add Coworking Hub</Text>
                 <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
-                  Create new facility location & on-site manager profile
+                  Create and publish a new coworking location
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setShowAddHubModal(false)}>
@@ -852,16 +1036,16 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
                 style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
                 value={hubName}
                 onChangeText={setHubName}
-                placeholder="e.g. Madhapur Tech Campus"
+                placeholder="e.g. Havenly Hitech City Center"
                 placeholderTextColor={theme.textMuted}
               />
 
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Street Address & Locality</Text>
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Street Address</Text>
               <TextInput
                 style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
                 value={hubStreet}
                 onChangeText={setHubStreet}
-                placeholder="Plot 45, Cyber Hills, Madhapur"
+                placeholder="e.g. Plot 42, Mindspace Circle, Madhapur"
                 placeholderTextColor={theme.textMuted}
               />
 
@@ -890,12 +1074,13 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
 
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>PIN / Postal Code</Text>
+                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Postal Code</Text>
                   <TextInput
                     style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
                     value={hubPostalCode}
                     onChangeText={setHubPostalCode}
                     placeholder="500081"
+                    keyboardType="numeric"
                     placeholderTextColor={theme.textMuted}
                   />
                 </View>
@@ -911,12 +1096,12 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
                 </View>
               </View>
 
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>On-Site Manager Name</Text>
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Hub General Manager Name</Text>
               <TextInput
                 style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
                 value={hubManager}
                 onChangeText={setHubManager}
-                placeholder="Olivia Bennett"
+                placeholder="Manager Name"
                 placeholderTextColor={theme.textMuted}
               />
 
@@ -925,29 +1110,28 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
                 style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
                 value={hubPhone}
                 onChangeText={setHubPhone}
-                placeholder="+91 98450 12345"
+                placeholder="+91 98450 XXXXX"
                 keyboardType="phone-pad"
                 placeholderTextColor={theme.textMuted}
               />
 
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>UPI ID for Guest QR Receipts (Optional)</Text>
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>UPI Payment ID</Text>
               <TextInput
                 style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
                 value={hubUpi}
                 onChangeText={setHubUpi}
-                placeholder="havenlywork@okhdfcbank"
+                placeholder="hub@upi"
                 autoCapitalize="none"
                 placeholderTextColor={theme.textMuted}
               />
 
               <TouchableOpacity
-                style={[styles.modalSubmitBtn, { backgroundColor: '#0284C7' }]}
+                style={[styles.modalSubmitBtn, addingHub && { opacity: 0.7 }]}
                 onPress={handleAddHub}
                 disabled={addingHub}
-                activeOpacity={0.85}
               >
                 {addingHub ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
                   <Text style={styles.modalSubmitText}>Publish Coworking Hub</Text>
                 )}
@@ -969,7 +1153,7 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
               <View>
                 <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Add Workspace Type</Text>
                 <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
-                  Register new category like Podcast Room, Studio, etc.
+                  Define global workspace categories
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setShowAddTypeModal(false)}>
@@ -978,21 +1162,21 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 460 }}>
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Type Name</Text>
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Type Display Name</Text>
               <TextInput
                 style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
                 value={typeName}
                 onChangeText={setTypeName}
-                placeholder="e.g. Podcast Room"
+                placeholder="e.g. Soundproof Podcast Studio"
                 placeholderTextColor={theme.textMuted}
               />
 
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Type Code (Optional)</Text>
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Unique Code (Optional)</Text>
               <TextInput
                 style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
                 value={typeCode}
                 onChangeText={setTypeCode}
-                placeholder="PODCAST_ROOM"
+                placeholder="e.g. PODCAST_STUDIO"
                 autoCapitalize="characters"
                 placeholderTextColor={theme.textMuted}
               />
@@ -1005,7 +1189,7 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
                     value={typeCapacity}
                     onChangeText={setTypeCapacity}
                     placeholder="4"
-                    keyboardType="number-pad"
+                    keyboardType="numeric"
                     placeholderTextColor={theme.textMuted}
                   />
                 </View>
@@ -1016,7 +1200,7 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
                     value={typeRate}
                     onChangeText={setTypeRate}
                     placeholder="450"
-                    keyboardType="number-pad"
+                    keyboardType="numeric"
                     placeholderTextColor={theme.textMuted}
                   />
                 </View>
@@ -1024,24 +1208,24 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
 
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Description</Text>
               <TextInput
-                style={[styles.inputField, { height: 70, textAlignVertical: 'top', backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                style={[styles.inputField, { height: 80, textAlignVertical: 'top', backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
                 value={typeDesc}
                 onChangeText={setTypeDesc}
-                placeholder="Description of this workspace configuration..."
-                placeholderTextColor={theme.textMuted}
+                placeholder="Features, acoustics, equipment included..."
                 multiline
+                numberOfLines={3}
+                placeholderTextColor={theme.textMuted}
               />
 
               <TouchableOpacity
-                style={[styles.modalSubmitBtn, { backgroundColor: '#8B5CF6' }]}
+                style={[styles.modalSubmitBtn, addingType && { opacity: 0.7 }]}
                 onPress={handleCreateType}
                 disabled={addingType}
-                activeOpacity={0.85}
               >
                 {addingType ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
-                  <Text style={styles.modalSubmitText}>Save Workspace Type</Text>
+                  <Text style={styles.modalSubmitText}>Publish Workspace Type</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -1064,34 +1248,32 @@ const styles = StyleSheet.create({
   drawerContent: {
     height: '100%',
     borderRightWidth: 1,
-    paddingTop: 50,
-    shadowColor: '#000',
-    shadowOffset: { width: 6, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 20
+    paddingTop: 52,
+    flexDirection: 'column'
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingBottom: 16
+    marginBottom: 16
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center'
   },
+  brandIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10
+  },
   brandName: {
     fontSize: 17,
-    fontWeight: '800'
-  },
-  brandTagline: {
-    fontSize: 9,
     fontWeight: '700',
-    letterSpacing: 0.8,
-    color: '#00A859',
-    marginTop: 1
+    letterSpacing: -0.3
   },
   closeBtn: {
     padding: 6
@@ -1100,105 +1282,152 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 16,
-    marginBottom: 12,
+    height: 42,
+    borderRadius: 10,
+    borderWidth: 1,
     paddingHorizontal: 12,
-    height: 40,
-    borderRadius: 12
+    marginBottom: 16
   },
   searchInput: {
     flex: 1,
     fontSize: 13,
-    paddingVertical: 0
+    paddingVertical: 4
   },
   menuScroll: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingBottom: 24
   },
-  sectionTitle: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-    marginTop: 12,
-    marginBottom: 6,
-    paddingHorizontal: 8
-  },
-  navItem: {
+  navRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    marginBottom: 2
+    paddingHorizontal: 8,
+    borderRadius: 8
   },
-  itemIcon: {
-    marginRight: 14,
-    width: 22
+  rowIcon: {
+    marginRight: 12
   },
-  itemLabel: {
+  rowLabel: {
+    flex: 1,
     fontSize: 14,
     fontWeight: '500'
   },
-  divider: {
-    height: 1,
-    marginVertical: 8,
-    marginHorizontal: 6
+  badgePill: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10
   },
-  signInButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#00A859',
-    height: 44,
-    borderRadius: 12,
-    marginTop: 10,
-    marginHorizontal: 6
-  },
-  signInButtonText: {
+  badgePillText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700'
   },
-  bottomProfileBar: {
+  sectionSpacer: {
+    height: 12
+  },
+  sectionHeading: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 6,
+    marginTop: 6,
+    marginLeft: 8,
+    letterSpacing: 0.3
+  },
+  nestedContainer: {
+    flexDirection: 'row',
+    marginLeft: 17,
+    paddingLeft: 12,
+    marginTop: 2,
+    marginBottom: 6
+  },
+  verticalTreeLine: {
+    width: 1.5,
+    borderRadius: 1
+  },
+  nestedItemsColumn: {
+    flex: 1,
+    paddingLeft: 14
+  },
+  nestedRow: {
+    paddingVertical: 7
+  },
+  nestedLabel: {
+    fontSize: 13,
+    fontWeight: '500'
+  },
+  userCard: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderTopWidth: 1
   },
-  avatarBorder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#00A859',
-    padding: 1,
+  userAvatar: {
+    width: 36,
+    height: 36,
     marginRight: 10
   },
-  avatar: {
-    width: 34,
-    height: 34
-  },
-  profileMeta: {
+  userInfoCol: {
     flex: 1
   },
-  profileName: {
-    fontSize: 14,
+  userName: {
+    fontSize: 13.5,
     fontWeight: '700'
   },
-  profileEmail: {
-    fontSize: 11,
+  userEmail: {
+    fontSize: 11.5,
     marginTop: 1
   },
-  roleTag: {
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 8
+  menuBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+    padding: 16,
+    paddingBottom: 36
   },
-  roleTagText: {
-    color: '#00A859',
-    fontSize: 10,
-    fontWeight: '800'
+  accountMenuCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8
+  },
+  menuHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14
+  },
+  menuTitle: {
+    fontSize: 15,
+    fontWeight: '700'
+  },
+  accountOptionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 4
+  },
+  accountOptionText: {
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  accountOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E2E8F0'
+  },
+  accountOptionRowText: {
+    fontSize: 14,
+    fontWeight: '600'
   },
   modalBackdrop: {
     flex: 1,

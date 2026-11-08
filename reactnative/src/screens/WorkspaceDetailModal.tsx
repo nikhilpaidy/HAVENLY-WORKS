@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { SafeImage } from '../components/SafeImage';
+import { RoomReviewModal } from '../components/RoomReviewModal';
 import { mobileApi } from '../services/api';
 
 interface WorkspaceDetailModalProps {
@@ -53,6 +54,14 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
   const [showChatModal, setShowChatModal] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{ id: string; sender: 'user' | 'manager'; text: string; time: string }>>([]);
   const [chatInput, setChatInput] = useState('');
+  const [chatTab, setChatTab] = useState<'chat' | 'ticket'>('chat');
+  const [ticketCategory, setTicketCategory] = useState<'WIFI' | 'AV' | 'CLEANING' | 'AC' | 'GENERAL'>('WIFI');
+  const [ticketNotes, setTicketNotes] = useState('');
+  const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
+
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [currentRating, setCurrentRating] = useState<number>(space?.rating || 4.9);
+  const [currentReviewCount, setCurrentReviewCount] = useState<number>(space?.reviewCount || 2500);
 
   if (!space) return null;
 
@@ -119,6 +128,46 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
         }
       ]);
     }, 900);
+  };
+
+  const handleRaiseTicket = async () => {
+    if (!ticketNotes.trim()) {
+      Alert.alert('Required Information', 'Please describe the issue or service needed at this workspace.');
+      return;
+    }
+    try {
+      setIsSubmittingTicket(true);
+      const created = await mobileApi.createTicket({
+        category: ticketCategory,
+        priority: 'HIGH',
+        title: `${ticketCategory} Assistance at ${space.name}`,
+        description: ticketNotes.trim(),
+        locationId: loc?._id
+      });
+      const ticketNum = created?._id ? created._id.slice(-6).toUpperCase() : 'REQ';
+      const userText = `[Assistance Request #${ticketNum}] ${ticketCategory}: ${ticketNotes.trim()}`;
+      setTicketNotes('');
+      setChatTab('chat');
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          id: String(Date.now()),
+          sender: 'user',
+          text: userText,
+          time: 'Just now'
+        },
+        {
+          id: String(Date.now() + 1),
+          sender: 'manager',
+          text: `Assistance ticket #${ticketNum} registered. Floor staff has been assigned to attend to ${space.name} (Floor ${space.floor || 1}) and will assist you immediately.`,
+          time: 'Just now'
+        }
+      ]);
+    } catch (err: any) {
+      Alert.alert('Ticket Error', err.message || 'Failed to dispatch assistance ticket.');
+    } finally {
+      setIsSubmittingTicket(false);
+    }
   };
 
   const handleConfirmReservation = async () => {
@@ -374,7 +423,25 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
 
             {activeTab === 'Reviews' && (
               <View style={styles.tabContent}>
-                <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>User Reviews ({reviewCount})</Text>
+                <View style={styles.reviewHeaderRow}>
+                  <View>
+                    <Text style={[styles.sectionHeading, { color: theme.textPrimary, marginBottom: 2 }]}>
+                      User Reviews ({currentReviewCount})
+                    </Text>
+                    <Text style={{ fontSize: 13, color: '#00A859', fontWeight: '700' }}>
+                      ★ {typeof currentRating === 'number' ? currentRating.toFixed(1) : currentRating} Overall Rating
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.writeReviewBtn}
+                    onPress={() => setShowReviewModal(true)}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="create-outline" size={15} color="#FFFFFF" style={{ marginRight: 5 }} />
+                    <Text style={styles.writeReviewBtnText}>Write a Review</Text>
+                  </TouchableOpacity>
+                </View>
+
                 <View style={[styles.reviewItem, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                     <Ionicons name="person-circle" size={32} color="#00A859" />
@@ -589,58 +656,147 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={styles.chatMessagesScroll} contentContainerStyle={{ paddingVertical: 12 }}>
-                {chatMessages.map((msg) => {
-                  const isUser = msg.sender === 'user';
-                  return (
-                    <View
-                      key={msg.id}
-                      style={[
-                        styles.chatBubble,
-                        isUser ? styles.chatBubbleUser : [styles.chatBubbleManager, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.chatBubbleText,
-                          { color: isUser ? '#FFFFFF' : theme.textPrimary }
-                        ]}
-                      >
-                        {msg.text}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.chatBubbleTime,
-                          { color: isUser ? 'rgba(255,255,255,0.7)' : theme.textMuted }
-                        ]}
-                      >
-                        {msg.time}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </ScrollView>
-
-              <View style={[styles.chatInputRow, { borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}>
-                <TextInput
-                  style={[styles.chatInputField, { color: theme.textPrimary }]}
-                  placeholder={`Message ${managerName}...`}
-                  placeholderTextColor={theme.textMuted}
-                  value={chatInput}
-                  onChangeText={setChatInput}
-                  onSubmitEditing={handleSendMessage}
-                />
+              <View style={[styles.chatTabRow, { borderColor: theme.cardBorder, backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}>
                 <TouchableOpacity
-                  style={styles.chatSendBtn}
-                  onPress={handleSendMessage}
+                  style={[styles.chatTabBtn, chatTab === 'chat' && [styles.chatTabBtnActive, { backgroundColor: theme.card }]]}
+                  onPress={() => setChatTab('chat')}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="paper-plane" size={16} color="#FFFFFF" />
+                  <Ionicons name="chatbubble-ellipses-outline" size={15} color={chatTab === 'chat' ? '#00A859' : theme.textMuted} style={{ marginRight: 6 }} />
+                  <Text style={[styles.chatTabText, { color: chatTab === 'chat' ? '#00A859' : theme.textSecondary }]}>Direct Chat</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.chatTabBtn, chatTab === 'ticket' && [styles.chatTabBtnActive, { backgroundColor: theme.card }]]}
+                  onPress={() => setChatTab('ticket')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="ticket-outline" size={15} color={chatTab === 'ticket' ? '#00A859' : theme.textMuted} style={{ marginRight: 6 }} />
+                  <Text style={[styles.chatTabText, { color: chatTab === 'ticket' ? '#00A859' : theme.textSecondary }]}>Raise Ticket / Staff</Text>
                 </TouchableOpacity>
               </View>
+
+              {chatTab === 'chat' ? (
+                <>
+                  <ScrollView style={styles.chatMessagesScroll} contentContainerStyle={{ paddingVertical: 12 }}>
+                    {chatMessages.map((msg) => {
+                      const isUser = msg.sender === 'user';
+                      return (
+                        <View
+                          key={msg.id}
+                          style={[
+                            styles.chatBubble,
+                            isUser ? styles.chatBubbleUser : [styles.chatBubbleManager, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.chatBubbleText,
+                              { color: isUser ? '#FFFFFF' : theme.textPrimary }
+                            ]}
+                          >
+                            {msg.text}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.chatBubbleTime,
+                              { color: isUser ? 'rgba(255,255,255,0.7)' : theme.textMuted }
+                            ]}
+                          >
+                            {msg.time}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+
+                  <View style={[styles.chatInputRow, { borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}>
+                    <TextInput
+                      style={[styles.chatInputField, { color: theme.textPrimary }]}
+                      placeholder={`Message ${managerName}...`}
+                      placeholderTextColor={theme.textMuted}
+                      value={chatInput}
+                      onChangeText={setChatInput}
+                      onSubmitEditing={handleSendMessage}
+                    />
+                    <TouchableOpacity
+                      style={styles.chatSendBtn}
+                      onPress={handleSendMessage}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="paper-plane" size={16} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <ScrollView style={styles.ticketScroll} contentContainerStyle={{ padding: 16 }}>
+                  <Text style={[styles.ticketLabel, { color: theme.textPrimary }]}>Select Issue Category</Text>
+                  <View style={styles.categoryPillsRow}>
+                    {(['WIFI', 'AV', 'CLEANING', 'AC', 'GENERAL'] as const).map((cat) => (
+                      <TouchableOpacity
+                        key={cat}
+                        style={[
+                          styles.catPill,
+                          ticketCategory === cat && [styles.catPillActive, { borderColor: '#00A859', backgroundColor: isDark ? '#163326' : '#E8F5E9' }],
+                          { borderColor: theme.cardBorder }
+                        ]}
+                        onPress={() => setTicketCategory(cat)}
+                      >
+                        <Text
+                          style={[
+                            styles.catPillText,
+                            { color: ticketCategory === cat ? '#00A859' : theme.textSecondary }
+                          ]}
+                        >
+                          {cat}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={[styles.ticketLabel, { color: theme.textPrimary, marginTop: 14 }]}>
+                    Describe Request for Floor Staff
+                  </Text>
+                  <TextInput
+                    style={[styles.ticketInput, { color: theme.textPrimary, borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}
+                    placeholder={`e.g. WiFi credentials needed or AC adjustment at ${space.name}...`}
+                    placeholderTextColor={theme.textMuted}
+                    multiline
+                    numberOfLines={4}
+                    value={ticketNotes}
+                    onChangeText={setTicketNotes}
+                  />
+
+                  <TouchableOpacity
+                    style={[styles.submitTicketBtn, isSubmittingTicket && { opacity: 0.7 }]}
+                    onPress={handleRaiseTicket}
+                    disabled={isSubmittingTicket}
+                    activeOpacity={0.85}
+                  >
+                    {isSubmittingTicket ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <>
+                        <Ionicons name="flash" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                        <Text style={styles.submitTicketBtnText}>Dispatch On-Site Floor Staff</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </ScrollView>
+              )}
             </View>
           </View>
         </Modal>
+
+        <RoomReviewModal
+          visible={showReviewModal}
+          roomId={space._id}
+          roomName={space.name || 'Workspace'}
+          onClose={() => setShowReviewModal(false)}
+          onReviewSubmitted={(newRating, newCount) => {
+            setCurrentRating(newRating);
+            setCurrentReviewCount(newCount);
+          }}
+        />
       </View>
     </Modal>
   );
@@ -1139,5 +1295,98 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 6
+  },
+  reviewHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12
+  },
+  writeReviewBtn: {
+    backgroundColor: '#00A859',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 18
+  },
+  writeReviewBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  chatTabRow: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 3,
+    marginBottom: 8
+  },
+  chatTabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 9
+  },
+  chatTabBtnActive: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2
+  },
+  chatTabText: {
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  ticketScroll: {
+    maxHeight: 340
+  },
+  ticketLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 8
+  },
+  categoryPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  catPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1
+  },
+  catPillActive: {
+    borderWidth: 1.5
+  },
+  catPillText: {
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  ticketInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 13,
+    textAlignVertical: 'top',
+    height: 90
+  },
+  submitTicketBtn: {
+    backgroundColor: '#00A859',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 14,
+    marginTop: 14
+  },
+  submitTicketBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700'
   }
 });

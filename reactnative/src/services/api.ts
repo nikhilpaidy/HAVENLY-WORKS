@@ -646,6 +646,7 @@ export const mobileApi = {
   broadcastNotification: notificationsApi.broadcast,
 
   tickets: ticketsApi,
+  createTicket: ticketsApi.createTicket,
   clearTicketComments: ticketsApi.clearComments,
   overrides: overridesApi,
   staff: staffApi,

@@ -75,7 +75,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [pendingGuestCount, setPendingGuestCount] = useState(0);
 
   const [superAdminAdmins, setSuperAdminAdmins] = useState<any[]>([]);
-  const [selectedOperator, setSelectedOperator] = useState<any | null>(null);
 
   const [displayLimit, setDisplayLimit] = useState(20);
 
@@ -316,48 +315,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             >
               <Text style={styles.adminAlertActionText}>Review</Text>
             </TouchableOpacity>
-          </View>
-        )}
-
-        {isSuperAdmin && superAdminAdmins.length > 0 && (
-          <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
-            <View style={[styles.sectionHeader, { paddingHorizontal: 0, marginTop: 4 }]}>
-              <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
-                Coworking Operators ({superAdminAdmins.length})
-              </Text>
-            </View>
-            {superAdminAdmins.map((adm) => (
-              <TouchableOpacity
-                key={adm._id}
-                style={[styles.adminOperatorCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
-                onPress={() => setSelectedOperator(adm)}
-                activeOpacity={0.85}
-              >
-                <View style={styles.adminOperatorAvatar}>
-                  <Ionicons name="business" size={20} color="#00A859" />
-                </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={[styles.adminOperatorName, { color: theme.textPrimary }]}>{adm.name}</Text>
-                  <Text style={[styles.adminOperatorEmail, { color: theme.textMuted }]}>{adm.email}</Text>
-                  <Text style={[styles.adminOperatorOrg, { color: '#00A859' }]}>
-                    {adm.organizationId?.name || 'HavenlyWork Coworking'}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 8 }}>
-                    <View style={[styles.opMetricBadge, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
-                      <Text style={[styles.opMetricText, { color: theme.textSecondary }]}>
-                        {adm.locations?.length || 0} Hubs
-                      </Text>
-                    </View>
-                    <View style={[styles.opMetricBadge, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
-                      <Text style={[styles.opMetricText, { color: theme.textSecondary }]}>
-                        {adm.companies?.length || 0} Clients
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={theme.textMuted} />
-              </TouchableOpacity>
-            ))}
           </View>
         )}
 
@@ -708,138 +665,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         </TouchableOpacity>
       </Modal>
 
-      <Modal
-        visible={!!selectedOperator}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSelectedOperator(null)}
-      >
-        <View style={styles.operatorModalBackdrop}>
-          <View style={[styles.operatorModalCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-            <View style={styles.operatorModalHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.operatorModalTitle, { color: theme.textPrimary }]}>
-                  {selectedOperator?.name}
-                </Text>
-                <Text style={{ fontSize: 13, color: '#00A859', fontWeight: '700', marginTop: 2 }}>
-                  {selectedOperator?.organizationId?.name || 'HavenlyWork Coworking Operator'}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setSelectedOperator(null)}
-                style={[styles.closeIconCircle, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}
-              >
-                <Ionicons name="close" size={20} color={theme.textPrimary} />
-              </TouchableOpacity>
-            </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 520 }}>
-              <View style={[styles.opInfoBox, { backgroundColor: isDark ? '#162032' : '#F8FAFC', borderColor: theme.cardBorder }]}>
-                <View style={styles.opInfoRow}>
-                  <Ionicons name="mail-outline" size={16} color="#00A859" />
-                  <Text style={[styles.opInfoText, { color: theme.textPrimary }]}>
-                    {selectedOperator?.email}
-                  </Text>
-                </View>
-                {selectedOperator?.phone ? (
-                  <View style={styles.opInfoRow}>
-                    <Ionicons name="call-outline" size={16} color="#00A859" />
-                    <Text style={[styles.opInfoText, { color: theme.textPrimary }]}>
-                      {selectedOperator?.phone}
-                    </Text>
-                  </View>
-                ) : null}
-                <View style={styles.opInfoRow}>
-                  <Ionicons name="shield-checkmark-outline" size={16} color="#00A859" />
-                  <Text style={[styles.opInfoText, { color: theme.textPrimary }]}>
-                    Status: Active Coworking Operator
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.opActionRow}>
-                {selectedOperator?.phone ? (
-                  <TouchableOpacity
-                    style={[styles.opContactBtn, { backgroundColor: '#00A859' }]}
-                    onPress={() => Linking.openURL(`tel:${selectedOperator.phone}`)}
-                  >
-                    <Ionicons name="call" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-                    <Text style={styles.opContactBtnText}>Call Operator</Text>
-                  </TouchableOpacity>
-                ) : null}
-                <TouchableOpacity
-                  style={[styles.opContactBtn, { backgroundColor: '#0284C7' }]}
-                  onPress={() => Linking.openURL(`mailto:${selectedOperator?.email}`)}
-                >
-                  <Ionicons name="mail" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.opContactBtnText}>Email Operator</Text>
-                </TouchableOpacity>
-              </View>
-
-              <Text style={[styles.opSectionTitle, { color: theme.textPrimary }]}>
-                Managed Hubs ({selectedOperator?.locations?.length || 0})
-              </Text>
-              {selectedOperator?.locations && selectedOperator.locations.length > 0 ? (
-                selectedOperator.locations.map((loc: any) => (
-                  <View
-                    key={loc._id}
-                    style={[styles.opHubCard, { backgroundColor: isDark ? '#162032' : '#F8FAFC', borderColor: theme.cardBorder }]}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                      <Ionicons name="location" size={16} color="#00A859" style={{ marginRight: 6 }} />
-                      <Text style={[styles.opHubTitle, { color: theme.textPrimary }]}>{loc.name}</Text>
-                      <View style={{ flex: 1 }} />
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#00A859' }}>
-                        ★ {loc.rating || 4.9}
-                      </Text>
-                    </View>
-                    <Text style={[styles.opHubAddress, { color: theme.textSecondary }]}>
-                      {loc.address?.street}, {loc.address?.city || loc.city || 'Hyderabad'}
-                    </Text>
-                  </View>
-                ))
-              ) : (
-                <Text style={{ fontSize: 13, color: theme.textMuted, fontStyle: 'italic', marginBottom: 12 }}>
-                  No hubs assigned yet.
-                </Text>
-              )}
-
-              <Text style={[styles.opSectionTitle, { color: theme.textPrimary, marginTop: 16 }]}>
-                Registered Client Companies ({selectedOperator?.companies?.length || 0})
-              </Text>
-              {selectedOperator?.companies && selectedOperator.companies.length > 0 ? (
-                selectedOperator.companies.map((comp: any) => (
-                  <View
-                    key={comp._id}
-                    style={[styles.opHubCard, { backgroundColor: isDark ? '#162032' : '#F8FAFC', borderColor: theme.cardBorder }]}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                      <Ionicons name="business" size={16} color="#00A859" style={{ marginRight: 6 }} />
-                      <Text style={[styles.opHubTitle, { color: theme.textPrimary }]}>{comp.name}</Text>
-                      <View style={{ flex: 1 }} />
-                      <View style={styles.miniQuotaPill}>
-                        <Text style={styles.miniQuotaText}>
-                          {comp.allowanceConfig?.annualFreeHours || 240}h / yr
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={[styles.opHubAddress, { color: theme.textSecondary }]}>
-                      Assigned Hub: {comp.locationId?.name || 'Primary Hub'}
-                    </Text>
-                    <Text style={[styles.opHubAddress, { color: theme.textMuted, marginTop: 2 }]}>
-                      Email: {comp.billingEmail} {comp.domain ? `• ${comp.domain}` : ''}
-                    </Text>
-                  </View>
-                ))
-              ) : (
-                <Text style={{ fontSize: 13, color: theme.textMuted, fontStyle: 'italic', marginBottom: 12 }}>
-                  No client companies registered yet.
-                </Text>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };

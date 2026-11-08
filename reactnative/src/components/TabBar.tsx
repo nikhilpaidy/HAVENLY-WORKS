@@ -1,7 +1,19 @@
-import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from 'react-native';
-import { useTheme } from '../theme/ThemeContext';
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Platform,
+  LayoutAnimation,
+  UIManager
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../theme/ThemeContext';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export type TabKey =
   | 'dashboard'
@@ -26,14 +38,22 @@ interface NavTabItem {
 }
 
 const NAV_TABS: NavTabItem[] = [
-  { key: 'dashboard', label: 'Explore', iconOutline: 'home-outline', iconFilled: 'home' },
+  { key: 'dashboard', label: 'Home', iconOutline: 'home-outline', iconFilled: 'home' },
   { key: 'rooms', label: 'Workspaces', iconOutline: 'grid-outline', iconFilled: 'grid' },
-  { key: 'bookings', label: 'Bookings', iconOutline: 'bookmark-outline', iconFilled: 'bookmark' },
-  { key: 'allowance', label: 'Quota', iconOutline: 'layers-outline', iconFilled: 'layers' }
+  { key: 'bookings', label: 'Bookings', iconOutline: 'bag-handle-outline', iconFilled: 'bag-handle' },
+  { key: 'allowance', label: 'Quota', iconOutline: 'bookmark-outline', iconFilled: 'bookmark' },
+  { key: 'profile', label: 'Profile', iconOutline: 'person-outline', iconFilled: 'person' }
 ];
 
 export const TabBar: React.FC<TabBarProps> = ({ currentTab, onSelectTab }) => {
   const { isDark } = useTheme();
+
+  const handlePress = (tabKey: TabKey) => {
+    try {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    } catch {}
+    onSelectTab(tabKey);
+  };
 
   return (
     <View style={styles.floatingWrapper} pointerEvents="box-none">
@@ -41,23 +61,27 @@ export const TabBar: React.FC<TabBarProps> = ({ currentTab, onSelectTab }) => {
         style={[
           styles.container,
           {
-            backgroundColor: isDark ? '#111827' : '#FFFFFF',
-            borderColor: isDark ? '#1F2937' : '#F1F5F9'
+            backgroundColor: isDark ? '#18181B' : '#FFFFFF',
+            borderColor: isDark ? '#27272A' : '#E2E8F0'
           }
         ]}
       >
         {NAV_TABS.map((tab) => {
           const isActive = currentTab === tab.key;
+          const iconColor = isActive
+            ? (isDark ? '#34D399' : '#0F172A')
+            : (isDark ? '#94A3B8' : '#64748B');
+
           return (
             <TouchableOpacity
               key={tab.key}
-              onPress={() => onSelectTab(tab.key)}
+              onPress={() => handlePress(tab.key)}
               style={[
                 styles.tabItem,
                 isActive && [
                   styles.tabItemActive,
                   {
-                    backgroundColor: isDark ? 'rgba(0, 168, 89, 0.22)' : '#E8F5E9'
+                    backgroundColor: isDark ? '#27272A' : '#EEF2F6'
                   }
                 ]
               ]}
@@ -65,15 +89,15 @@ export const TabBar: React.FC<TabBarProps> = ({ currentTab, onSelectTab }) => {
             >
               <Ionicons
                 name={isActive ? tab.iconFilled : tab.iconOutline}
-                size={20}
-                color={isActive ? '#00A859' : (isDark ? '#6B7280' : '#94A3B8')}
+                size={isActive ? 19 : 21}
+                color={iconColor}
               />
               {isActive && (
                 <Text
                   style={[
                     styles.tabLabel,
                     {
-                      color: isDark ? '#34D399' : '#00A859'
+                      color: isDark ? '#FFFFFF' : '#0F172A'
                     }
                   ]}
                   numberOfLines={1}
@@ -96,22 +120,23 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    paddingHorizontal: 20
+    paddingHorizontal: 16
   },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
-    maxWidth: 380,
-    height: 60,
-    borderRadius: 30,
+    maxWidth: 400,
+    height: 62,
+    borderRadius: 36,
     paddingHorizontal: 8,
+    paddingVertical: 6,
     borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
-    shadowRadius: 16,
+    shadowRadius: 20,
     elevation: 10
   },
   tabItem: {
@@ -119,8 +144,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 22
+    paddingHorizontal: 12,
+    borderRadius: 24
   },
   tabItemActive: {
     paddingHorizontal: 16,
@@ -129,6 +154,6 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 13,
     fontWeight: '700',
-    marginLeft: 7
+    marginLeft: 6
   }
 });

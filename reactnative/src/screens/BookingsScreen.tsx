@@ -273,9 +273,6 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
             <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
               Coworking Operators ({superAdminAdmins.length})
             </Text>
-            <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-              Select an operator to inspect their client companies & reservations
-            </Text>
           </View>
 
           {superAdminAdmins.map((adm) => (
@@ -330,9 +327,6 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
           <View style={styles.sectionHeaderCard}>
             <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
               {selectedAdmin.name} - Client Companies ({companies.length})
-            </Text>
-            <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-              Select a client company to view their ongoing, completed & cancelled bookings
             </Text>
           </View>
 
@@ -438,9 +432,6 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
           <View style={styles.sectionHeaderCard}>
             <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
               Client Companies ({adminCompanies.length})
-            </Text>
-            <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-              Select a client to inspect their reservations or switch to All Feed
             </Text>
           </View>
 
