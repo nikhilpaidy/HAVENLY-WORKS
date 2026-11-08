@@ -1,15 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-const PUBLIC_DEV_TUNNEL_URL = 'https://tqsb1xz0-6018.inc1.devtunnels.ms/api/v1';
+const LAN_IP_URL = 'http://192.168.1.14:6018/api/v1';
 const LOCALHOST_URL = 'http://localhost:6018/api/v1';
+const PUBLIC_DEV_TUNNEL_URL = 'https://tqsb1xz0-6018.inc1.devtunnels.ms/api/v1';
 
-export const API_BASE_URL = PUBLIC_DEV_TUNNEL_URL;
+export const API_BASE_URL = Platform.OS === 'web' ? LOCALHOST_URL : LAN_IP_URL;
 
 let inMemoryBaseUrl: string | null = null;
 
 export async function getBaseUrl(): Promise<string> {
   if (inMemoryBaseUrl) return inMemoryBaseUrl;
+
+  const stored = await AsyncStorage.getItem('aura_server_url');
+  if (stored) {
+    inMemoryBaseUrl = stored;
+    return stored;
+  }
 
   const envUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
 
@@ -25,8 +32,8 @@ export async function getBaseUrl(): Promise<string> {
     return cleanEnv;
   }
 
-  inMemoryBaseUrl = PUBLIC_DEV_TUNNEL_URL;
-  return PUBLIC_DEV_TUNNEL_URL;
+  inMemoryBaseUrl = LAN_IP_URL;
+  return LAN_IP_URL;
 }
 
 export async function setBaseUrl(newUrl: string): Promise<void> {
@@ -50,7 +57,11 @@ export async function testServerConnection(): Promise<{ ok: boolean; message: st
 
   try {
     const res = await fetch(rootHealth, { signal: controller.signal });
-    const json = await res.json();
+    const text = await res.text();
+    let json: any = {};
+    try {
+      json = text ? JSON.parse(text) : {};
+    } catch {}
     return {
       ok: res.ok,
       message: json.message || `Connected to server (${baseUrl})`
@@ -75,7 +86,7 @@ export function resolveImageUrl(uri?: string): string | undefined {
   ) {
     return uri;
   }
-  const root = (inMemoryBaseUrl || PUBLIC_DEV_TUNNEL_URL).replace('/api/v1', '');
+  const root = (inMemoryBaseUrl || (Platform.OS === 'web' ? LOCALHOST_URL : LAN_IP_URL)).replace('/api/v1', '');
   const cleanUri = uri.startsWith('/') ? uri : `/${uri}`;
   return `${root}${cleanUri}`;
 }
@@ -95,43 +106,58 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const primaryUrl = `${baseUrl}${endpoint}`;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 12000);
+  const urlsToTry = [
+    `${baseUrl}${endpoint}`,
+    Platform.OS === 'web' ? `http://localhost:6018/api/v1${endpoint}` : `http://192.168.1.14:6018/api/v1${endpoint}`,
+    `http://localhost:6018/api/v1${endpoint}`
+  ];
+  const uniqueUrls = Array.from(new Set(urlsToTry));
 
-  try {
-    const response = await fetch(primaryUrl, {
-      ...options,
-      headers,
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
+  let lastError: any = null;
 
-    const json = await response.json();
-    if (!response.ok) {
-      throw new Error(json.message || `Request failed with status ${response.status}`);
-    }
-    return json.data;
-  } catch (err: any) {
-    clearTimeout(timeoutId);
+  for (const url of uniqueUrls) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    if (baseUrl !== LOCALHOST_URL && Platform.OS === 'web') {
-      try {
-        const localUrl = `${LOCALHOST_URL}${endpoint}`;
-        const localRes = await fetch(localUrl, { ...options, headers });
-        if (localRes.ok) {
-          const json = await localRes.json();
-          inMemoryBaseUrl = LOCALHOST_URL;
-          return json.data;
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      const text = await response.text();
+      let json: any = {};
+      if (text && text.trim().length > 0) {
+        try {
+          json = JSON.parse(text);
+        } catch {
+          json = { message: text };
         }
-      } catch {}
-    }
+      }
 
-    if (err.name === 'AbortError') {
-      throw new Error('Connection timed out. Please check your network connection.');
+      if (response.ok) {
+        const root = url.replace(endpoint, '');
+        inMemoryBaseUrl = root;
+        return json.data !== undefined ? json.data : json;
+      }
+
+      if (response.status < 500) {
+        throw new Error(json.message || `Request failed with status ${response.status}`);
+      }
+      lastError = new Error(json.message || `Server error ${response.status}`);
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        lastError = new Error('Connection timed out. Please check your network connection.');
+      } else {
+        lastError = err;
+      }
     }
-    throw new Error(err.message || 'Cannot reach server. Please ensure backend is running.');
   }
+
+  throw lastError || new Error('Cannot reach server. Please ensure backend is running.');
 }
 
 export const authApi = {

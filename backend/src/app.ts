@@ -38,26 +38,48 @@ export function createApp(): Express {
 
   app.use(
     helmet({
-      crossOriginResourcePolicy: { policy: 'cross-origin' }
+      crossOriginResourcePolicy: false,
+      crossOriginOpenerPolicy: false,
+      crossOriginEmbedderPolicy: false
     })
   );
 
-  const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim());
   app.use(
     cors({
-      origin: (origin, callback) => {
-        
-        if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
-          callback(null, true);
-        } else {
-          callback(null, true); 
-        }
-      },
+      origin: true,
       credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+      allowedHeaders: [
+        'Origin',
+        'X-Requested-With',
+        'Content-Type',
+        'Accept',
+        'Authorization',
+        'Cache-Control',
+        'Pragma',
+        'Expires',
+        'X-App-Platform',
+        'X-App-Version'
+      ],
+      exposedHeaders: ['*'],
+      maxAge: 86400
     })
   );
+
+  app.use((req, res, next) => {
+    const origin = req.headers.origin || '*';
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD');
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma, Expires, X-App-Platform, X-App-Version'
+    );
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+    next();
+  });
 
   if (env.NODE_ENV !== 'test') {
     app.use(morgan('dev'));
