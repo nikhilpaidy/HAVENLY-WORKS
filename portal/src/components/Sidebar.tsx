@@ -19,7 +19,8 @@ import {
   ChevronRight,
   Shield,
   Briefcase,
-  HelpCircle
+  HelpCircle,
+  Activity
 } from 'lucide-react';
 
 interface NavSection {
@@ -55,7 +56,8 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
         items: [
           { label: 'Global Analytics', to: '/super-admin/reports', icon: TrendingUp },
           { label: 'Editorial CMS', to: '/super-admin/blogs', icon: FileEdit, badge: 'Live' },
-          { label: 'System Audit Logs', to: '/super-admin/audit-logs', icon: ClipboardList }
+          { label: 'System Audit Logs', to: '/super-admin/audit-logs', icon: ClipboardList },
+          { label: 'System Telemetry & Issues', to: '/super-admin/monitoring', icon: Activity }
         ]
       }
     ];

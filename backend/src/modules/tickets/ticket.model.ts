@@ -115,5 +115,7 @@ const TicketSchema = new Schema<ITicket>(
 
 TicketSchema.index({ organizationId: 1, status: 1 });
 TicketSchema.index({ companyId: 1, status: 1 });
+TicketSchema.index({ locationId: 1, status: 1 });
+TicketSchema.index({ createdAt: -1 });
 
 export const Ticket = mongoose.model<ITicket>('Ticket', TicketSchema);

@@ -19,6 +19,7 @@ import { SuperAdminReportsPage } from './pages/super-admin/SuperAdminReportsPage
 import { SuperAdminBlogCMSPage } from './pages/super-admin/SuperAdminBlogCMSPage.js';
 import { SuperAdminAuditLogsPage } from './pages/super-admin/SuperAdminAuditLogsPage.js';
 import { SuperAdminStaffPage } from './pages/super-admin/SuperAdminStaffPage.js';
+import { SuperAdminMonitoringPage } from './pages/super-admin/SuperAdminMonitoringPage.js';
 
 // Coworking Admin Pages
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage.js';
@@ -79,6 +80,7 @@ export const App: React.FC = () => {
               <Route path="reports" element={<SuperAdminReportsPage />} />
               <Route path="blogs" element={<SuperAdminBlogCMSPage />} />
               <Route path="audit-logs" element={<SuperAdminAuditLogsPage />} />
+              <Route path="monitoring" element={<SuperAdminMonitoringPage />} />
             </Route>
 
             <Route

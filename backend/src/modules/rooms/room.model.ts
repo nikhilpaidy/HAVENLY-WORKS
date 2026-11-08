@@ -160,5 +160,7 @@ const MeetingRoomSchema = new Schema<IMeetingRoom>(
 MeetingRoomSchema.index({ locationId: 1, code: 1 }, { unique: true });
 MeetingRoomSchema.index({ organizationId: 1, capacity: 1 });
 MeetingRoomSchema.index({ locationId: 1, workspaceType: 1 });
+MeetingRoomSchema.index({ locationId: 1, isActive: 1 });
+MeetingRoomSchema.index({ organizationId: 1, isActive: 1 });
 
 export const MeetingRoom = mongoose.model<IMeetingRoom>('MeetingRoom', MeetingRoomSchema);

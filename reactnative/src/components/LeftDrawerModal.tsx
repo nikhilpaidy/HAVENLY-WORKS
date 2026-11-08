@@ -109,16 +109,27 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
 
   useEffect(() => {
     if (visible && isManagerRole) {
-      mobileApi.getPublicLocations().then((locs) => {
+      const fetchPromise = isSuperAdmin
+        ? mobileApi.getPublicLocations()
+        : mobileApi.getLocations();
+
+      fetchPromise.then((locs) => {
         if (Array.isArray(locs) && locs.length > 0) {
-          setLocations(locs);
-          if (!selectedHubId) {
-            setSelectedHubId(locs[0]._id);
+          const filtered = isSuperAdmin
+            ? locs
+            : locs.filter((l: any) =>
+                user?.organizationId
+                  ? String(l.organizationId?._id || l.organizationId) === String(user.organizationId)
+                  : true
+              );
+          setLocations(filtered);
+          if (filtered.length > 0 && !selectedHubId) {
+            setSelectedHubId(filtered[0]._id);
           }
         }
       }).catch(() => {});
     }
-  }, [visible, isManagerRole]);
+  }, [visible, isManagerRole, isSuperAdmin, user?.organizationId]);
 
   useEffect(() => {
     if (visible) {
@@ -352,24 +363,6 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.menuScroll}
           >
-            {filterMatches('Due List Reservations Bookings') && (
-              <TouchableOpacity
-                style={styles.navRow}
-                onPress={() => handleAction(onOpenBookings)}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name="document-text-outline"
-                  size={19}
-                  color={isDark ? '#A1A1AA' : '#64748B'}
-                  style={styles.rowIcon}
-                />
-                <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
-                  Due List
-                </Text>
-              </TouchableOpacity>
-            )}
-
             {filterMatches('Notifications Alerts') && (
               <TouchableOpacity
                 style={styles.navRow}

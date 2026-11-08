@@ -15,25 +15,71 @@ import bcrypt from 'bcryptjs';
 export async function getCoworkingSpacesSummaryHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const orgs = await CoworkingOrganization.find().sort({ createdAt: -1 });
-    const summaries = await Promise.all(
-      orgs.map(async (org) => {
-        const [locations, roomsCount, companiesCount, bookingsCount, adminUser] = await Promise.all([
-          Location.find({ organizationId: org._id, isActive: true }).select('name address city state code'),
-          MeetingRoom.countDocuments({ organizationId: org._id, isActive: true }),
-          Company.countDocuments({ organizationId: org._id, status: 'ACTIVE' }),
-          Booking.countDocuments({ organizationId: org._id }),
-          User.findOne({ organizationId: org._id, role: UserRole.COWORKING_ADMIN }).select('name email phone isActive')
-        ]);
-        return {
-          organization: org,
-          locations,
-          roomsCount,
-          companiesCount,
-          bookingsCount,
-          adminUser
-        };
-      })
-    );
+    const orgIds = orgs.map((org) => org._id);
+
+    const [allLocations, roomsAggr, companiesAggr, bookingsAggr, allAdmins] = await Promise.all([
+      Location.find({ organizationId: { $in: orgIds }, isActive: true })
+        .select('name address city state code organizationId')
+        .lean(),
+      MeetingRoom.aggregate([
+        { $match: { organizationId: { $in: orgIds }, isActive: true } },
+        { $group: { _id: '$organizationId', count: { $sum: 1 } } }
+      ]),
+      Company.aggregate([
+        { $match: { organizationId: { $in: orgIds }, status: 'ACTIVE' } },
+        { $group: { _id: '$organizationId', count: { $sum: 1 } } }
+      ]),
+      Booking.aggregate([
+        { $match: { organizationId: { $in: orgIds } } },
+        { $group: { _id: '$organizationId', count: { $sum: 1 } } }
+      ]),
+      User.find({ organizationId: { $in: orgIds }, role: UserRole.COWORKING_ADMIN })
+        .select('name email phone isActive organizationId')
+        .lean()
+    ]);
+
+    const locationsMap = new Map<string, any[]>();
+    for (const loc of allLocations) {
+      const key = String(loc.organizationId);
+      if (!locationsMap.has(key)) locationsMap.set(key, []);
+      locationsMap.get(key)!.push(loc);
+    }
+
+    const roomsCountMap = new Map<string, number>();
+    for (const r of roomsAggr) {
+      roomsCountMap.set(String(r._id), r.count);
+    }
+
+    const companiesCountMap = new Map<string, number>();
+    for (const c of companiesAggr) {
+      companiesCountMap.set(String(c._id), c.count);
+    }
+
+    const bookingsCountMap = new Map<string, number>();
+    for (const b of bookingsAggr) {
+      bookingsCountMap.set(String(b._id), b.count);
+    }
+
+    const adminUserMap = new Map<string, any>();
+    for (const adm of allAdmins) {
+      const key = String(adm.organizationId);
+      if (!adminUserMap.has(key)) {
+        adminUserMap.set(key, adm);
+      }
+    }
+
+    const summaries = orgs.map((org) => {
+      const orgIdStr = String(org._id);
+      return {
+        organization: org,
+        locations: locationsMap.get(orgIdStr) || [],
+        roomsCount: roomsCountMap.get(orgIdStr) || 0,
+        companiesCount: companiesCountMap.get(orgIdStr) || 0,
+        bookingsCount: bookingsCountMap.get(orgIdStr) || 0,
+        adminUser: adminUserMap.get(orgIdStr) || null
+      };
+    });
+
     return apiSuccess(res, summaries);
   } catch (error) {
     next(error);
@@ -48,28 +94,49 @@ export async function getAdminsList(req: Request, res: Response, next: NextFunct
       .sort({ createdAt: -1 })
       .lean();
 
-    const enriched = await Promise.all(
-      admins.map(async (admin) => {
-        if (!admin.organizationId) {
-          return { ...admin, locations: [], companies: [] };
-        }
-        const orgId = (admin.organizationId as any)._id || admin.organizationId;
-        const [locations, companies] = await Promise.all([
-          Location.find({ organizationId: orgId, isActive: true })
-            .select('name address city state images rating managerName managerPhone')
-            .lean(),
-          Company.find({ organizationId: orgId, status: 'ACTIVE' })
-            .select('name billingEmail phone allowanceConfig locationId')
-            .populate('locationId', 'name')
-            .lean()
-        ]);
-        return {
-          ...admin,
-          locations,
-          companies
-        };
-      })
-    );
+    const orgIds: any[] = [];
+    for (const admin of admins) {
+      if (admin.organizationId) {
+        const id = (admin.organizationId as any)._id || admin.organizationId;
+        orgIds.push(id);
+      }
+    }
+
+    const [allLocations, allCompanies] = await Promise.all([
+      Location.find({ organizationId: { $in: orgIds }, isActive: true })
+        .select('name address city state images rating managerName managerPhone organizationId')
+        .lean(),
+      Company.find({ organizationId: { $in: orgIds }, status: 'ACTIVE' })
+        .select('name billingEmail phone allowanceConfig locationId organizationId')
+        .populate('locationId', 'name')
+        .lean()
+    ]);
+
+    const locationsByOrg = new Map<string, any[]>();
+    for (const loc of allLocations) {
+      const key = String(loc.organizationId);
+      if (!locationsByOrg.has(key)) locationsByOrg.set(key, []);
+      locationsByOrg.get(key)!.push(loc);
+    }
+
+    const companiesByOrg = new Map<string, any[]>();
+    for (const comp of allCompanies) {
+      const key = String(comp.organizationId);
+      if (!companiesByOrg.has(key)) companiesByOrg.set(key, []);
+      companiesByOrg.get(key)!.push(comp);
+    }
+
+    const enriched = admins.map((admin) => {
+      if (!admin.organizationId) {
+        return { ...admin, locations: [], companies: [] };
+      }
+      const orgIdStr = String((admin.organizationId as any)._id || admin.organizationId);
+      return {
+        ...admin,
+        locations: locationsByOrg.get(orgIdStr) || [],
+        companies: companiesByOrg.get(orgIdStr) || []
+      };
+    });
 
     return apiSuccess(res, enriched);
   } catch (error) {

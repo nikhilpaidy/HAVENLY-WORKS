@@ -57,7 +57,23 @@ export const superAdminApi = {
     request<any>(`/blogs/admin/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteBlog: (id: string) =>
     request<any>(`/blogs/admin/${id}`, { method: 'DELETE' }),
-  getSpacesSummary: () => request<any[]>('/super-admin/spaces-summary')
+  getSpacesSummary: () => request<any[]>('/super-admin/spaces-summary'),
+  getMonitoringStats: () => request<any>('/monitoring/stats'),
+  getIssueLogs: (params?: { page?: number; limit?: number; level?: string; statusCode?: number; resolved?: boolean; search?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.append('page', String(params.page));
+    if (params?.limit) q.append('limit', String(params.limit));
+    if (params?.level) q.append('level', params.level);
+    if (params?.statusCode) q.append('statusCode', String(params.statusCode));
+    if (params?.resolved !== undefined) q.append('resolved', String(params.resolved));
+    if (params?.search) q.append('search', params.search);
+    const qs = q.toString();
+    return request<{ logs: any[]; total: number; page: number; limit: number; pages: number }>(`/monitoring/issues${qs ? `?${qs}` : ''}`);
+  },
+  resolveIssue: (id: string) =>
+    request<any>(`/monitoring/issues/${id}/resolve`, { method: 'PATCH' }),
+  clearIssues: (olderThanDays?: number) =>
+    request<any>(`/monitoring/issues/clear${olderThanDays ? `?olderThanDays=${olderThanDays}` : ''}`, { method: 'DELETE' })
 };
 
 // ----------------- COWORKING ADMIN APIS -----------------

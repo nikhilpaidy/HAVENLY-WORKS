@@ -142,203 +142,202 @@ export const SupportModal: React.FC<SupportModalProps> = ({
 
           {canManageHotline && (
             <TouchableOpacity
-              style={[
-                styles.adminToggleBtn,
-                { backgroundColor: showEditForm ? '#EF4444' : '#00A859' }
-              ]}
+              style={styles.adminEditLink}
               onPress={() => setShowEditForm(!showEditForm)}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
             >
               <Ionicons
-                name={showEditForm ? 'close-circle' : 'create-outline'}
-                size={16}
-                color="#FFFFFF"
-                style={{ marginRight: 6 }}
+                name={showEditForm ? 'close-circle-outline' : 'create-outline'}
+                size={15}
+                color="#00A859"
+                style={{ marginRight: 5 }}
               />
-              <Text style={styles.adminToggleText}>
-                {showEditForm ? 'Cancel Edit' : 'Add / Update Hotline Details'}
+              <Text style={styles.adminEditText}>
+                {showEditForm ? 'Cancel Edit' : 'Edit Hotline Details'}
               </Text>
             </TouchableOpacity>
           )}
 
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {showEditForm ? (
-              <View style={[styles.editCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-                <Text style={[styles.editTitle, { color: theme.textPrimary }]}>
-                  Manage Customer Support Helpline
-                </Text>
-
-                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Support Hotline Phone</Text>
-                <TextInput
-                  style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
-                  value={editHotline}
-                  onChangeText={setEditHotline}
-                  placeholder="+91 (040) 4892-7100"
-                  placeholderTextColor={theme.textMuted}
-                />
-
-                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Emergency Contact Phone</Text>
-                <TextInput
-                  style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
-                  value={editEmergency}
-                  onChangeText={setEditEmergency}
-                  placeholder="+91 98490 12345"
-                  placeholderTextColor={theme.textMuted}
-                />
-
-                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>WhatsApp Helpline</Text>
-                <TextInput
-                  style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
-                  value={editWhatsapp}
-                  onChangeText={setEditWhatsapp}
-                  placeholder="+91 98490 12345"
-                  placeholderTextColor={theme.textMuted}
-                />
-
-                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Support Email Address</Text>
-                <TextInput
-                  style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
-                  value={editEmail}
-                  onChangeText={setEditEmail}
-                  placeholder="support@havenlywork.com"
-                  placeholderTextColor={theme.textMuted}
-                  autoCapitalize="none"
-                />
-
-                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Operating Hours & Concierge Note</Text>
-                <TextInput
-                  style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
-                  value={editHours}
-                  onChangeText={setEditHours}
-                  placeholder="24/7 Helpline & On-Site Concierge"
-                  placeholderTextColor={theme.textMuted}
-                />
-
-                <TouchableOpacity
-                  style={styles.saveBtn}
-                  onPress={handleSaveHelpline}
-                  disabled={saving}
-                  activeOpacity={0.8}
-                >
-                  {saving ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.saveBtnText}>Save Hotline Details</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <>
-                <View style={[styles.card, { backgroundColor: isDark ? '#0F172A' : '#F0FDF4', borderColor: '#00A859' }]}>
-                  <View style={styles.badgeRow}>
-                    <Ionicons name="call" size={16} color="#00A859" />
-                    <Text style={styles.badgeText}>CUSTOMER SUPPORT HELPLINE</Text>
-                  </View>
-                  <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
-                    {hotline}
+          {loading ? (
+            <View style={styles.centerLoading}>
+              <ActivityIndicator size="large" color="#00A859" />
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+              {showEditForm ? (
+                <View style={styles.formContainer}>
+                  <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
+                    Update Support Hotline Information
                   </Text>
-                  <Text style={[styles.cardDesc, { color: theme.textSecondary }]}>
-                    Central hotline managed by Super Admin for platform inquiries, reservation escalations, and onboarding.
-                  </Text>
+
+                  <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Support Hotline Phone</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={editHotline}
+                    onChangeText={setEditHotline}
+                    placeholder="+91 (040) 4892-7100"
+                    placeholderTextColor={theme.textMuted}
+                  />
+
+                  <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Emergency Contact Phone</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={editEmergency}
+                    onChangeText={setEditEmergency}
+                    placeholder="+91 98490 12345"
+                    placeholderTextColor={theme.textMuted}
+                  />
+
+                  <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>WhatsApp Helpline</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={editWhatsapp}
+                    onChangeText={setEditWhatsapp}
+                    placeholder="+91 98490 12345"
+                    placeholderTextColor={theme.textMuted}
+                  />
+
+                  <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Support Email Address</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={editEmail}
+                    onChangeText={setEditEmail}
+                    placeholder="support@havenlywork.com"
+                    placeholderTextColor={theme.textMuted}
+                    autoCapitalize="none"
+                  />
+
+                  <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Operating Hours & Concierge Note</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                    value={editHours}
+                    onChangeText={setEditHours}
+                    placeholder="24/7 Helpline & On-Site Concierge"
+                    placeholderTextColor={theme.textMuted}
+                  />
+
                   <TouchableOpacity
-                    style={styles.callBtn}
-                    onPress={() => handleCall(hotline)}
+                    style={styles.saveBtn}
+                    onPress={handleSaveHelpline}
+                    disabled={saving}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="call" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.callBtnText}>Call Hotline: {hotline}</Text>
+                    {saving ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.saveBtnText}>Save Hotline Details</Text>
+                    )}
                   </TouchableOpacity>
                 </View>
-
-                <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-                  <View style={styles.badgeRow}>
-                    <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
-                    <Text style={[styles.badgeText, { color: '#25D366' }]}>WHATSAPP ASSISTANCE</Text>
+              ) : (
+                <>
+                  <View style={styles.sectionBlock}>
+                    <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
+                      1. General Support Hotline
+                    </Text>
+                    <Text style={[styles.sectionBody, { color: theme.textSecondary }]}>
+                      Central hotline for platform inquiries, reservation assistance, and corporate onboarding.
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.contactActionRow}
+                      onPress={() => handleCall(hotline)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="call-outline" size={17} color="#00A859" style={{ marginRight: 8 }} />
+                      <Text style={styles.contactActionText}>{hotline}</Text>
+                    </TouchableOpacity>
                   </View>
-                  <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
-                    Chat on WhatsApp
-                  </Text>
-                  <Text style={[styles.cardDesc, { color: theme.textSecondary }]}>
-                    Instant messaging assistance for directions, invoice receipts, and workspace passes.
-                  </Text>
-                  <TouchableOpacity
-                    style={[styles.callBtn, { backgroundColor: '#25D366' }]}
-                    onPress={() => handleWhatsApp(whatsapp)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="logo-whatsapp" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.callBtnText}>Chat: {whatsapp}</Text>
-                  </TouchableOpacity>
-                </View>
 
-                <View style={[styles.card, { backgroundColor: isDark ? '#1F1E2E' : '#FEF3C7', borderColor: '#F59E0B' }]}>
-                  <View style={styles.badgeRow}>
-                    <Ionicons name="alert-circle" size={16} color="#D97706" />
-                    <Text style={[styles.badgeText, { color: '#D97706' }]}>EMERGENCY HOTLINE</Text>
+                  <View style={styles.sectionBlock}>
+                    <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
+                      2. Emergency Assistance
+                    </Text>
+                    <Text style={[styles.sectionBody, { color: theme.textSecondary }]}>
+                      Immediate response for access card lockouts, electrical outages, or facility emergencies.
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.contactActionRow}
+                      onPress={() => handleCall(emergency)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="alert-circle-outline" size={17} color="#00A859" style={{ marginRight: 8 }} />
+                      <Text style={styles.contactActionText}>{emergency}</Text>
+                    </TouchableOpacity>
                   </View>
-                  <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
-                    {emergency}
-                  </Text>
-                  <Text style={[styles.cardDesc, { color: theme.textSecondary }]}>
-                    Immediate assistance for access card lockouts, electrical outages, or facility emergencies.
-                  </Text>
-                  <TouchableOpacity
-                    style={[styles.callBtn, { backgroundColor: '#D97706' }]}
-                    onPress={() => handleCall(emergency)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="call" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.callBtnText}>Call Emergency: {emergency}</Text>
-                  </TouchableOpacity>
-                </View>
 
-                <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-                  <View style={styles.badgeRow}>
-                    <Ionicons name="chatbubbles" size={16} color="#0284C7" />
-                    <Text style={[styles.badgeText, { color: '#0284C7' }]}>HUB HELPDESK & COMPLAINTS</Text>
+                  <View style={styles.sectionBlock}>
+                    <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
+                      3. WhatsApp Assistance
+                    </Text>
+                    <Text style={[styles.sectionBody, { color: theme.textSecondary }]}>
+                      Direct messaging support for hub directions, invoice receipts, and workspace entry.
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.contactActionRow}
+                      onPress={() => handleWhatsApp(whatsapp)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="logo-whatsapp" size={17} color="#00A859" style={{ marginRight: 8 }} />
+                      <Text style={styles.contactActionText}>Chat via WhatsApp: {whatsapp}</Text>
+                    </TouchableOpacity>
                   </View>
-                  <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
-                    Coworking Admin Helpdesk
-                  </Text>
-                  <Text style={[styles.cardDesc, { color: theme.textSecondary }]}>
-                    Complaints are addressed directly by your registered Coworking Hub Admin profile and on-site facility team.
-                  </Text>
-                  <TouchableOpacity
-                    style={[styles.callBtn, { backgroundColor: '#0284C7' }]}
-                    onPress={() => {
-                      onClose();
-                      onOpenTickets();
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="chatbubble-ellipses" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.callBtnText}>Open Helpdesk & Complaints</Text>
-                  </TouchableOpacity>
-                </View>
 
-                <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-                  <View style={styles.badgeRow}>
-                    <Ionicons name="mail" size={16} color="#7C3AED" />
-                    <Text style={[styles.badgeText, { color: '#7C3AED' }]}>EMAIL SUPPORT</Text>
+                  <View style={styles.sectionBlock}>
+                    <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
+                      4. Formal Email Support
+                    </Text>
+                    <Text style={[styles.sectionBody, { color: theme.textSecondary }]}>
+                      Corporate partnership proposals, enterprise agreements, and billing inquiries.
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.contactActionRow}
+                      onPress={() => handleEmail(email)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="mail-outline" size={17} color="#00A859" style={{ marginRight: 8 }} />
+                      <Text style={styles.contactActionText}>{email}</Text>
+                    </TouchableOpacity>
                   </View>
-                  <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
-                    {email}
-                  </Text>
-                  <Text style={[styles.cardDesc, { color: theme.textSecondary }]}>
-                    Formal corporate inquiries, partnership proposals, and contract extensions.
-                  </Text>
-                  <TouchableOpacity
-                    style={[styles.callBtn, { backgroundColor: '#7C3AED' }]}
-                    onPress={() => handleEmail(email)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="mail-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.callBtnText}>Send Email Support</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-          </ScrollView>
+
+                  <View style={styles.sectionBlock}>
+                    <Text style={[styles.sectionHeading, { color: theme.textPrimary }]}>
+                      5. Facilities Helpdesk & Complaints
+                    </Text>
+                    <Text style={[styles.sectionBody, { color: theme.textSecondary }]}>
+                      Tickets and maintenance requests are addressed directly by your assigned Coworking Hub Admin.
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.contactActionRow}
+                      onPress={() => {
+                        onClose();
+                        onOpenTickets();
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="chatbubbles-outline" size={17} color="#00A859" style={{ marginRight: 8 }} />
+                      <Text style={styles.contactActionText}>Open Facilities Helpdesk</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={[styles.verifiedCard, { backgroundColor: isDark ? '#0F172A' : '#F0FDF4' }]}>
+                    <Ionicons name="shield-checkmark" size={20} color="#00A859" />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={[styles.verifiedTitle, { color: theme.textPrimary }]}>
+                        Enterprise Support Standard
+                      </Text>
+                      <Text style={[styles.verifiedDesc, { color: theme.textMuted }]}>
+                        Guaranteed on-site concierge dispatch and response time under 15 minutes.
+                      </Text>
+                    </View>
+                  </View>
+                </>
+              )}
+            </ScrollView>
+          )}
+
+          <TouchableOpacity style={styles.doneBtn} onPress={onClose} activeOpacity={0.85}>
+            <Text style={styles.doneBtnText}>Close</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -352,60 +351,108 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end'
   },
   modalContent: {
-    height: '88%',
+    height: '84%',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderWidth: 1,
-    padding: 22,
+    padding: 20,
     paddingBottom: 36
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14
+    marginBottom: 16
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '800'
   },
   headerSubtitle: {
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 2
   },
   closeBtn: {
     padding: 4
   },
-  adminToggleBtn: {
+  adminEditLink: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 12,
     marginBottom: 14
   },
-  adminToggleText: {
-    color: '#FFFFFF',
+  adminEditText: {
     fontSize: 12,
+    fontWeight: '700',
+    color: '#00A859'
+  },
+  centerLoading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  scrollContent: {
+    paddingBottom: 24
+  },
+  sectionBlock: {
+    marginBottom: 20
+  },
+  sectionHeading: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 5
+  },
+  sectionBody: {
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 8
+  },
+  contactActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4
+  },
+  contactActionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#00A859'
+  },
+  verifiedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    marginTop: 10,
+    marginBottom: 10
+  },
+  verifiedTitle: {
+    fontSize: 13,
     fontWeight: '700'
   },
-  editCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 14
+  verifiedDesc: {
+    fontSize: 11.5,
+    marginTop: 2
   },
-  editTitle: {
+  doneBtn: {
+    backgroundColor: '#00A859',
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10
+  },
+  doneBtnText: {
+    color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '800',
-    marginBottom: 12
+    fontWeight: '700'
+  },
+  formContainer: {
+    paddingBottom: 16
   },
   inputLabel: {
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 4,
-    marginTop: 8
+    marginTop: 10
   },
   inputField: {
     height: 44,
@@ -416,56 +463,15 @@ const styles = StyleSheet.create({
   },
   saveBtn: {
     backgroundColor: '#00A859',
-    height: 44,
-    borderRadius: 12,
+    height: 46,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16
+    marginTop: 18
   },
   saveBtnText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '700'
-  },
-  card: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 12
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    color: '#00A859',
-    marginLeft: 6
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 4
-  },
-  cardDesc: {
-    fontSize: 12,
-    lineHeight: 17,
-    marginBottom: 12
-  },
-  callBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#00A859',
-    height: 42,
-    borderRadius: 12
-  },
-  callBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
     fontWeight: '700'
   }
 });

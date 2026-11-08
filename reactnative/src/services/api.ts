@@ -219,6 +219,10 @@ export const locationsApi = {
     return request<any[]>('/locations/public');
   },
 
+  getAll: () => {
+    return request<any[]>('/locations');
+  },
+
   getPublicById: (id: string) => {
     return request<any>(`/locations/public/${id}`);
   },
@@ -566,6 +570,7 @@ export const mobileApi = {
 
   locations: locationsApi,
   getNearbyLocations: locationsApi.getNearby,
+  getLocations: locationsApi.getAll,
   getPublicLocations: locationsApi.getPublic,
   getPublicLocationById: locationsApi.getPublicById,
 
