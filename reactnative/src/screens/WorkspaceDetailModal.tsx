@@ -10,7 +10,9 @@ import {
   Linking,
   Alert,
   TextInput,
-  ActivityIndicator
+  ActivityIndicator,
+  Share,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
@@ -220,6 +222,22 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
     }
   };
 
+  const handleShareWorkspace = async () => {
+    try {
+      const shareUrl = `https://havenlywork.com/workspace/${space._id}`;
+      const playStoreUrl = `https://play.google.com/store/apps/details?id=com.havenly.work`;
+      const locName = loc?.name || 'HavenlyWork';
+      const spaceName = space?.name || 'Workspace';
+      const shareMessage = `Explore ${spaceName} at ${locName}!\n\nOpen workspace in HavenlyWork: ${shareUrl}\n\nDon't have the app yet? Download it on Google Play Store: ${playStoreUrl}`;
+
+      await Share.share({
+        title: `${spaceName} - ${locName}`,
+        message: Platform.OS === 'android' ? shareMessage : `${spaceName} at ${locName}\n\n${shareMessage}`,
+        url: shareUrl
+      });
+    } catch {}
+  };
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -238,7 +256,11 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
                 color={isFavorite ? '#EF4444' : theme.textPrimary}
               />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.roundBtn, { backgroundColor: theme.card, marginLeft: 8 }]}>
+            <TouchableOpacity
+              style={[styles.roundBtn, { backgroundColor: theme.card, marginLeft: 8 }]}
+              onPress={handleShareWorkspace}
+              activeOpacity={0.8}
+            >
               <Ionicons name="share-outline" size={20} color={theme.textPrimary} />
             </TouchableOpacity>
           </View>

@@ -67,7 +67,6 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
   const isManagerRole = isSuperAdmin || isCoworkingAdmin;
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [workspacesExpanded, setWorkspacesExpanded] = useState(true);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
 
   const [locations, setLocations] = useState<any[]>([]);
@@ -421,66 +420,28 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
 
             <View style={styles.sectionSpacer} />
 
-            {filterMatches('My tasks Workspaces Desks Meeting Rooms Reservations Quota') && (
+            {filterMatches('My tasks Workspaces Desks Reservations Quota') && (
               <>
                 <Text style={[styles.sectionHeading, { color: isDark ? '#71717A' : '#94A3B8' }]}>
                   My tasks
                 </Text>
 
-                <TouchableOpacity
-                  style={styles.navRow}
-                  onPress={() => setWorkspacesExpanded(!workspacesExpanded)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name="document-text-outline"
-                    size={19}
-                    color={isDark ? '#A1A1AA' : '#64748B'}
-                    style={styles.rowIcon}
-                  />
-                  <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
-                    Workspaces & Desks
-                  </Text>
-                  <Ionicons
-                    name={workspacesExpanded ? 'chevron-up' : 'chevron-down'}
-                    size={16}
-                    color={isDark ? '#71717A' : '#94A3B8'}
-                  />
-                </TouchableOpacity>
-
-                {workspacesExpanded && (
-                  <View style={styles.nestedContainer}>
-                    <View style={[styles.verticalTreeLine, { backgroundColor: isDark ? '#27272A' : '#E2E8F0' }]} />
-                    <View style={styles.nestedItemsColumn}>
-                      <TouchableOpacity
-                        style={styles.nestedRow}
-                        onPress={() => handleAction(onOpenRooms)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.nestedLabel, { color: isDark ? '#D4D4D8' : '#475569' }]}>
-                          Meeting Rooms
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.nestedRow}
-                        onPress={() => handleAction(onOpenRooms)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.nestedLabel, { color: isDark ? '#D4D4D8' : '#475569' }]}>
-                          Flex Desks
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.nestedRow}
-                        onPress={() => handleAction(onOpenRooms)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.nestedLabel, { color: isDark ? '#D4D4D8' : '#475569' }]}>
-                          Private Cabins
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
+                {filterMatches('Workspaces Desks') && (
+                  <TouchableOpacity
+                    style={styles.navRow}
+                    onPress={() => handleAction(onOpenRooms)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="document-text-outline"
+                      size={19}
+                      color={isDark ? '#A1A1AA' : '#64748B'}
+                      style={styles.rowIcon}
+                    />
+                    <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
+                      Workspaces & Desks
+                    </Text>
+                  </TouchableOpacity>
                 )}
 
                 {filterMatches('Reservations Bookings') && (
@@ -724,6 +685,62 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
             <View style={{ height: 20 }} />
           </ScrollView>
 
+          {showAccountMenu && (
+            <View
+              style={[
+                styles.inlineAccountMenu,
+                {
+                  backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+                  borderColor: isDark ? '#2E2E32' : '#E2E8F0'
+                }
+              ]}
+            >
+              <View style={styles.menuHeaderRow}>
+                <Text style={[styles.menuTitle, { color: theme.textPrimary }]}>Account</Text>
+                <TouchableOpacity onPress={() => setShowAccountMenu(false)}>
+                  <Ionicons name="close" size={18} color={theme.textMuted} />
+                </TouchableOpacity>
+              </View>
+
+              {isGuest ? (
+                <TouchableOpacity
+                  style={[styles.accountOptionBtn, { backgroundColor: '#00A859' }]}
+                  onPress={() => {
+                    setShowAccountMenu(false);
+                    handleAction(onSignInRequest);
+                  }}
+                >
+                  <Ionicons name="log-in-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={[styles.accountOptionText, { color: '#FFFFFF' }]}>Sign In to Account</Text>
+                </TouchableOpacity>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={styles.accountOptionRow}
+                    onPress={() => {
+                      setShowAccountMenu(false);
+                      handleDeleteAccount();
+                    }}
+                  >
+                    <Ionicons name="trash-outline" size={18} color="#EF4444" style={{ marginRight: 10 }} />
+                    <Text style={[styles.accountOptionRowText, { color: '#EF4444' }]}>Deactivate Account</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.accountOptionRow, { borderBottomWidth: 0 }]}
+                    onPress={() => {
+                      setShowAccountMenu(false);
+                      handleAction(onSignOut);
+                    }}
+                  >
+                    <Ionicons name="log-out-outline" size={18} color={theme.textMuted} style={{ marginRight: 10 }} />
+                    <Text style={[styles.accountOptionRowText, { color: theme.textSecondary }]}>Sign Out</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          )}
+
           <TouchableOpacity
             style={[
               styles.userCard,
@@ -732,7 +749,7 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
                 borderTopColor: isDark ? '#27272A' : '#E2E8F0'
               }
             ]}
-            onPress={() => setShowAccountMenu(true)}
+            onPress={() => setShowAccountMenu(!showAccountMenu)}
             activeOpacity={0.85}
           >
             <SafeImage
@@ -755,84 +772,6 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
           </TouchableOpacity>
         </Animated.View>
       </View>
-
-      <Modal
-        visible={showAccountMenu}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowAccountMenu(false)}
-      >
-        <TouchableOpacity
-          style={styles.menuBackdrop}
-          activeOpacity={1}
-          onPress={() => setShowAccountMenu(false)}
-        >
-          <View
-            style={[
-              styles.accountMenuCard,
-              {
-                backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
-                borderColor: isDark ? '#2E2E32' : '#E2E8F0'
-              }
-            ]}
-          >
-            <View style={styles.menuHeaderRow}>
-              <Text style={[styles.menuTitle, { color: theme.textPrimary }]}>Account Actions</Text>
-              <TouchableOpacity onPress={() => setShowAccountMenu(false)}>
-                <Ionicons name="close" size={18} color={theme.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            {isGuest ? (
-              <TouchableOpacity
-                style={[styles.accountOptionBtn, { backgroundColor: '#00A859' }]}
-                onPress={() => {
-                  setShowAccountMenu(false);
-                  handleAction(onSignInRequest);
-                }}
-              >
-                <Ionicons name="log-in-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                <Text style={[styles.accountOptionText, { color: '#FFFFFF' }]}>Sign In to Account</Text>
-              </TouchableOpacity>
-            ) : (
-              <>
-                <TouchableOpacity
-                  style={styles.accountOptionRow}
-                  onPress={() => {
-                    setShowAccountMenu(false);
-                    handleAction(onOpenProfile);
-                  }}
-                >
-                  <Ionicons name="person-outline" size={18} color={theme.textPrimary} style={{ marginRight: 10 }} />
-                  <Text style={[styles.accountOptionRowText, { color: theme.textPrimary }]}>Edit Profile</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.accountOptionRow}
-                  onPress={() => {
-                    setShowAccountMenu(false);
-                    handleDeleteAccount();
-                  }}
-                >
-                  <Ionicons name="trash-outline" size={18} color="#EF4444" style={{ marginRight: 10 }} />
-                  <Text style={[styles.accountOptionRowText, { color: '#EF4444' }]}>Deactivate Account</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.accountOptionRow}
-                  onPress={() => {
-                    setShowAccountMenu(false);
-                    handleAction(onSignOut);
-                  }}
-                >
-                  <Ionicons name="log-out-outline" size={18} color={theme.textMuted} style={{ marginRight: 10 }} />
-                  <Text style={[styles.accountOptionRowText, { color: theme.textSecondary }]}>Sign Out</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </TouchableOpacity>
-      </Modal>
 
       <Modal
         visible={showOnboardModal}
@@ -1334,28 +1273,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     letterSpacing: 0.3
   },
-  nestedContainer: {
-    flexDirection: 'row',
-    marginLeft: 17,
-    paddingLeft: 12,
-    marginTop: 2,
-    marginBottom: 6
-  },
-  verticalTreeLine: {
-    width: 1.5,
-    borderRadius: 1
-  },
-  nestedItemsColumn: {
-    flex: 1,
-    paddingLeft: 14
-  },
-  nestedRow: {
-    paddingVertical: 7
-  },
-  nestedLabel: {
-    fontSize: 13,
-    fontWeight: '500'
-  },
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1379,39 +1296,34 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     marginTop: 1
   },
-  menuBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-    padding: 16,
-    paddingBottom: 36
-  },
-  accountMenuCard: {
-    borderRadius: 20,
+  inlineAccountMenu: {
+    marginHorizontal: 12,
+    marginBottom: 8,
+    borderRadius: 14,
     borderWidth: 1,
-    padding: 18,
+    padding: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4
   },
   menuHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14
+    marginBottom: 10
   },
   menuTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700'
   },
   accountOptionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
     marginTop: 4
   },
   accountOptionText: {
@@ -1421,7 +1333,7 @@ const styles = StyleSheet.create({
   accountOptionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#E2E8F0'
   },
