@@ -4,7 +4,9 @@
   "description": "Production-grade Modular Monolith Backend for Premium Coworking & Meeting Room Platform",
   "main": "dist/server.js",
   "scripts": {
+    "predev": "lsof -ti:6018 | xargs kill -9 2>/dev/null || true",
     "dev": "tsx watch src/server.ts",
+    "kill-port": "lsof -ti:6018 | xargs kill -9 2>/dev/null || true",
     "build": "tsc",
     "start": "node dist/server.js",
     "seed": "tsx src/scripts/seed.ts",

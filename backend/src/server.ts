@@ -11,6 +11,14 @@ async function bootstrap() {
     const app = createApp();
     const server = http.createServer(app);
 
+    server.on('error', (err: any) => {
+      if (err.code === 'EADDRINUSE') {
+        logger.error(`Port ${env.PORT} is already in use by another process. Run 'npm run kill-port' to free it.`);
+        process.exit(1);
+      }
+      throw err;
+    });
+
     server.listen(env.PORT, '0.0.0.0', () => {
       logger.info(`  Coworking Modular Monolith API Server Running    `);
       logger.info(`  Environment : ${env.NODE_ENV}`);
