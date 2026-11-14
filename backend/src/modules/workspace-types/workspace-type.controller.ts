@@ -23,10 +23,20 @@ export async function getWorkspaceTypes(req: Request, res: Response, next: NextF
     }
 
     let typeQuery: any = { isActive: true };
-    if (orgScopeId) {
+    if (user?.role === UserRole.SUPER_ADMIN) {
+      typeQuery = { isActive: true };
+    } else if (orgScopeId) {
       typeQuery = {
         $or: [
           { organizationId: orgScopeId },
+          { organizationId: { $exists: false } },
+          { organizationId: null }
+        ],
+        isActive: true
+      };
+    } else {
+      typeQuery = {
+        $or: [
           { organizationId: { $exists: false } },
           { organizationId: null }
         ],
@@ -77,7 +87,7 @@ export async function createWorkspaceType(req: Request, res: Response, next: Nex
 
     const existing = await WorkspaceType.findOne({
       code: finalCode,
-      ...(organizationId ? { organizationId } : {})
+      ...(organizationId ? { organizationId } : { organizationId: { $in: [null, undefined] } })
     });
 
     if (existing) {
@@ -119,6 +129,15 @@ export async function updateWorkspaceType(req: Request, res: Response, next: Nex
       throw new AppError('Workspace type not found', 404);
     }
 
+    if (req.user?.role !== UserRole.SUPER_ADMIN) {
+      if (!type.organizationId) {
+        throw new AppError('Only platform Super Admin can modify platform standard workspace types', 403);
+      }
+      if (type.organizationId.toString() !== req.user?.organizationId?.toString()) {
+        throw new AppError('You do not have permission to modify this workspace type', 403);
+      }
+    }
+
     if (name !== undefined) type.name = name.trim();
     if (description !== undefined) type.description = description.trim();
     if (icon !== undefined) type.icon = icon;
@@ -139,6 +158,15 @@ export async function deleteWorkspaceType(req: Request, res: Response, next: Nex
     const type = await WorkspaceType.findById(id);
     if (!type) {
       throw new AppError('Workspace type not found', 404);
+    }
+
+    if (req.user?.role !== UserRole.SUPER_ADMIN) {
+      if (!type.organizationId) {
+        throw new AppError('Only platform Super Admin can delete platform standard workspace types', 403);
+      }
+      if (type.organizationId.toString() !== req.user?.organizationId?.toString()) {
+        throw new AppError('You do not have permission to delete this workspace type', 403);
+      }
     }
 
     type.isActive = false;

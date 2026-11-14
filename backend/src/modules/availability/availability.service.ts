@@ -8,7 +8,8 @@ export interface ISlotAvailability {
   startTime: string; 
   endTime: string;
   isAvailable: boolean;
-  reason?: 'RESERVED' | 'MAINTENANCE' | 'CLOSED' | null;
+  available: boolean;
+  reason?: 'RESERVED' | 'MAINTENANCE' | 'CLOSED' | 'PAST' | null;
 }
 
 export async function getRoomAvailabilityForDate(
@@ -26,13 +27,14 @@ export async function getRoomAvailabilityForDate(
   }
 
   const location: any = room.locationId;
-  const targetDate = new Date(`${dateString}T00:00:00.000Z`);
-  const dayOfWeek = targetDate.getUTCDay();
+  const [year, month, day] = dateString.split('-').map(Number);
+  const targetDateMiddayUtc = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  const dayOfWeek = targetDateMiddayUtc.getUTCDay();
 
   const daySchedule = location?.businessHours?.find((b: any) => b.dayOfWeek === dayOfWeek);
   const isOpen = daySchedule ? daySchedule.isOpen : true;
-  const openTimeStr = daySchedule ? daySchedule.openTime : '08:00';
-  const closeTimeStr = daySchedule ? daySchedule.closeTime : '20:00';
+  const openTimeStr = (daySchedule && daySchedule.openTime) ? daySchedule.openTime : '08:00';
+  const closeTimeStr = (daySchedule && daySchedule.closeTime) ? daySchedule.closeTime : '20:00';
 
   if (!isOpen) {
     return {
@@ -46,8 +48,12 @@ export async function getRoomAvailabilityForDate(
   const [openHour, openMin] = openTimeStr.split(':').map(Number);
   const [closeHour, closeMin] = closeTimeStr.split(':').map(Number);
 
-  const dayStart = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), openHour, openMin, 0));
-  const dayEnd = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), closeHour, closeMin, 0));
+  const istOffsetMs = 5.5 * 60 * 60 * 1000;
+  const dayStartMs = Date.UTC(year, month - 1, day, openHour, openMin, 0) - istOffsetMs;
+  const dayEndMs = Date.UTC(year, month - 1, day, closeHour, closeMin, 0) - istOffsetMs;
+
+  const dayStart = new Date(dayStartMs);
+  const dayEnd = new Date(dayEndMs);
 
   const reservedSlots = await InventorySlot.find({
     roomId: room._id,
@@ -58,18 +64,22 @@ export async function getRoomAvailabilityForDate(
     reservedSlots.map((s) => s.slotTime.getTime())
   );
 
-  const intervalMinutes = room.slotIntervalMinutes || 15;
+  const intervalMinutes = room.slotIntervalMinutes || 30;
   const slotMs = intervalMinutes * 60 * 1000;
   const slots: ISlotAvailability[] = [];
+  const now = Date.now();
 
   for (let currentMs = dayStart.getTime(); currentMs < dayEnd.getTime(); currentMs += slotMs) {
     const slotStart = new Date(currentMs);
     const slotEnd = new Date(currentMs + slotMs);
 
     let isAvailable = true;
-    let reason: 'RESERVED' | 'MAINTENANCE' | null = null;
+    let reason: 'RESERVED' | 'MAINTENANCE' | 'PAST' | null = null;
 
-    if (reservedSlotTimeSet.has(slotStart.getTime())) {
+    if (slotStart.getTime() < now) {
+      isAvailable = false;
+      reason = 'PAST';
+    } else if (reservedSlotTimeSet.has(slotStart.getTime())) {
       isAvailable = false;
       reason = 'RESERVED';
     }
@@ -88,6 +98,7 @@ export async function getRoomAvailabilityForDate(
       startTime: slotStart.toISOString(),
       endTime: slotEnd.toISOString(),
       isAvailable,
+      available: isAvailable,
       reason
     });
   }

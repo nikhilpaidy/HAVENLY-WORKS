@@ -1,12 +1,11 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, UserRole } from './context/AuthContext.js';
+import { AuthProvider, UserRole, useAuth } from './context/AuthContext.js';
 import { ThemeProvider } from './context/ThemeContext.js';
 import { DashboardLayout } from './layouts/DashboardLayout.js';
 import { ProtectedRoute } from './components/ProtectedRoute.js';
 
 // Auth Pages
-import { PortalGatewayPage } from './pages/auth/PortalGatewayPage.js';
 import { SuperAdminLoginPage } from './pages/auth/SuperAdminLoginPage.js';
 import { AdminLoginPage } from './pages/auth/AdminLoginPage.js';
 import { ClientLoginPage } from './pages/auth/ClientLoginPage.js';
@@ -47,17 +46,38 @@ import { ClientStaffPage } from './pages/client/ClientStaffPage.js';
 import { UnauthorizedPage } from './pages/UnauthorizedPage.js';
 import { NotFoundPage } from './pages/NotFoundPage.js';
 
+const RootRedirect: React.FC = () => {
+  const { user, isAuthenticated, isLoading } = useAuth();
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-400 text-xs">
+        Loading...
+      </div>
+    );
+  }
+  if (isAuthenticated && user) {
+    if (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.SUPER_ADMIN_STAFF) {
+      return <Navigate to="/super-admin/dashboard" replace />;
+    }
+    if (user.role === UserRole.COWORKING_ADMIN || user.role === UserRole.COWORKING_ADMIN_STAFF) {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
+    return <Navigate to="/client/dashboard" replace />;
+  }
+  return <Navigate to="/admin/login" replace />;
+};
+
 export const App: React.FC = () => {
   return (
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            {/* Root Gateway & Portal Switcher */}
-            <Route path="/" element={<PortalGatewayPage />} />
-            <Route path="/login" element={<PortalGatewayPage />} />
+            {/* Direct Login Routing without Portal Selector Hub */}
+            <Route path="/" element={<RootRedirect />} />
+            <Route path="/login" element={<RootRedirect />} />
 
-            {/* Public Auth Routes */}
+            {/* Public Dedicated Auth Routes */}
             <Route path="/super-admin/login" element={<SuperAdminLoginPage />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/client/login" element={<ClientLoginPage />} />
@@ -83,10 +103,17 @@ export const App: React.FC = () => {
               <Route path="monitoring" element={<SuperAdminMonitoringPage />} />
             </Route>
 
+            {/* Coworking Admin Protected Routes */}
             <Route
               path="/admin"
               element={
-                <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.COWORKING_ADMIN, UserRole.COWORKING_ADMIN_STAFF]}>
+                <ProtectedRoute
+                  allowedRoles={[
+                    UserRole.SUPER_ADMIN,
+                    UserRole.COWORKING_ADMIN,
+                    UserRole.COWORKING_ADMIN_STAFF
+                  ]}
+                >
                   <DashboardLayout />
                 </ProtectedRoute>
               }
@@ -132,7 +159,7 @@ export const App: React.FC = () => {
               <Route path="profile" element={<ClientProfilePage />} />
             </Route>
 
-            {/* System Status / Error Pages */}
+            {/* Common Error Pages */}
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

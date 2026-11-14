@@ -13,13 +13,11 @@ import {
   Search,
   MapPin,
   SlidersHorizontal,
-  Wifi,
-  Tv,
-  Coffee,
-  Mic,
   ChevronRight,
-  Filter,
-  Check
+  Check,
+  Briefcase,
+  Layers,
+  Sparkles
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatCurrency, formatTimeIST, formatDateIST, getTodayDateStringIST } from '../../utils/formatters.js';
@@ -29,6 +27,7 @@ interface Room {
   name: string;
   slug?: string;
   code?: string;
+  workspaceType?: string;
   locationId: {
     _id: string;
     name: string;
@@ -36,6 +35,7 @@ interface Room {
   } | string;
   capacity: number;
   hourlyRate: number;
+  dailyRate?: number;
   bufferMinutes: number;
   slotIntervalMinutes: number;
   amenities: string[];
@@ -44,37 +44,6 @@ interface Room {
   isActive: boolean;
 }
 
-const CATEGORIES = [
-  {
-    id: 'meeting-rooms',
-    name: 'Meeting Rooms',
-    count: '7 available',
-    image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80',
-    active: true
-  },
-  {
-    id: 'flex-desks',
-    name: 'Flex Desks',
-    count: 'Coming soon',
-    image: 'https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?auto=format&fit=crop&w=600&q=80',
-    active: false
-  },
-  {
-    id: 'fixed-desks',
-    name: 'Fixed Desks',
-    count: 'Coming soon',
-    image: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=600&q=80',
-    active: false
-  },
-  {
-    id: 'private-offices',
-    name: 'Private Offices',
-    count: 'Coming soon',
-    image: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=600&q=80',
-    active: false
-  }
-];
-
 export const ClientRoomsPage: React.FC = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
@@ -82,21 +51,24 @@ export const ClientRoomsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [successBooking, setSuccessBooking] = useState<any | null>(null);
 
-  // Filters State (SpaceOS style)
   const [search, setSearch] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [capacityFilter, setCapacityFilter] = useState<string>('all');
   const [priceFilter, setPriceFilter] = useState<string>('all');
-  const [activeCategory, setActiveCategory] = useState('meeting-rooms');
+  const [activeCategory, setActiveCategory] = useState<string>('all');
 
-  // Booking Modal State
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => getTodayDateStringIST());
   const [availableSlots, setAvailableSlots] = useState<any[]>([]);
+  const [operatingHours, setOperatingHours] = useState<{ open: string; close: string; isOpen: boolean }>({
+    open: '08:00',
+    close: '20:00',
+    isOpen: true
+  });
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
-  const [durationSlots, setDurationSlots] = useState<number>(2); // 2 x 30m = 1 hour default
+  const [durationSlots, setDurationSlots] = useState<number>(2);
   const [title, setTitle] = useState('Executive Strategy Session');
   const [purpose, setPurpose] = useState('Client presentation & planning');
   const [attendeeCount, setAttendeeCount] = useState(4);
@@ -117,6 +89,7 @@ export const ClientRoomsPage: React.FC = () => {
     setSelectedRoom(room);
     setSelectedSlotIndex(null);
     setEstimate(null);
+    setAttendeeCount(Math.min(4, room.capacity));
     setIsModalOpen(true);
     fetchSlotsForRoom(room._id, selectedDate);
   };
@@ -126,6 +99,9 @@ export const ClientRoomsPage: React.FC = () => {
       setLoadingSlots(true);
       const res = await clientApi.getRoomAvailability(roomId, dateStr);
       setAvailableSlots(res.slots || []);
+      if (res.operatingHours) {
+        setOperatingHours(res.operatingHours);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to check slot availability');
     } finally {
@@ -210,77 +186,120 @@ export const ClientRoomsPage: React.FC = () => {
     }
   };
 
-  // Filter logic
+  const categories = [
+    {
+      id: 'all',
+      name: 'All Workspaces',
+      count: `${rooms.length} available`
+    },
+    {
+      id: 'MEETING_ROOM',
+      name: 'Meeting Rooms',
+      count: `${rooms.filter((r) => (r.workspaceType || 'MEETING_ROOM').toUpperCase().match(/(MEETING|BOARDROOM|CONFERENCE)/)).length} available`
+    },
+    {
+      id: 'FLEX_DESK',
+      name: 'Flex Desks',
+      count: `${rooms.filter((r) => (r.workspaceType || '').toUpperCase().match(/(FLEX|HOT)/)).length} available`
+    },
+    {
+      id: 'DEDICATED_DESK',
+      name: 'Dedicated Desks',
+      count: `${rooms.filter((r) => (r.workspaceType || '').toUpperCase().match(/(DEDICATED|FIXED)/)).length} available`
+    },
+    {
+      id: 'PRIVATE_CABIN',
+      name: 'Private Cabins',
+      count: `${rooms.filter((r) => (r.workspaceType || '').toUpperCase().match(/(CABIN|OFFICE|PRIVATE)/)).length} available`
+    },
+    {
+      id: 'DAY_PASS',
+      name: 'Day Passes',
+      count: `${rooms.filter((r) => (r.workspaceType || '').toUpperCase().includes('DAY_PASS')).length} available`
+    }
+  ];
+
   const filteredRooms = rooms.filter((r) => {
-    // Search
     const matchesSearch =
       r.name.toLowerCase().includes(search.toLowerCase()) ||
       (r.description && r.description.toLowerCase().includes(search.toLowerCase())) ||
       r.amenities.some((a) => a.toLowerCase().includes(search.toLowerCase()));
 
-    // Location
     let matchesLocation = true;
     if (selectedLocation !== 'all') {
       const locId = typeof r.locationId === 'object' && r.locationId !== null ? r.locationId._id : r.locationId;
       matchesLocation = locId === selectedLocation;
     }
 
-    // Capacity
     let matchesCapacity = true;
     if (capacityFilter === 'small') matchesCapacity = r.capacity <= 4;
     else if (capacityFilter === 'medium') matchesCapacity = r.capacity >= 5 && r.capacity <= 10;
     else if (capacityFilter === 'large') matchesCapacity = r.capacity > 10;
 
-    // Price
     let matchesPrice = true;
     if (priceFilter === 'under-800') matchesPrice = r.hourlyRate < 800;
     else if (priceFilter === '800-1200') matchesPrice = r.hourlyRate >= 800 && r.hourlyRate <= 1200;
     else if (priceFilter === 'above-1200') matchesPrice = r.hourlyRate > 1200;
 
-    return matchesSearch && matchesLocation && matchesCapacity && matchesPrice;
+    let matchesCategory = true;
+    if (activeCategory !== 'all') {
+      const ws = (r.workspaceType || 'MEETING_ROOM').toUpperCase();
+      if (activeCategory === 'MEETING_ROOM') {
+        matchesCategory = Boolean(ws.match(/(MEETING|BOARDROOM|CONFERENCE)/));
+      } else if (activeCategory === 'FLEX_DESK') {
+        matchesCategory = Boolean(ws.match(/(FLEX|HOT)/));
+      } else if (activeCategory === 'DEDICATED_DESK') {
+        matchesCategory = Boolean(ws.match(/(DEDICATED|FIXED)/));
+      } else if (activeCategory === 'PRIVATE_CABIN') {
+        matchesCategory = Boolean(ws.match(/(CABIN|OFFICE|PRIVATE)/));
+      } else if (activeCategory === 'DAY_PASS') {
+        matchesCategory = ws.includes('DAY_PASS');
+      } else {
+        matchesCategory = ws === activeCategory;
+      }
+    }
+
+    return matchesSearch && matchesLocation && matchesCapacity && matchesPrice && matchesCategory;
   });
 
   return (
     <div className="space-y-6">
-      {/* Top SpaceOS Style Navigation Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold font-display text-slate-900 dark:text-white">
-            Booking
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Workspace Reservations
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Reserve boardrooms and collaborative spaces across Bangalore, Mumbai, and Hyderabad in IST.
+            Book meeting rooms, flex desks, and private cabins in Indian Standard Time (IST).
           </p>
         </div>
 
-        {/* SpaceOS Top Tabs */}
-        <div className="inline-flex p-1 rounded-2xl bg-slate-200/70 dark:bg-slate-800/80 border border-slate-300/60 dark:border-slate-700/60 text-xs font-semibold">
-          <button className="px-4 py-1.5 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm font-bold">
-            Book space
+        <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium">
+          <button className="px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-semibold">
+            Discover Spaces
           </button>
           <Link
             to="/client/bookings"
-            className="px-4 py-1.5 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+            className="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
           >
             My Bookings
           </Link>
         </div>
       </div>
 
-      {/* Success Banner */}
       {successBooking && (
-        <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300 space-y-2">
-          <div className="flex items-center space-x-2 font-bold text-sm">
-            <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            <span>Reservation Confirmed! Reference: {successBooking.bookingNumber}</span>
+        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 space-y-1 text-xs">
+          <div className="flex items-center space-x-2 font-semibold">
+            <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>Reservation Confirmed • Ref: {successBooking.bookingNumber}</span>
           </div>
-          <p className="text-xs text-slate-600 dark:text-slate-300">
+          <p className="text-slate-600 dark:text-slate-300">
             {successBooking.title} scheduled for {formatDateIST(successBooking.startTime)}, {formatTimeIST(successBooking.startTime)} - {formatTimeIST(successBooking.endTime)}.
-            {successBooking.freeHoursDeducted > 0 && ` (${successBooking.freeHoursDeducted} free hours applied from company allowance)`}
+            {successBooking.freeHoursDeducted > 0 && ` (${successBooking.freeHoursDeducted} free hours deducted from company allowance)`}
           </p>
           <button
             onClick={() => setSuccessBooking(null)}
-            className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline pt-1"
+            className="font-medium text-emerald-600 dark:text-emerald-400 hover:underline pt-0.5 block"
           >
             Dismiss
           </button>
@@ -288,36 +307,55 @@ export const ClientRoomsPage: React.FC = () => {
       )}
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-sm flex items-center space-x-2">
+        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-center space-x-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      {/* SpaceOS Filter Bar */}
-      <div className="glass-panel p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 space-y-4 bg-white/70 dark:bg-[#0e1424]/70 shadow-sm">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          {/* Search */}
+      <div className="flex items-center space-x-2 overflow-x-auto pb-1">
+        {categories.map((cat) => {
+          const isSelected = activeCategory === cat.id;
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all border ${
+                isSelected
+                  ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white shadow-xs'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+              }`}
+            >
+              <span>{cat.name}</span>
+              <span className={`ml-2 text-[10px] ${isSelected ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400'}`}>
+                {cat.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
           <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search rooms, amenities..."
+              placeholder="Search workspaces, amenities..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-brand-500"
+              className="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400"
             />
           </div>
 
-          {/* Location */}
           <div className="relative">
-            <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <select
               value={selectedLocation}
               onChange={(e) => setSelectedLocation(e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-brand-500 appearance-none font-medium"
+              className="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 appearance-none font-medium"
             >
-              <option value="all">All Hub Locations</option>
+              <option value="all">All Locations</option>
               {locations.map((loc) => (
                 <option key={loc._id} value={loc._id}>
                   {loc.name} ({loc.address?.city || 'India'})
@@ -326,13 +364,12 @@ export const ClientRoomsPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Capacity */}
           <div className="relative">
-            <Users className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Users className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <select
               value={capacityFilter}
               onChange={(e) => setCapacityFilter(e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-brand-500 appearance-none font-medium"
+              className="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 appearance-none font-medium"
             >
               <option value="all">Any Capacity</option>
               <option value="small">Focus Booth (1 - 4 seats)</option>
@@ -341,13 +378,12 @@ export const ClientRoomsPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Hourly Rate */}
           <div className="relative">
-            <SlidersHorizontal className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <SlidersHorizontal className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <select
               value={priceFilter}
               onChange={(e) => setPriceFilter(e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-brand-500 appearance-none font-medium"
+              className="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 appearance-none font-medium"
             >
               <option value="all">Any Hourly Rate</option>
               <option value="under-800">Under ₹800 / hr</option>
@@ -358,73 +394,44 @@ export const ClientRoomsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* SpaceOS Category Carousel Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat.id}
-            type="button"
-            onClick={() => setActiveCategory(cat.id)}
-            className={`group relative overflow-hidden rounded-2xl border text-left p-3 transition-all ${
-              activeCategory === cat.id
-                ? 'border-brand-500 dark:border-[#C5A880] ring-2 ring-brand-500/20 dark:ring-[#C5A880]/20 bg-brand-50/20 dark:bg-[#C5A880]/10'
-                : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white/60 dark:bg-slate-900/60'
-            }`}
-          >
-            <div className="h-24 w-full rounded-xl overflow-hidden relative mb-2">
-              <img
-                src={cat.image}
-                alt={cat.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-              {activeCategory === cat.id && (
-                <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-md">
-                  <Check className="w-3.5 h-3.5" />
-                </div>
-              )}
-            </div>
-            <div className="font-bold text-xs text-slate-900 dark:text-white">{cat.name}</div>
-            <div className="text-[10px] text-slate-400">{cat.count}</div>
-          </button>
-        ))}
-      </div>
-
-      {/* Heading of Selected Category */}
-      <div className="flex items-center justify-between pt-2">
-        <h2 className="text-xl font-bold font-display text-slate-900 dark:text-white">
-          Meeting Rooms & Boardrooms ({filteredRooms.length})
+      <div className="flex items-center justify-between pt-1">
+        <h2 className="text-base font-bold text-slate-900 dark:text-white">
+          Available Workspaces ({filteredRooms.length})
         </h2>
-        <span className="text-xs text-slate-500 dark:text-slate-400">
-          Showing available workspaces across India
+        <span className="text-xs text-slate-400">
+          Showing real operating inventory in IST
         </span>
       </div>
 
-      {/* Room Grid (SpaceOS + InsightLancer Style) */}
       {loading ? (
-        <div className="text-center py-20 text-slate-500">Loading meeting rooms...</div>
+        <div className="text-center py-20 text-slate-400 text-xs">
+          <div className="w-6 h-6 border-2 border-slate-400 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+          Loading workspaces...
+        </div>
       ) : filteredRooms.length === 0 ? (
-        <div className="text-center py-16 p-8 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 text-slate-500">
-          <DoorOpen className="w-10 h-10 mx-auto text-slate-400 mb-2" />
-          <p className="font-semibold text-sm">No meeting rooms match your selected filters.</p>
+        <div className="text-center py-16 p-8 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-400 text-xs">
+          <DoorOpen className="w-8 h-8 mx-auto text-slate-400 mb-2" />
+          <p className="font-semibold text-slate-700 dark:text-slate-300">No workspaces match your selected filters.</p>
           <button
             onClick={() => {
               setSearch('');
               setSelectedLocation('all');
               setCapacityFilter('all');
               setPriceFilter('all');
+              setActiveCategory('all');
             }}
-            className="mt-3 text-xs font-bold text-brand-600 dark:text-[#C5A880] hover:underline"
+            className="mt-2 text-xs font-semibold text-slate-900 dark:text-white hover:underline"
           >
             Reset Filters
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredRooms.map((room) => {
             const locName =
               typeof room.locationId === 'object' && room.locationId !== null
                 ? room.locationId.name
-                : 'Primary Campus';
+                : 'Main Hub';
             const city =
               typeof room.locationId === 'object' && room.locationId !== null
                 ? room.locationId.city || 'India'
@@ -433,49 +440,50 @@ export const ClientRoomsPage: React.FC = () => {
               room.photos && room.photos.length > 0
                 ? room.photos[0]
                 : 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80';
+            const wsLabel = (room.workspaceType || 'Meeting Room').replace(/_/g, ' ');
 
             return (
               <div
                 key={room._id}
-                className="group glass-panel rounded-3xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden flex flex-col justify-between hover:border-brand-500/50 dark:hover:border-[#C5A880]/50 transition-all shadow-sm bg-white/70 dark:bg-[#0e1424]/70"
+                className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 overflow-hidden flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-xs"
               >
                 <div>
-                  {/* Photo with Overlay Badges */}
-                  <div className="relative h-48 w-full overflow-hidden bg-slate-100 dark:bg-slate-900">
+                  <div className="relative h-44 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
                     <img
                       src={photoUrl}
                       alt={room.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover hover:scale-102 transition-transform duration-300"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
 
-                    {/* Top Location Pill */}
-                    <div className="absolute top-3 left-3 px-3 py-1 rounded-full text-[11px] font-semibold bg-black/50 backdrop-blur-md text-white border border-white/20 flex items-center space-x-1">
-                      <MapPin className="w-3 h-3 text-[#C5A880]" />
+                    <div className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-black/60 backdrop-blur-xs text-white flex items-center space-x-1">
+                      <MapPin className="w-3 h-3 text-slate-300" />
                       <span>{locName}</span>
                     </div>
 
-                    {/* Status Pill */}
-                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/90 text-white backdrop-blur-md">
+                    <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-600 text-white shadow-xs">
                       Instant Booking
                     </div>
 
-                    {/* Bottom Specs */}
-                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs">
-                      <span className="font-bold px-2.5 py-0.5 rounded-lg bg-white/20 backdrop-blur-md">
-                        {room.capacity} SEATS
+                    <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-white text-[11px]">
+                      <span className="font-semibold px-2 py-0.5 rounded bg-black/60 backdrop-blur-xs">
+                        {room.capacity} {room.capacity === 1 ? 'Seat' : 'Seats'}
                       </span>
-                      <span className="font-extrabold text-sm text-[#C5A880] drop-shadow-md">
-                        {formatCurrency(room.hourlyRate, 'INR')} <span className="text-[10px] font-normal text-slate-200">/ hr</span>
+                      <span className="font-bold text-xs px-2 py-0.5 rounded bg-black/60 backdrop-blur-xs">
+                        {formatCurrency(room.hourlyRate, 'INR')} / hr
+                        {room.dailyRate ? ` • ${formatCurrency(room.dailyRate, 'INR')}/day` : ''}
                       </span>
                     </div>
                   </div>
 
-                  {/* Room Details */}
-                  <div className="p-5 space-y-3">
-                    <h3 className="text-base font-bold font-display text-slate-900 dark:text-white line-clamp-1">
-                      {room.name}
-                    </h3>
+                  <div className="p-4 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">
+                        {room.name}
+                      </h3>
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase">
+                        {wsLabel}
+                      </span>
+                    </div>
 
                     {room.description && (
                       <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
@@ -483,18 +491,26 @@ export const ClientRoomsPage: React.FC = () => {
                       </p>
                     )}
 
-                    {/* Amenities Tag Cloud */}
-                    <div className="flex flex-wrap gap-1.5 pt-1">
+                    <div className="flex items-center space-x-3 text-[11px] text-slate-500 dark:text-slate-400 pt-1">
+                      <div className="flex items-center space-x-1">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span>08:00 AM – 08:00 PM IST</span>
+                      </div>
+                      <span>•</span>
+                      <span>{room.slotIntervalMinutes || 30}m slots</span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1 pt-1">
                       {room.amenities.slice(0, 3).map((amenity, i) => (
                         <span
                           key={i}
-                          className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                          className="px-2 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
                         >
                           {amenity}
                         </span>
                       ))}
                       {room.amenities.length > 3 && (
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-400">
+                        <span className="px-2 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-400">
                           +{room.amenities.length - 3} more
                         </span>
                       )}
@@ -502,17 +518,16 @@ export const ClientRoomsPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Footer Action */}
-                <div className="p-5 pt-0 border-t border-slate-100 dark:border-slate-800/80 mt-2 flex items-center justify-between">
-                  <div className="text-[11px] text-slate-400 font-medium">
-                    {room.slotIntervalMinutes}m slot intervals
-                  </div>
+                <div className="p-4 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400">
+                    From {formatCurrency(room.hourlyRate, 'INR')}/hr
+                  </span>
                   <button
                     onClick={() => openBookModal(room)}
-                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-[#C5A880] dark:hover:bg-[#b8996e] text-white dark:text-[#090D16] text-xs font-bold shadow-md transition-all flex items-center space-x-1.5"
+                    className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-semibold shadow-xs transition-all flex items-center space-x-1"
                   >
                     <span>Reserve Room</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
+                    <ChevronRight className="w-3 h-3" />
                   </button>
                 </div>
               </div>
@@ -521,38 +536,34 @@ export const ClientRoomsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Booking Modal */}
       {isModalOpen && selectedRoom && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-y-auto">
-          <div className="glass-panel max-w-xl w-full p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl space-y-6 my-8 bg-white dark:bg-[#0e1424]">
-            {/* Modal Header */}
-            <div className="flex items-start justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs overflow-y-auto">
+          <div className="max-w-xl w-full p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl space-y-4 my-8 bg-white dark:bg-slate-800">
+            <div className="flex items-start justify-between pb-3 border-b border-slate-200 dark:border-slate-700">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-brand-600 dark:text-[#C5A880]">
-                  Reserve Workspace in IST
-                </span>
-                <h3 className="text-xl font-bold font-display text-slate-900 dark:text-white">
-                  {selectedRoom.name}
-                </h3>
-                <div className="flex items-center space-x-2 text-xs text-slate-500 mt-1">
-                  <span>{selectedRoom.capacity} Seats</span>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  Reserve {selectedRoom.name}
+                </h2>
+                <div className="flex items-center space-x-3 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <span>Capacity: {selectedRoom.capacity} seats</span>
                   <span>•</span>
                   <span>{formatCurrency(selectedRoom.hourlyRate, 'INR')}/hr</span>
+                  <span>•</span>
+                  <span>Operating: {operatingHours.open} - {operatingHours.close} IST</span>
                 </div>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleConfirmBooking} className="space-y-5 text-xs">
-              {/* Date & Duration Picker */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <form onSubmit={handleConfirmBooking} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">
                     Reservation Date (IST)
                   </label>
                   <input
@@ -561,18 +572,18 @@ export const ClientRoomsPage: React.FC = () => {
                     min={getTodayDateStringIST()}
                     value={selectedDate}
                     onChange={(e) => handleDateChange(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium text-xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">
                     Duration
                   </label>
                   <select
                     value={durationSlots}
                     onChange={(e) => handleDurationChange(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium text-xs"
                   >
                     <option value={1}>30 Minutes</option>
                     <option value={2}>1 Hour</option>
@@ -585,26 +596,26 @@ export const ClientRoomsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Time Slot Selector */}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                     Select Start Time (Indian Standard Time)
                   </label>
-                  <span className="text-[10px] text-slate-400">
-                    {availableSlots.filter((s) => s.available).length} slots open
+                  <span className="text-[11px] text-slate-400">
+                    {availableSlots.filter((s) => s.isAvailable ?? s.available ?? true).length} open slots
                   </span>
                 </div>
 
                 {loadingSlots ? (
-                  <div className="py-8 text-center text-slate-400">Checking slot availability in IST...</div>
+                  <div className="py-6 text-center text-slate-400 text-xs">Checking real-time slot availability in IST...</div>
                 ) : availableSlots.length === 0 ? (
-                  <div className="py-6 text-center text-rose-500 bg-rose-500/10 rounded-xl">
-                    No operating slots available on this date.
+                  <div className="py-4 text-center text-rose-500 bg-rose-500/10 rounded-xl text-xs">
+                    No operating slots available on this date ({operatingHours.open} - {operatingHours.close} IST).
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/40">
                     {availableSlots.map((slot, idx) => {
+                      const isSlotAvail = slot.isAvailable ?? slot.available ?? true;
                       const isSelected = selectedSlotIndex === idx;
                       const timeStr = formatTimeIST(slot.startTime);
 
@@ -612,17 +623,22 @@ export const ClientRoomsPage: React.FC = () => {
                         <button
                           key={idx}
                           type="button"
-                          disabled={!slot.available}
+                          disabled={!isSlotAvail}
                           onClick={() => handleSelectSlot(idx)}
-                          className={`py-2 px-2.5 rounded-xl text-center font-medium transition-all ${
-                            !slot.available
+                          className={`py-2 px-2 rounded-lg text-center font-medium transition-all text-xs ${
+                            !isSlotAvail
                               ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 line-through cursor-not-allowed opacity-50'
                               : isSelected
-                              ? 'bg-slate-900 dark:bg-[#C5A880] text-white dark:text-[#090D16] font-bold shadow-md'
-                              : 'bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-brand-500'
+                              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold shadow-xs'
+                              : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400'
                           }`}
                         >
-                          {timeStr}
+                          <div>{timeStr}</div>
+                          {!isSlotAvail && (
+                            <span className="text-[9px] text-rose-500 no-underline block">
+                              {slot.reason === 'PAST' ? 'Passed' : slot.reason === 'RESERVED' ? 'Booked' : 'Closed'}
+                            </span>
+                          )}
                         </button>
                       );
                     })}
@@ -630,10 +646,9 @@ export const ClientRoomsPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Booking Context */}
-              <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-700">
                 <div>
-                  <label className="block font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">
                     Meeting Title *
                   </label>
                   <input
@@ -641,14 +656,14 @@ export const ClientRoomsPage: React.FC = () => {
                     required
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs"
                     placeholder="e.g. Q4 Strategy Review"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">
                       Attendees
                     </label>
                     <input
@@ -657,45 +672,44 @@ export const ClientRoomsPage: React.FC = () => {
                       max={selectedRoom.capacity}
                       value={attendeeCount}
                       onChange={(e) => setAttendeeCount(Number(e.target.value))}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs"
                     />
                   </div>
                   <div>
-                    <label className="block font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1">
                       Purpose
                     </label>
                     <input
                       type="text"
                       value={purpose}
                       onChange={(e) => setPurpose(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-                      placeholder="e.g. Board review"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs"
+                      placeholder="e.g. Team Planning"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Allowance Impact Estimation */}
               {estimate && (
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-slate-800 dark:text-slate-200 space-y-2">
-                  <div className="flex items-center space-x-2 text-brand-600 dark:text-[#C5A880] font-bold text-xs">
+                <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-slate-800 dark:text-slate-200 space-y-1.5 text-xs">
+                  <div className="flex items-center space-x-1.5 text-amber-700 dark:text-amber-300 font-semibold">
                     <ShieldCheck className="w-4 h-4" />
-                    <span>Free Allowance Assessment</span>
+                    <span>Allowance Impact</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-[11px] pt-1 border-t border-amber-500/20">
+                  <div className="grid grid-cols-3 gap-2 text-[11px] pt-1 border-t border-amber-200 dark:border-amber-800">
                     <div>
                       <span className="text-slate-400 block">Available Quota</span>
-                      <span className="font-bold">{estimate.currentBalanceHours} hrs</span>
+                      <span className="font-semibold">{estimate.currentBalanceHours} hrs</span>
                     </div>
                     <div>
                       <span className="text-slate-400 block">Hours Deducted</span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                         {estimate.freeHoursToDeduct} hrs free
                       </span>
                     </div>
                     <div>
                       <span className="text-slate-400 block">Extra Charge</span>
-                      <span className="font-bold text-amber-600 dark:text-amber-400">
+                      <span className="font-semibold text-slate-900 dark:text-white">
                         {estimate.additionalCharge > 0
                           ? formatCurrency(estimate.additionalCharge, 'INR')
                           : '₹0 (Fully Covered)'}
@@ -705,19 +719,18 @@ export const ClientRoomsPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Submit Buttons */}
-              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-200 dark:border-slate-700">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting || selectedSlotIndex === null}
-                  className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-[#C5A880] dark:hover:bg-[#b8996e] text-white dark:text-[#090D16] text-xs font-bold shadow-md transition-all disabled:opacity-50"
+                  className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-semibold shadow-xs transition-all disabled:opacity-50"
                 >
                   {submitting ? 'Confirming...' : 'Lock Reservation'}
                 </button>
