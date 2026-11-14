@@ -13,7 +13,7 @@ import {
   FileText
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { formatDateIST, formatTimeIST } from '../../utils/formatters.js';
+import { formatDateIST, formatTimeIST, formatCurrency } from '../../utils/formatters.js';
 
 export const ClientDashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -84,7 +84,7 @@ export const ClientDashboardPage: React.FC = () => {
             <CreditCard className="w-5 h-5 text-amber-500 flex-shrink-0" />
             <div>
               <div className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                Pending Balance Due: ${totalDue.toFixed(2)}
+                Pending Balance Due: {formatCurrency(totalDue, 'INR')}
               </div>
               <div className="text-[11px] text-slate-500">
                 You have {outstandingInvoices.length} statement(s) pending payment for room overages.

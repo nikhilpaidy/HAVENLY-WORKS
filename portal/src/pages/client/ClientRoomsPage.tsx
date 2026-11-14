@@ -69,8 +69,8 @@ export const ClientRoomsPage: React.FC = () => {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
   const [durationSlots, setDurationSlots] = useState<number>(2);
-  const [title, setTitle] = useState('Executive Strategy Session');
-  const [purpose, setPurpose] = useState('Client presentation & planning');
+  const [title, setTitle] = useState('');
+  const [purpose, setPurpose] = useState('');
   const [attendeeCount, setAttendeeCount] = useState(4);
   const [estimate, setEstimate] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);

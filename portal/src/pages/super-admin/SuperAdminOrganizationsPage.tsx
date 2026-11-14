@@ -13,15 +13,15 @@ export const SuperAdminOrganizationsPage: React.FC = () => {
     name: '',
     slug: '',
     email: '',
-    phone: '+91 98450 12345',
-    website: 'https://aptaspaces.in',
+    phone: '',
+    website: '',
     currency: 'INR',
     timezone: 'Asia/Kolkata',
-    street: '100 Feet Road, 4th Block, Koramangala',
-    city: 'Bangalore',
-    state: 'Karnataka',
+    street: '',
+    city: '',
+    state: '',
     country: 'India',
-    postalCode: '560034'
+    postalCode: ''
   });
 
   // Edit Modal State
@@ -119,10 +119,10 @@ export const SuperAdminOrganizationsPage: React.FC = () => {
       currency: org.currency || 'INR',
       timezone: org.timezone || 'Asia/Kolkata',
       street: org.address?.street || '',
-      city: org.address?.city || 'Bangalore',
-      state: org.address?.state || 'Karnataka',
+      city: org.address?.city || '',
+      state: org.address?.state || '',
       country: org.address?.country || 'India',
-      postalCode: org.address?.postalCode || '560034',
+      postalCode: org.address?.postalCode || '',
       allowOverdraft: org.settings?.allowOverdraft !== false,
       requireBookingApproval: !!org.settings?.requireBookingApproval,
       cancellationNoticeHours: org.settings?.cancellationNoticeHours || 2

@@ -78,29 +78,29 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
 
         <div className="glass-panel p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-1">
-          <span className="text-xs text-slate-500 font-medium">Month Booked Hours</span>
+          <span className="text-xs text-slate-500 font-medium">Workspaces & Desks</span>
           <div className="text-2xl font-bold font-display text-slate-900 dark:text-white">
+            {overview.totalRooms || 0}
+          </div>
+          <span className="text-[10px] text-slate-400">Configured rooms & desks</span>
+        </div>
+
+        <div className="glass-panel p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-1">
+          <span className="text-xs text-slate-500 font-medium">Client Companies</span>
+          <div className="text-2xl font-bold font-display text-slate-900 dark:text-white">
+            {overview.totalCompanies || 0}
+          </div>
+          <span className="text-[10px] text-slate-400">Active tenant corporate accounts</span>
+        </div>
+
+        <div className="glass-panel p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-1">
+          <span className="text-xs text-slate-500 font-medium">Month Booked Hours</span>
+          <div className="text-2xl font-bold font-display text-[#B6925A] dark:text-[#C5A880]">
             {overview.monthTotalHours || 0} hrs
           </div>
-          <span className="text-[10px] text-emerald-500">
-            {overview.freeHoursConsumed || 0} free / {overview.chargeableHours || 0} extra
+          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+            {overview.monthTotalBookings || 0} reservations this month
           </span>
-        </div>
-
-        <div className="glass-panel p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-1">
-          <span className="text-xs text-slate-500 font-medium">Billed Overage Revenue</span>
-          <div className="text-2xl font-bold font-display text-[#B6925A] dark:text-[#C5A880]">
-            {formatCurrency(financials.monthExtraRevenue || 0, 'INR')}
-          </div>
-          <span className="text-[10px] text-slate-400">Month-to-date chargeable bookings</span>
-        </div>
-
-        <div className="glass-panel p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-1">
-          <span className="text-xs text-slate-500 font-medium">Outstanding Invoices</span>
-          <div className="text-2xl font-bold font-display text-amber-500">
-            {formatCurrency(financials.totalDue || 0, 'INR')}
-          </div>
-          <span className="text-[10px] text-slate-400">Open statements awaiting payment</span>
         </div>
       </div>
 

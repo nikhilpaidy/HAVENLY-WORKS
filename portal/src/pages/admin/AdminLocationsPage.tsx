@@ -54,7 +54,7 @@ export const AdminLocationsPage: React.FC = () => {
   const [city, setCity] = useState('');
   const [stateName, setStateName] = useState('');
   const [postalCode, setPostalCode] = useState('');
-  const [country, setCountry] = useState('USA');
+  const [country, setCountry] = useState('India');
   const [timezone, setTimezone] = useState('Asia/Kolkata');
   const [managerName, setManagerName] = useState('');
   const [managerPhone, setManagerPhone] = useState('');

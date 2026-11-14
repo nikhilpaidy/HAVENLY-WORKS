@@ -779,19 +779,9 @@ async function runSeed() {
     {
       recipientUserId: cwsAdmin._id,
       organizationId: organization._id,
-      title: 'New Guest Day Pass Request (Madhapur)',
-      message: 'Rahul Sharma (+91 98765 43210) requested a Day Pass for tomorrow. Please call and verify payment.',
-      type: NotificationType.GUEST_INQUIRY,
-      isRead: false,
-      metadata: { bookingId: guestBooking._id, guestPhone: '+91 98765 43210' }
-    },
-    {
-      recipientUserId: clientOwner._id,
-      organizationId: organization._id,
-      companyId: company._id,
-      title: 'Festive Greeting: Happy Diwali & New Year Offers!',
-      message: 'Enjoy 15% discount on all weekend private office bookings this month. SPACE FOR TOGETHERNESS!',
-      type: NotificationType.FESTIVAL_GREETING,
+      title: 'New Reservation Confirmed',
+      message: 'Aptapace Private Limited reserved Cyber Conference Suite for today.',
+      type: NotificationType.BOOKING_CONFIRMED,
       isRead: false
     }
   ]);

@@ -13,7 +13,8 @@ import {
   X,
   CreditCard,
   Mail,
-  Shield
+  Shield,
+  Edit2
 } from 'lucide-react';
 
 interface Company {
@@ -75,8 +76,22 @@ export const AdminCompaniesPage: React.FC = () => {
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [adjustmentHours, setAdjustmentHours] = useState<number>(5);
-  const [adjustNotes, setAdjustNotes] = useState('Quarterly compensation adjustment');
+  const [adjustNotes, setAdjustNotes] = useState('');
   const [submittingAdjust, setSubmittingAdjust] = useState(false);
+
+  // Edit company modal
+  const [isEditCompanyOpen, setIsEditCompanyOpen] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [editCompanyName, setEditCompanyName] = useState('');
+  const [editCompanyDomain, setEditCompanyDomain] = useState('');
+  const [editLocationId, setEditLocationId] = useState('');
+  const [editAnnualFreeHours, setEditAnnualFreeHours] = useState<number>(240);
+  const [editMonthlyFreeHours, setEditMonthlyFreeHours] = useState<number>(20);
+  const [editExtraRate, setEditExtraRate] = useState<number>(500);
+  const [editGstin, setEditGstin] = useState('');
+  const [editPanNumber, setEditPanNumber] = useState('');
+  const [editIsActive, setEditIsActive] = useState(true);
+  const [submittingEditCompany, setSubmittingEditCompany] = useState(false);
 
   // Password reset modal
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
@@ -170,8 +185,59 @@ export const AdminCompaniesPage: React.FC = () => {
   const openAdjustModal = (company: Company) => {
     setSelectedCompany(company);
     setAdjustmentHours(5);
-    setAdjustNotes('Admin granted courtesy adjustment');
+    setAdjustNotes('');
     setIsAdjustOpen(true);
+  };
+
+  const openEditCompanyModal = (company: Company) => {
+    setEditingCompany(company);
+    setEditCompanyName(company.name);
+    setEditCompanyDomain(company.domain || '');
+    const locId = typeof company.locationId === 'object' && company.locationId !== null
+      ? company.locationId._id
+      : (company.locationId || '');
+    setEditLocationId(locId);
+    setEditAnnualFreeHours(company.allowanceConfig?.annualFreeHours || 240);
+    setEditMonthlyFreeHours(company.allowanceConfig?.monthlyFreeHours || 20);
+    setEditExtraRate(company.allowanceConfig?.extraHourRate || company.allowanceConfig?.additionalHourlyRate || 500);
+    setEditGstin(company.gstin || '');
+    setEditPanNumber(company.panNumber || '');
+    setEditIsActive(company.isActive);
+    setIsEditCompanyOpen(true);
+  };
+
+  const handleEditCompanySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCompany || !editCompanyName.trim()) return;
+
+    setSubmittingEditCompany(true);
+    setError(null);
+    try {
+      await adminApi.updateCompany(editingCompany._id, {
+        name: editCompanyName.trim(),
+        domain: editCompanyDomain.trim() || undefined,
+        locationId: editLocationId || undefined,
+        gstin: editGstin.trim() || undefined,
+        panNumber: editPanNumber.trim() || undefined,
+        allowanceConfig: {
+          ...editingCompany.allowanceConfig,
+          annualFreeHours: Number(editAnnualFreeHours),
+          monthlyFreeHours: Number(editMonthlyFreeHours),
+          extraHourRate: Number(editExtraRate),
+          additionalHourlyRate: Number(editExtraRate)
+        },
+        isActive: editIsActive
+      });
+      setIsEditCompanyOpen(false);
+      setEditingCompany(null);
+      setSuccessMsg('Client company profile updated successfully');
+      setTimeout(() => setSuccessMsg(null), 4000);
+      fetchCompanies();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update company');
+    } finally {
+      setSubmittingEditCompany(false);
+    }
   };
 
   const handleAdjustSubmit = async (e: React.FormEvent) => {
@@ -351,7 +417,7 @@ export const AdminCompaniesPage: React.FC = () => {
                   <span className="font-semibold underline">
                     {typeof company.locationId === 'object' && company.locationId !== null
                       ? company.locationId.name
-                      : 'Madhapur Apex Hub'}
+                      : 'All Hub Locations'}
                   </span>
                 </div>
 
@@ -363,7 +429,7 @@ export const AdminCompaniesPage: React.FC = () => {
                       <span>Annual Free Quota:</span>
                     </span>
                     <span className="font-bold text-slate-900 dark:text-white">
-                      {company.allowanceConfig?.annualFreeHours || 240} hrs / yr
+                      {company.allowanceConfig?.annualFreeHours || 0} hrs / yr
                     </span>
                   </div>
 
@@ -373,7 +439,7 @@ export const AdminCompaniesPage: React.FC = () => {
                       <span>Overage Rate:</span>
                     </span>
                     <span className="font-bold text-slate-900 dark:text-white">
-                      ₹{company.allowanceConfig?.extraHourRate || company.allowanceConfig?.additionalHourlyRate || 800}/hr
+                      ₹{company.allowanceConfig?.extraHourRate || company.allowanceConfig?.additionalHourlyRate || 0}/hr
                     </span>
                   </div>
 
@@ -383,7 +449,7 @@ export const AdminCompaniesPage: React.FC = () => {
                       <span>GSTIN Compliance:</span>
                     </span>
                     <span className="font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-200">
-                      {company.gstin || '29ABCDE1234F1Z5'}
+                      {company.gstin || 'Not Provided'}
                     </span>
                   </div>
                 </div>
@@ -392,6 +458,14 @@ export const AdminCompaniesPage: React.FC = () => {
               {/* Actions */}
               <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => openEditCompanyModal(company)}
+                    className="text-xs text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center space-x-1"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Edit</span>
+                  </button>
+
                   <button
                     onClick={() => openMembersModal(company)}
                     className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center space-x-1"
@@ -420,6 +494,164 @@ export const AdminCompaniesPage: React.FC = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Edit Company Modal */}
+      {isEditCompanyOpen && editingCompany && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <h2 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <Edit2 className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                <span>Edit Client Company: {editingCompany.name}</span>
+              </h2>
+              <button
+                onClick={() => setIsEditCompanyOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditCompanySubmit} className="p-4 space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                    Company Legal Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editCompanyName}
+                    onChange={(e) => setEditCompanyName(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                    Corporate Domain
+                  </label>
+                  <input
+                    type="text"
+                    value={editCompanyDomain}
+                    onChange={(e) => setEditCompanyDomain(e.target.value)}
+                    placeholder="e.g. acme.com"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                    Assigned Hub Location
+                  </label>
+                  <select
+                    value={editLocationId}
+                    onChange={(e) => setEditLocationId(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400"
+                  >
+                    <option value="">No Location Assigned</option>
+                    {locations.map((loc) => (
+                      <option key={loc._id} value={loc._id}>
+                        {loc.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                    Annual Free Hours
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editAnnualFreeHours}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setEditAnnualFreeHours(val);
+                      setEditMonthlyFreeHours(Math.round(val / 12));
+                    }}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                    Extra Hour Rate (₹ / hr)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editExtraRate}
+                    onChange={(e) => setEditExtraRate(Number(e.target.value))}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                    GSTIN Identifier
+                  </label>
+                  <input
+                    type="text"
+                    value={editGstin}
+                    onChange={(e) => setEditGstin(e.target.value.toUpperCase())}
+                    placeholder="e.g. 36AABCA1234F1Z5"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                    PAN Number
+                  </label>
+                  <input
+                    type="text"
+                    value={editPanNumber}
+                    onChange={(e) => setEditPanNumber(e.target.value.toUpperCase())}
+                    placeholder="e.g. ABCDE1234F"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="editCompanyActive"
+                  checked={editIsActive}
+                  onChange={(e) => setEditIsActive(e.target.checked)}
+                  className="rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+                />
+                <label htmlFor="editCompanyActive" className="text-xs text-slate-700 dark:text-slate-300">
+                  Active (allows company members to book rooms using monthly allowance)
+                </label>
+              </div>
+
+              <div className="pt-2.5 flex items-center justify-end space-x-2 border-t border-slate-200 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setIsEditCompanyOpen(false)}
+                  className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingEditCompany}
+                  className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-semibold shadow-xs transition-opacity disabled:opacity-50"
+                >
+                  {submittingEditCompany ? 'Saving...' : 'Update Company'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

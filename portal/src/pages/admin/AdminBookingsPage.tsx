@@ -71,7 +71,7 @@ export const AdminBookingsPage: React.FC = () => {
 
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<BookingItem | null>(null);
-  const [cancelReason, setCancelReason] = useState('Client requested cancellation');
+  const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -114,9 +114,9 @@ export const AdminBookingsPage: React.FC = () => {
   }, []);
 
   const openCreateModal = () => {
-    setTitle('Quarterly Executive Review');
-    setPurpose('Strategic company alignment');
-    setAttendeeCount(6);
+    setTitle('');
+    setPurpose('');
+    setAttendeeCount(4);
     const now = new Date();
     const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 10, 0, 0);
     const tomorrowEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 11, 30, 0);
@@ -160,7 +160,7 @@ export const AdminBookingsPage: React.FC = () => {
 
   const openCancelModal = (booking: BookingItem) => {
     setSelectedBooking(booking);
-    setCancelReason('Cancelled via Admin Hub');
+    setCancelReason('');
     setIsCancelModalOpen(true);
   };
 
