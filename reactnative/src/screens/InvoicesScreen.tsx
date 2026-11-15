@@ -4,13 +4,19 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  ActivityIndicator,
-  RefreshControl
+  TouchableOpacity,
+  RefreshControl,
+  Modal,
+  ScrollView,
+  Alert,
+  Linking
 } from 'react-native';
 import { mobileApi } from '../services/api';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import { Header } from '../components/Header';
 import { Ionicons } from '@expo/vector-icons';
+import { ListRowSkeleton } from '../components/SkeletonLoader';
+import { spacing, radii, typography, shadows } from '../theme/tokens';
 
 interface InvoicesScreenProps {
   onOpenNotifications: () => void;
@@ -25,16 +31,20 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({
   onBack,
   onOpenDrawer
 }) => {
+  const { theme, isDark } = useTheme();
+
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'UNPAID' | 'PAID'>('ALL');
+  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
 
   const fetchInvoices = async () => {
     try {
       const data = await mobileApi.getInvoices();
-      setInvoices(data || []);
+      setInvoices(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error('Failed to load invoices:', err);
+      console.warn('Failed to load invoices:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -45,11 +55,50 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({
     fetchInvoices();
   }, []);
 
+  const totalBilled = invoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
+  const totalPaid = invoices.reduce((sum, inv) => sum + (inv.amountPaid || 0), 0);
+  const totalDue = invoices.reduce((sum, inv) => sum + (inv.amountDue || 0), 0);
+
+  const filteredInvoices = invoices.filter((inv) => {
+    if (statusFilter === 'PAID') return inv.status === 'PAID';
+    if (statusFilter === 'UNPAID') return inv.status !== 'PAID' && (inv.amountDue || 0) > 0;
+    return true;
+  });
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '—';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch {
+      return '—';
+    }
+  };
+
+  const handleDownloadStatement = (invoice: any) => {
+    if (invoice.pdfUrl) {
+      Linking.openURL(invoice.pdfUrl).catch(() => {
+        Alert.alert('Download Error', 'Could not open statement URL.');
+      });
+    } else {
+      Alert.alert(
+        'Statement Reference',
+        `Invoice #${invoice.invoiceNumber || 'INV-001'}\nTotal Billed: ₹${(invoice.totalAmount || 0).toLocaleString('en-IN')}\nStatus: ${invoice.status || 'PENDING'}\n\nA digital statement copy has been recorded in your corporate ledger.`
+      );
+    }
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header
-        title="Invoices & Billing"
-        subtitle="Corporate Accounts"
+        title="Invoices & Ledger"
+        subtitle="Corporate Billing"
         unreadCount={unreadNotifsCount}
         onPressNotifications={onOpenNotifications}
         showBack={!!onBack}
@@ -57,13 +106,69 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({
         onOpenDrawer={onOpenDrawer}
       />
 
+      <View style={styles.topSection}>
+        <View style={styles.kpiRow}>
+          <View style={[styles.kpiCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>TOTAL BILLED</Text>
+            <Text style={[styles.kpiValue, { color: theme.textPrimary }]}>
+              ₹{totalBilled.toLocaleString('en-IN')}
+            </Text>
+          </View>
+
+          <View style={[styles.kpiCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>PAID TO DATE</Text>
+            <Text style={[styles.kpiValue, { color: '#00A859' }]}>
+              ₹{totalPaid.toLocaleString('en-IN')}
+            </Text>
+          </View>
+
+          <View style={[styles.kpiCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>OUTSTANDING</Text>
+            <Text style={[styles.kpiValue, { color: totalDue > 0 ? '#F59E0B' : '#00A859' }]}>
+              ₹{totalDue.toLocaleString('en-IN')}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.filterRow}>
+          {(['ALL', 'UNPAID', 'PAID'] as const).map((filter) => {
+            const isActive = statusFilter === filter;
+            return (
+              <TouchableOpacity
+                key={filter}
+                style={[
+                  styles.filterPill,
+                  {
+                    backgroundColor: isActive ? '#00A859' : theme.card,
+                    borderColor: isActive ? '#00A859' : theme.cardBorder
+                  }
+                ]}
+                onPress={() => setStatusFilter(filter)}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.filterPillText,
+                    { color: isActive ? '#FFFFFF' : theme.textSecondary, fontWeight: isActive ? '700' : '500' }
+                  ]}
+                >
+                  {filter === 'ALL' ? 'All Statements' : filter === 'UNPAID' ? 'Pending Due' : 'Settled'}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
       {loading ? (
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={colors.brassLight} />
+          <ListRowSkeleton />
+          <ListRowSkeleton />
+          <ListRowSkeleton />
         </View>
       ) : (
         <FlatList
-          data={invoices}
+          data={filteredInvoices}
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.listContent}
           refreshControl={
@@ -73,106 +178,192 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({
                 setRefreshing(true);
                 fetchInvoices();
               }}
-              tintColor={colors.brassLight}
+              tintColor="#00A859"
             />
           }
-          ListHeaderComponent={
-            <View style={styles.banner}>
-              <View style={styles.bannerHeader}>
-                <Ionicons name="information-circle-outline" size={18} color={colors.brassLight} />
-                <Text style={styles.bannerTitle}>Enterprise Remittance Notice</Text>
-              </View>
-              <Text style={styles.bannerText}>
-                Overage invoices are billed per contracted company rates. Remit via ACH wire transfer
-                or physical reception terminal. Payments are audited and logged to your corporate record.
-              </Text>
-            </View>
-          }
           ListEmptyComponent={
-            <View style={styles.emptyCard}>
-              <Ionicons name="receipt-outline" size={36} color={colors.textMuted} />
-              <Text style={styles.emptyTitle}>No statements issued</Text>
-              <Text style={styles.emptySub}>
-                All room bookings this period were covered by your complimentary quota.
+            <View style={[styles.emptyWrap, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+              <View style={[styles.emptyIconBox, { backgroundColor: isDark ? 'rgba(0, 168, 89, 0.15)' : '#DCFCE7' }]}>
+                <Ionicons name="receipt-outline" size={32} color="#00A859" />
+              </View>
+              <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>No Statements Found</Text>
+              <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+                All workspace reservations were covered by your complimentary corporate allowance.
               </Text>
             </View>
           }
           renderItem={({ item }) => {
             const isPaid = item.status === 'PAID';
             const isPartial = item.status === 'PARTIALLY_PAID';
-            const rawStart = item.billingPeriodStart || item.periodStart || item.createdAt;
-            const rawEnd = item.billingPeriodEnd || item.periodEnd || item.dueDate || item.createdAt;
-            const pStart = rawStart && !isNaN(new Date(rawStart).getTime())
-              ? new Date(rawStart).toLocaleDateString('en-IN', {
-                  timeZone: 'Asia/Kolkata',
-                  month: 'short',
-                  day: 'numeric'
-                })
-              : 'Oct 01';
-            const pEnd = rawEnd && !isNaN(new Date(rawEnd).getTime())
-              ? new Date(rawEnd).toLocaleDateString('en-IN', {
-                  timeZone: 'Asia/Kolkata',
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric'
-                })
-              : 'Oct 31, 2026';
+            const amountDue = item.amountDue || 0;
+
+            const badgeBg = isPaid
+              ? (isDark ? 'rgba(0, 168, 89, 0.15)' : '#DCFCE7')
+              : isPartial
+              ? (isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF3C7')
+              : (isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2');
+
+            const badgeColor = isPaid ? '#00A859' : isPartial ? '#D97706' : '#EF4444';
 
             return (
-              <View style={styles.invoiceCard}>
-                <View style={styles.cardTop}>
-                  <Text style={styles.invNumber}>{item.invoiceNumber}</Text>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      isPaid
-                        ? styles.badgePaid
-                        : isPartial
-                        ? styles.badgePartial
-                        : styles.badgeUnpaid
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.statusText,
-                        isPaid
-                          ? styles.textPaid
-                          : isPartial
-                          ? styles.textPartial
-                          : styles.textUnpaid
-                      ]}
-                    >
-                      {item.status}
+              <TouchableOpacity
+                style={[
+                  styles.invoiceCard,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.cardBorder
+                  }
+                ]}
+                onPress={() => setSelectedInvoice(item)}
+                activeOpacity={0.85}
+              >
+                <View style={styles.cardHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.invNumber, { color: theme.textPrimary }]}>
+                      {item.invoiceNumber || 'INV-2026'}
+                    </Text>
+                    <Text style={[styles.invPeriod, { color: theme.textSecondary }]}>
+                      Issued: {formatDate(item.createdAt)}
+                    </Text>
+                  </View>
+                  <View style={[styles.badge, { backgroundColor: badgeBg }]}>
+                    <Text style={[styles.badgeText, { color: badgeColor }]}>
+                      {item.status || 'ISSUED'}
                     </Text>
                   </View>
                 </View>
 
-                <Text style={styles.periodText}>
-                  Period: {pStart} - {pEnd}
-                </Text>
-
-                <View style={styles.amountsRow}>
-                  <View>
-                    <Text style={styles.amountLabel}>TOTAL BILLED</Text>
-                    <Text style={styles.amountVal}>₹{(item.totalAmount || 0).toLocaleString('en-IN')}</Text>
+                <View style={[styles.amountsGrid, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+                  <View style={styles.amountCol}>
+                    <Text style={[styles.amountLabel, { color: theme.textMuted }]}>BILLED</Text>
+                    <Text style={[styles.amountVal, { color: theme.textPrimary }]}>
+                      ₹{(item.totalAmount || 0).toLocaleString('en-IN')}
+                    </Text>
                   </View>
-                  <View>
-                    <Text style={styles.amountLabel}>PAID TO DATE</Text>
-                    <Text style={[styles.amountVal, { color: colors.success }]}>
+
+                  <View style={styles.amountCol}>
+                    <Text style={[styles.amountLabel, { color: theme.textMuted }]}>PAID</Text>
+                    <Text style={[styles.amountVal, { color: '#00A859' }]}>
                       ₹{(item.amountPaid || 0).toLocaleString('en-IN')}
                     </Text>
                   </View>
-                  <View>
-                    <Text style={styles.amountLabel}>BALANCE DUE</Text>
-                    <Text style={[styles.amountVal, { color: colors.warning }]}>
-                      ₹{(item.amountDue || 0).toLocaleString('en-IN')}
+
+                  <View style={styles.amountCol}>
+                    <Text style={[styles.amountLabel, { color: theme.textMuted }]}>DUE</Text>
+                    <Text style={[styles.amountVal, { color: amountDue > 0 ? '#F59E0B' : theme.textPrimary }]}>
+                      ₹{amountDue.toLocaleString('en-IN')}
                     </Text>
                   </View>
                 </View>
-              </View>
+
+                <View style={styles.cardFooter}>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, { borderColor: theme.cardBorder }]}
+                    onPress={() => setSelectedInvoice(item)}
+                  >
+                    <Ionicons name="eye-outline" size={14} color="#00A859" style={{ marginRight: 4 }} />
+                    <Text style={[styles.actionBtnText, { color: '#00A859' }]}>View Details</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.actionBtn, { borderColor: theme.cardBorder }]}
+                    onPress={() => handleDownloadStatement(item)}
+                  >
+                    <Ionicons name="download-outline" size={14} color={theme.textSecondary} style={{ marginRight: 4 }} />
+                    <Text style={[styles.actionBtnText, { color: theme.textSecondary }]}>Statement</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
             );
           }}
         />
+      )}
+
+      {selectedInvoice && (
+        <Modal visible={!!selectedInvoice} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
+              <View style={[styles.modalHeader, { borderBottomColor: theme.cardBorder }]}>
+                <View>
+                  <Text style={[styles.modalSubtitle, { color: '#00A859' }]}>INVOICE DETAILS</Text>
+                  <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>
+                    {selectedInvoice.invoiceNumber}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setSelectedInvoice(null)} style={styles.closeBtn}>
+                  <Ionicons name="close" size={20} color={theme.textPrimary} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                <View style={[styles.detailSection, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailKey, { color: theme.textSecondary }]}>Status</Text>
+                    <Text style={[styles.detailVal, { color: '#00A859', fontWeight: '700' }]}>
+                      {selectedInvoice.status}
+                    </Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailKey, { color: theme.textSecondary }]}>Invoice Date</Text>
+                    <Text style={[styles.detailVal, { color: theme.textPrimary }]}>
+                      {formatDate(selectedInvoice.createdAt)}
+                    </Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailKey, { color: theme.textSecondary }]}>Due Date</Text>
+                    <Text style={[styles.detailVal, { color: theme.textPrimary }]}>
+                      {formatDate(selectedInvoice.dueDate || selectedInvoice.createdAt)}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={[styles.detailSection, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+                  <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Amount Summary</Text>
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailKey, { color: theme.textSecondary }]}>Subtotal</Text>
+                    <Text style={[styles.detailVal, { color: theme.textPrimary }]}>
+                      ₹{(selectedInvoice.subtotal || selectedInvoice.totalAmount || 0).toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailKey, { color: theme.textSecondary }]}>GST (18%)</Text>
+                    <Text style={[styles.detailVal, { color: theme.textPrimary }]}>
+                      ₹{(selectedInvoice.taxAmount || 0).toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                  <View style={[styles.divider, { backgroundColor: theme.divider }]} />
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailKey, { color: theme.textPrimary, fontWeight: '700' }]}>Total Billed</Text>
+                    <Text style={[styles.detailVal, { color: '#00A859', fontWeight: '800', fontSize: 16 }]}>
+                      ₹{(selectedInvoice.totalAmount || 0).toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailKey, { color: theme.textSecondary }]}>Amount Paid</Text>
+                    <Text style={[styles.detailVal, { color: '#00A859' }]}>
+                      ₹{(selectedInvoice.amountPaid || 0).toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailKey, { color: '#F59E0B', fontWeight: '700' }]}>Balance Due</Text>
+                    <Text style={[styles.detailVal, { color: '#F59E0B', fontWeight: '800' }]}>
+                      ₹{(selectedInvoice.amountDue || 0).toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.downloadBtn, { backgroundColor: '#00A859' }]}
+                  onPress={() => handleDownloadStatement(selectedInvoice)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="download-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.downloadBtnText}>Download Tax Invoice</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       )}
     </View>
   );
@@ -180,129 +371,224 @@ export const InvoicesScreen: React.FC<InvoicesScreenProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: colors.background
+    flex: 1
   },
-  loadingWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center'
+  topSection: {
+    paddingHorizontal: spacing.screenPadding,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm
   },
-  listContent: {
-    padding: 20
-  },
-  banner: {
-    backgroundColor: colors.card,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    padding: 16,
-    marginBottom: 20
-  },
-  bannerHeader: {
+  kpiRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6
+    gap: spacing.xs,
+    marginBottom: spacing.sm
   },
-  bannerTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.brassLight,
-    marginLeft: 6
-  },
-  bannerText: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    lineHeight: 16
-  },
-  emptyCard: {
-    backgroundColor: colors.card,
-    borderRadius: 20,
+  kpiCard: {
+    flex: 1,
+    padding: spacing.sm,
+    borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.cardBorder,
-    padding: 36,
-    alignItems: 'center'
+    ...shadows.subtle
   },
-  emptyTitle: {
+  kpiLabel: {
+    ...typography.badge,
+    fontSize: 9
+  },
+  kpiValue: {
     fontSize: 14,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginTop: 12
-  },
-  emptySub: {
-    fontSize: 12,
-    color: colors.textMuted,
-    textAlign: 'center',
+    fontWeight: '800',
     marginTop: 4
   },
-  invoiceCard: {
-    backgroundColor: colors.card,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    padding: 16,
-    marginBottom: 12
+  filterRow: {
+    flexDirection: 'row',
+    gap: spacing.xs
   },
-  cardTop: {
+  filterPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: radii.full,
+    borderWidth: 1
+  },
+  filterPillText: {
+    fontSize: 12
+  },
+  loadingWrap: {
+    padding: spacing.screenPadding,
+    gap: spacing.sm
+  },
+  listContent: {
+    padding: spacing.screenPadding,
+    paddingBottom: 110,
+    gap: spacing.sm
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    padding: spacing.xxl,
+    borderRadius: radii.xl,
+    borderWidth: 1,
+    marginTop: spacing.xl
+  },
+  emptyIconBox: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md
+  },
+  emptyTitle: {
+    ...typography.title2,
+    marginBottom: 4
+  },
+  emptySubtitle: {
+    ...typography.subtext,
+    textAlign: 'center',
+    lineHeight: 18,
+    maxWidth: 260
+  },
+  invoiceCard: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    padding: spacing.md,
+    ...shadows.subtle
+  },
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm
   },
   invNumber: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.brassLight
+    ...typography.title3,
+    fontSize: 14
   },
-  statusBadge: {
+  invPeriod: {
+    ...typography.subtext,
+    marginTop: 2
+  },
+  badge: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6
+    paddingVertical: 4,
+    borderRadius: radii.xs
   },
-  badgePaid: {
-    backgroundColor: colors.successBg
+  badgeText: {
+    ...typography.badge,
+    fontSize: 9
   },
-  badgePartial: {
-    backgroundColor: colors.infoBg
-  },
-  badgeUnpaid: {
-    backgroundColor: colors.warningBg
-  },
-  statusText: {
-    fontSize: 9,
-    fontWeight: '800'
-  },
-  textPaid: {
-    color: colors.success
-  },
-  textPartial: {
-    color: colors.info
-  },
-  textUnpaid: {
-    color: colors.warning
-  },
-  periodText: {
-    fontSize: 11,
-    color: colors.textMuted,
-    marginBottom: 12
-  },
-  amountsRow: {
+  amountsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: colors.inputBg,
-    borderRadius: 12,
-    padding: 12
+    padding: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    marginVertical: spacing.xs
+  },
+  amountCol: {
+    flex: 1
   },
   amountLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 0.8
+    ...typography.badge,
+    fontSize: 9
   },
   amountVal: {
     fontSize: 13,
     fontWeight: '800',
-    color: colors.textPrimary,
     marginTop: 2
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.xs,
+    marginTop: spacing.sm
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radii.sm,
+    borderWidth: 1
+  },
+  actionBtnText: {
+    fontSize: 11,
+    fontWeight: '600'
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end'
+  },
+  modalCard: {
+    maxHeight: '85%',
+    borderTopLeftRadius: radii.xl,
+    borderTopRightRadius: radii.xl,
+    borderWidth: 1,
+    overflow: 'hidden'
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderBottomWidth: 1
+  },
+  modalSubtitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8
+  },
+  modalTitle: {
+    ...typography.title2,
+    marginTop: 2
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  modalBody: {
+    padding: spacing.md
+  },
+  detailSection: {
+    padding: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    marginBottom: spacing.md,
+    gap: 8
+  },
+  sectionTitle: {
+    ...typography.title3,
+    fontSize: 13,
+    marginBottom: 4
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  detailKey: {
+    fontSize: 12
+  },
+  detailVal: {
+    fontSize: 12
+  },
+  divider: {
+    height: 1,
+    marginVertical: 4
+  },
+  downloadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: radii.md,
+    marginVertical: spacing.lg
+  },
+  downloadBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14
   }
 });

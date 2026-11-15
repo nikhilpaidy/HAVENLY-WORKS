@@ -1,11 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-const LAN_IP_URL = 'http://192.168.1.14:6018/api/v1';
-const LOCALHOST_URL = 'http://localhost:6018/api/v1';
-const PUBLIC_DEV_TUNNEL_URL = 'https://tqsb1xz0-6018.inc1.devtunnels.ms/api/v1';
-
-export const API_BASE_URL = Platform.OS === 'web' ? LOCALHOST_URL : LAN_IP_URL;
+export const PRODUCTION_API_URL = 'https://api-havenlywork.yeseo.online/api/v1';
+export const PRODUCTION_BASE_URL = 'https://api-havenlywork.yeseo.online';
+export const API_BASE_URL = PRODUCTION_API_URL;
 
 let inMemoryBaseUrl: string | null = null;
 
@@ -13,27 +11,20 @@ export async function getBaseUrl(): Promise<string> {
   if (inMemoryBaseUrl) return inMemoryBaseUrl;
 
   const stored = await AsyncStorage.getItem('aura_server_url');
-  if (stored) {
+  if (stored && stored.startsWith('https://')) {
     inMemoryBaseUrl = stored;
     return stored;
   }
 
   const envUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
-
-  if (Platform.OS === 'web') {
-    const webUrl = envUrl || LOCALHOST_URL;
-    inMemoryBaseUrl = webUrl;
-    return webUrl;
-  }
-
   if (envUrl && envUrl.trim().length > 0) {
     const cleanEnv = envUrl.trim();
     inMemoryBaseUrl = cleanEnv;
     return cleanEnv;
   }
 
-  inMemoryBaseUrl = LAN_IP_URL;
-  return LAN_IP_URL;
+  inMemoryBaseUrl = PRODUCTION_API_URL;
+  return PRODUCTION_API_URL;
 }
 
 export async function setBaseUrl(newUrl: string): Promise<void> {
@@ -86,7 +77,7 @@ export function resolveImageUrl(uri?: string): string | undefined {
   ) {
     return uri;
   }
-  const root = (inMemoryBaseUrl || (Platform.OS === 'web' ? LOCALHOST_URL : LAN_IP_URL)).replace('/api/v1', '');
+  const root = (inMemoryBaseUrl || PRODUCTION_API_URL).replace('/api/v1', '');
   const cleanUri = uri.startsWith('/') ? uri : `/${uri}`;
   return `${root}${cleanUri}`;
 }
@@ -108,8 +99,8 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   const urlsToTry = [
     `${baseUrl}${endpoint}`,
-    Platform.OS === 'web' ? `http://localhost:6018/api/v1${endpoint}` : `http://192.168.1.14:6018/api/v1${endpoint}`,
-    `http://localhost:6018/api/v1${endpoint}`
+    Platform.OS === 'web' ? `http://localhost:6050/api/v1${endpoint}` : `http://192.168.1.14:6050/api/v1${endpoint}`,
+    `http://localhost:6050/api/v1${endpoint}`
   ];
   const uniqueUrls = Array.from(new Set(urlsToTry));
 
@@ -357,6 +348,8 @@ export const bookingsApi = {
     attendeeCount: number;
     purpose?: string;
     companyId?: string;
+    bookingType?: string;
+    workspaceType?: string;
   }) => {
     return request<any>('/bookings', {
       method: 'POST',

@@ -10,20 +10,21 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
+import { radii, shadows } from '../theme/tokens';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
 export type TabKey =
-  | 'dashboard'
   | 'rooms'
   | 'bookings'
+  | 'saved'
   | 'allowance'
+  | 'profile'
   | 'tickets'
   | 'staff'
-  | 'invoices'
-  | 'profile';
+  | 'invoices';
 
 interface TabBarProps {
   currentTab: TabKey;
@@ -38,10 +39,11 @@ interface NavTabItem {
 }
 
 const NAV_TABS: NavTabItem[] = [
-  { key: 'dashboard', label: 'Home', iconOutline: 'home-outline', iconFilled: 'home' },
-  { key: 'rooms', label: 'Workspaces', iconOutline: 'grid-outline', iconFilled: 'grid' },
-  { key: 'bookings', label: 'Bookings', iconOutline: 'bag-handle-outline', iconFilled: 'bag-handle' },
-  { key: 'allowance', label: 'Quota', iconOutline: 'bookmark-outline', iconFilled: 'bookmark' }
+  { key: 'rooms', label: 'Workspaces', iconOutline: 'business-outline', iconFilled: 'business' },
+  { key: 'bookings', label: 'Bookings', iconOutline: 'calendar-outline', iconFilled: 'calendar' },
+  { key: 'saved', label: 'Saved', iconOutline: 'bookmark-outline', iconFilled: 'bookmark' },
+  { key: 'allowance', label: 'Quota', iconOutline: 'pie-chart-outline', iconFilled: 'pie-chart' },
+  { key: 'profile', label: 'Settings', iconOutline: 'person-outline', iconFilled: 'person' }
 ];
 
 export const TabBar: React.FC<TabBarProps> = ({ currentTab, onSelectTab }) => {
@@ -60,15 +62,15 @@ export const TabBar: React.FC<TabBarProps> = ({ currentTab, onSelectTab }) => {
         style={[
           styles.container,
           {
-            backgroundColor: isDark ? '#18181B' : '#FFFFFF',
-            borderColor: isDark ? '#27272A' : '#E2E8F0'
+            backgroundColor: isDark ? '#121722' : '#FFFFFF',
+            borderColor: isDark ? '#1E293B' : '#E2E8F0'
           }
         ]}
       >
         {NAV_TABS.map((tab) => {
           const isActive = currentTab === tab.key;
           const iconColor = isActive
-            ? (isDark ? '#34D399' : '#0F172A')
+            ? '#00A859'
             : (isDark ? '#94A3B8' : '#64748B');
 
           return (
@@ -80,7 +82,7 @@ export const TabBar: React.FC<TabBarProps> = ({ currentTab, onSelectTab }) => {
                 isActive && [
                   styles.tabItemActive,
                   {
-                    backgroundColor: isDark ? '#27272A' : '#EEF2F6'
+                    backgroundColor: isDark ? 'rgba(0, 168, 89, 0.15)' : '#ECFDF5'
                   }
                 ]
               ]}
@@ -88,22 +90,21 @@ export const TabBar: React.FC<TabBarProps> = ({ currentTab, onSelectTab }) => {
             >
               <Ionicons
                 name={isActive ? tab.iconFilled : tab.iconOutline}
-                size={isActive ? 19 : 21}
+                size={18}
                 color={iconColor}
               />
-              {isActive && (
-                <Text
-                  style={[
-                    styles.tabLabel,
-                    {
-                      color: isDark ? '#FFFFFF' : '#0F172A'
-                    }
-                  ]}
-                  numberOfLines={1}
-                >
-                  {tab.label}
-                </Text>
-              )}
+              <Text
+                style={[
+                  styles.tabLabel,
+                  {
+                    color: isActive ? '#00A859' : (isDark ? '#94A3B8' : '#64748B'),
+                    fontWeight: isActive ? '700' : '500'
+                  }
+                ]}
+                numberOfLines={1}
+              >
+                {tab.label}
+              </Text>
             </TouchableOpacity>
           );
         })}
@@ -119,40 +120,33 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    paddingHorizontal: 16
+    zIndex: 99
   },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    width: '100%',
-    maxWidth: 400,
-    height: 62,
-    borderRadius: 36,
-    paddingHorizontal: 8,
     paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: radii.full,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 10
+    width: '94%',
+    maxWidth: 420,
+    ...shadows.elevated
   },
   tabItem: {
-    flexDirection: 'row',
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 24
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderRadius: radii.full
   },
   tabItemActive: {
-    paddingHorizontal: 16,
-    paddingVertical: 9
+    transform: [{ scale: 1.02 }]
   },
   tabLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginLeft: 6
+    fontSize: 10,
+    marginTop: 2
   }
 });

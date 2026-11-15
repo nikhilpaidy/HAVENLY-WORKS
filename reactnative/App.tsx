@@ -9,9 +9,9 @@ import { mobileApi } from './src/services/api';
 
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
-import { DashboardScreen } from './src/screens/DashboardScreen';
 import { RoomsScreen } from './src/screens/RoomsScreen';
 import { BookingsScreen } from './src/screens/BookingsScreen';
+import { SavedScreen } from './src/screens/SavedScreen';
 import { AllowanceScreen } from './src/screens/AllowanceScreen';
 import { InvoicesScreen } from './src/screens/InvoicesScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
@@ -30,7 +30,7 @@ const MainApp: React.FC = () => {
 
   const [showLivingSplash, setShowLivingSplash] = useState(true);
   const [authStep, setAuthStep] = useState<'onboarding' | 'login' | 'guest_explore'>('onboarding');
-  const [currentTab, setCurrentTab] = useState<TabKey>('dashboard');
+  const [currentTab, setCurrentTab] = useState<TabKey>('rooms');
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -58,8 +58,14 @@ const MainApp: React.FC = () => {
   }, [isAuthenticated]);
 
   const handleSelectTab = (tab: TabKey) => {
-    if (!isAuthenticated && (tab === 'bookings' || tab === 'allowance')) {
-      setAuthFeatureName(tab === 'bookings' ? 'reservations & bookings' : 'corporate quota & allowances');
+    if (!isAuthenticated && (tab === 'bookings' || tab === 'allowance' || tab === 'saved')) {
+      setAuthFeatureName(
+        tab === 'bookings'
+          ? 'reservations & bookings'
+          : tab === 'saved'
+          ? 'saved workspaces'
+          : 'corporate quota & allowances'
+      );
       setShowAuthModal(true);
       return;
     }
@@ -115,14 +121,6 @@ const MainApp: React.FC = () => {
     <SafeAreaView style={[styles.safeContainer, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <View style={styles.content}>
-        {currentTab === 'dashboard' && (
-          <DashboardScreen
-            onNavigate={(tab) => handleSelectTab(tab)}
-            onOpenNotifications={() => setShowNotifications(true)}
-            unreadNotifsCount={unreadCount}
-            onOpenDrawer={() => setShowLeftDrawer(true)}
-          />
-        )}
         {currentTab === 'rooms' && (
           <RoomsScreen
             onOpenNotifications={() => setShowNotifications(true)}
@@ -137,6 +135,14 @@ const MainApp: React.FC = () => {
             onOpenDrawer={() => setShowLeftDrawer(true)}
           />
         )}
+        {currentTab === 'saved' && (
+          <SavedScreen
+            onOpenNotifications={() => setShowNotifications(true)}
+            unreadNotifsCount={unreadCount}
+            onOpenDrawer={() => setShowLeftDrawer(true)}
+            onNavigateToRooms={() => setCurrentTab('rooms')}
+          />
+        )}
         {currentTab === 'allowance' && (
           <AllowanceScreen
             onOpenNotifications={() => setShowNotifications(true)}
@@ -148,7 +154,7 @@ const MainApp: React.FC = () => {
           <TicketsScreen
             onOpenNotifications={() => setShowNotifications(true)}
             unreadNotifsCount={unreadCount}
-            onBack={() => setCurrentTab('dashboard')}
+            onBack={() => setCurrentTab('rooms')}
             onOpenDrawer={() => setShowLeftDrawer(true)}
           />
         )}
@@ -156,7 +162,7 @@ const MainApp: React.FC = () => {
           <StaffScreen
             onOpenNotifications={() => setShowNotifications(true)}
             unreadNotifsCount={unreadCount}
-            onBack={() => setCurrentTab('dashboard')}
+            onBack={() => setCurrentTab('rooms')}
             onOpenDrawer={() => setShowLeftDrawer(true)}
           />
         )}
@@ -164,7 +170,7 @@ const MainApp: React.FC = () => {
           <InvoicesScreen
             onOpenNotifications={() => setShowNotifications(true)}
             unreadNotifsCount={unreadCount}
-            onBack={() => setCurrentTab('dashboard')}
+            onBack={() => setCurrentTab('rooms')}
             onOpenDrawer={() => setShowLeftDrawer(true)}
           />
         )}
@@ -174,7 +180,7 @@ const MainApp: React.FC = () => {
             unreadNotifsCount={unreadCount}
             onNavigateToStaff={() => setCurrentTab('staff')}
             onNavigateToTickets={() => setCurrentTab('tickets')}
-            onBack={() => setCurrentTab('dashboard')}
+            onBack={() => setCurrentTab('rooms')}
             onOpenDrawer={() => setShowLeftDrawer(true)}
             onSignInRequest={() => setAuthStep('login')}
           />
@@ -186,7 +192,7 @@ const MainApp: React.FC = () => {
       <LeftDrawerModal
         visible={showLeftDrawer}
         onClose={() => setShowLeftDrawer(false)}
-        onOpenExplore={() => setCurrentTab('dashboard')}
+        onOpenExplore={() => setCurrentTab('rooms')}
         onOpenRooms={() => setCurrentTab('rooms')}
         onOpenBookings={() => {
           if (!isAuthenticated) {

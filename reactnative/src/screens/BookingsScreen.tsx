@@ -557,7 +557,7 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
             activeOpacity={0.8}
           >
             <Ionicons
-              name="git-network-outline"
+              name="file-tray-stacked-outline"
               size={14}
               color={viewMode === 'HIERARCHY' ? '#FFFFFF' : theme.textSecondary}
               style={{ marginRight: 6 }}

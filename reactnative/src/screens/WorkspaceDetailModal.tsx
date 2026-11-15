@@ -587,7 +587,7 @@ export const WorkspaceDetailModal: React.FC<WorkspaceDetailModalProps> = ({
 
                       <View style={styles.qrImageWrapper}>
                         <SafeImage
-                          uri={`https://tqsb1xz0-6018.inc1.devtunnels.ms${qrCodeUrl}`}
+                          uri={`https://tqsb1xz0-6050.inc1.devtunnels.ms${qrCodeUrl}`}
                           style={{ width: 140, height: 140 }}
                           borderRadius={12}
                         />

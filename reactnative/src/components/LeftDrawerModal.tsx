@@ -363,112 +363,87 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.menuScroll}
           >
-            {filterMatches('Notifications Alerts') && (
-              <TouchableOpacity
-                style={styles.navRow}
-                onPress={() => handleAction(onOpenNotifications ? onOpenNotifications : onOpenExplore)}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name="notifications-outline"
-                  size={19}
-                  color={isDark ? '#A1A1AA' : '#64748B'}
-                  style={styles.rowIcon}
-                />
-                <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
-                  Notifications
-                </Text>
-                {unreadNotifsCount > 0 && (
-                  <View style={styles.badgePill}>
-                    <Text style={styles.badgePillText}>{unreadNotifsCount}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            )}
-
-            <View style={styles.sectionSpacer} />
-
-            {filterMatches('Navigation Dashboard Explore') && (
-              <>
-                <Text style={[styles.sectionHeading, { color: isDark ? '#71717A' : '#94A3B8' }]}>
-                  Navigation
-                </Text>
-                <TouchableOpacity
-                  style={styles.navRow}
-                  onPress={() => handleAction(onOpenExplore)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name="grid-outline"
-                    size={19}
-                    color={isDark ? '#A1A1AA' : '#64748B'}
-                    style={styles.rowIcon}
-                  />
-                  <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
-                    Dashboard
-                  </Text>
-                </TouchableOpacity>
-              </>
-            )}
-
-            <View style={styles.sectionSpacer} />
-
-            {filterMatches('My tasks Workspaces Desks Reservations Quota') && (
+            {filterMatches('My tasks Workspaces Desks') && (
               <>
                 <Text style={[styles.sectionHeading, { color: isDark ? '#71717A' : '#94A3B8' }]}>
                   My tasks
                 </Text>
 
-                {filterMatches('Workspaces Desks') && (
+                <TouchableOpacity
+                  style={styles.navRow}
+                  onPress={() => handleAction(onOpenRooms)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="business-outline"
+                    size={19}
+                    color={isDark ? '#A1A1AA' : '#64748B'}
+                    style={styles.rowIcon}
+                  />
+                  <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
+                    Workspaces & Desks
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {isManagerRole && (
+              <>
+                <View style={styles.sectionSpacer} />
+                <Text style={[styles.sectionHeading, { color: isDark ? '#71717A' : '#94A3B8' }]}>
+                  My Customers
+                </Text>
+
+                {filterMatches('Onboard Client Company') && (
                   <TouchableOpacity
                     style={styles.navRow}
-                    onPress={() => handleAction(onOpenRooms)}
+                    onPress={() => setShowOnboardModal(true)}
                     activeOpacity={0.7}
                   >
                     <Ionicons
-                      name="document-text-outline"
+                      name="business-outline"
                       size={19}
-                      color={isDark ? '#A1A1AA' : '#64748B'}
+                      color="#00A859"
                       style={styles.rowIcon}
                     />
-                    <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
-                      Workspaces & Desks
+                    <Text style={[styles.rowLabel, { color: '#00A859', fontWeight: '700' }]}>
+                      Onboard Client Company
                     </Text>
                   </TouchableOpacity>
                 )}
 
-                {filterMatches('Reservations Bookings') && (
+                {isSuperAdmin && filterMatches('Add Coworking Hub') && (
                   <TouchableOpacity
                     style={styles.navRow}
-                    onPress={() => handleAction(onOpenBookings)}
+                    onPress={() => setShowAddHubModal(true)}
                     activeOpacity={0.7}
                   >
                     <Ionicons
-                      name="bookmark-outline"
+                      name="map-outline"
                       size={19}
-                      color={isDark ? '#A1A1AA' : '#64748B'}
+                      color="#0284C7"
                       style={styles.rowIcon}
                     />
-                    <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
-                      {isSuperAdmin ? 'Platform Bookings' : isCoworkingAdmin ? 'Hub Bookings' : 'Reservations'}
+                    <Text style={[styles.rowLabel, { color: '#0284C7', fontWeight: '700' }]}>
+                      Add Coworking Hub
                     </Text>
                   </TouchableOpacity>
                 )}
 
-                {filterMatches('Quota Allowance') && (
+                {filterMatches('Add Workspace Type') && (
                   <TouchableOpacity
                     style={styles.navRow}
-                    onPress={() => handleAction(onOpenQuota)}
+                    onPress={() => setShowAddTypeModal(true)}
                     activeOpacity={0.7}
                   >
                     <Ionicons
-                      name="layers-outline"
+                      name="pricetags-outline"
                       size={19}
-                      color={isDark ? '#A1A1AA' : '#64748B'}
+                      color="#8B5CF6"
                       style={styles.rowIcon}
                     />
-                    <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
-                      {isSuperAdmin ? 'Platform Quotas' : isCoworkingAdmin ? 'Client Quotas' : 'Quota & Allowance'}
+                    <Text style={[styles.rowLabel, { color: '#8B5CF6', fontWeight: '700' }]}>
+                      Add Workspace Type
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -477,10 +452,10 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
 
             <View style={styles.sectionSpacer} />
 
-            {filterMatches('Operations Helpdesk Staff Invoices Onboard Hub Type') && (
+            {filterMatches('Operations Helpdesk Staff Invoices') && (
               <>
                 <Text style={[styles.sectionHeading, { color: isDark ? '#71717A' : '#94A3B8' }]}>
-                  My Customers
+                  Operations & Support
                 </Text>
 
                 {filterMatches('Helpdesk Complaints') && (
@@ -533,60 +508,6 @@ export const LeftDrawerModal: React.FC<LeftDrawerModalProps> = ({
                     />
                     <Text style={[styles.rowLabel, { color: isDark ? '#F4F4F5' : '#1E293B' }]}>
                       Invoices & Statements
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {isManagerRole && filterMatches('Onboard Client Company') && (
-                  <TouchableOpacity
-                    style={styles.navRow}
-                    onPress={() => setShowOnboardModal(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name="business-outline"
-                      size={19}
-                      color="#00A859"
-                      style={styles.rowIcon}
-                    />
-                    <Text style={[styles.rowLabel, { color: '#00A859', fontWeight: '700' }]}>
-                      Onboard Client Company
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {isSuperAdmin && filterMatches('Add Coworking Hub') && (
-                  <TouchableOpacity
-                    style={styles.navRow}
-                    onPress={() => setShowAddHubModal(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name="map-outline"
-                      size={19}
-                      color="#0284C7"
-                      style={styles.rowIcon}
-                    />
-                    <Text style={[styles.rowLabel, { color: '#0284C7', fontWeight: '700' }]}>
-                      Add Coworking Hub
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {isManagerRole && filterMatches('Add Workspace Type') && (
-                  <TouchableOpacity
-                    style={styles.navRow}
-                    onPress={() => setShowAddTypeModal(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name="pricetags-outline"
-                      size={19}
-                      color="#8B5CF6"
-                      style={styles.rowIcon}
-                    />
-                    <Text style={[styles.rowLabel, { color: '#8B5CF6', fontWeight: '700' }]}>
-                      Add Workspace Type
                     </Text>
                   </TouchableOpacity>
                 )}

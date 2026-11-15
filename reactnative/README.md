@@ -37,11 +37,11 @@ The login screen features one-tap demo account buttons to pre-populate these cre
 The application communicates with the AURA Backend API. Configuration is set in `.env`:
 
 ```env
-EXPO_PUBLIC_API_BASE_URL=http://localhost:6018/api/v1
+EXPO_PUBLIC_API_BASE_URL=http://localhost:6050/api/v1
 ```
 
 ### Running on Different Platforms:
-1. **iOS Simulator**: Uses `http://localhost:6018/api/v1` automatically.
+1. **iOS Simulator**: Uses `http://localhost:6050/api/v1` automatically.
 2. **Android Emulator**: In Android emulators, `localhost` maps to `10.0.2.2`. The API client automatically handles this mapping.
 3. **Physical Device (Expo Go)**:
    - When scanning the Expo QR code on a physical iPhone or Android device, set `EXPO_PUBLIC_API_BASE_URL` in `.env` to your computer's local network IP address:

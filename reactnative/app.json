@@ -14,7 +14,7 @@
       }
     },
     "extra": {
-      "apiBaseUrl": "http://192.168.29.165:6018/api/v1"
+      "apiBaseUrl": "http://192.168.29.165:6050/api/v1"
     },
     "plugins": [
       "expo-asset",

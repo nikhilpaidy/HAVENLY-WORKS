@@ -16,6 +16,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { mobileApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { spacing, radii, typography, shadows } from '../theme/tokens';
 
 interface BookModalProps {
   visible: boolean;
@@ -31,23 +32,27 @@ export const BookModal: React.FC<BookModalProps> = ({
   onSuccess
 }) => {
   const { user } = useAuth();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const isAdminRole = user?.role === 'SUPER_ADMIN' || user?.role === 'COWORKING_ADMIN';
+
   const [companies, setCompanies] = useState<any[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(user?.companyId || '');
 
   const [selectedDate, setSelectedDate] = useState(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().split('T')[0];
+    const today = new Date();
+    return today.toISOString().split('T')[0];
   });
+
+  const [bookingMode, setBookingMode] = useState<'HOURLY' | 'DAY_PASS'>('HOURLY');
   const [slots, setSlots] = useState<any[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
-  const [durationSlots, setDurationSlots] = useState(2);
-  const [title, setTitle] = useState('Executive Strategy Review');
-  const [attendeeCount, setAttendeeCount] = useState('4');
-  const [purpose, setPurpose] = useState('Client presentation');
+
+  const [startSlotIndex, setStartSlotIndex] = useState<number | null>(null);
+  const [endSlotIndex, setEndSlotIndex] = useState<number | null>(null);
+
+  const [title, setTitle] = useState('');
+  const [attendeeCount, setAttendeeCount] = useState('1');
+  const [purpose, setPurpose] = useState('');
   const [estimate, setEstimate] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +80,8 @@ export const BookModal: React.FC<BookModalProps> = ({
 
   useEffect(() => {
     if (visible && room) {
-      setSelectedSlotIndex(null);
+      setStartSlotIndex(null);
+      setEndSlotIndex(null);
       setEstimate(null);
       setError(null);
       loadSlots(room._id, selectedDate);
@@ -94,38 +100,45 @@ export const BookModal: React.FC<BookModalProps> = ({
     }
   };
 
-  const handleSelectSlot = async (idx: number, compId?: string) => {
-    setSelectedSlotIndex(idx);
-    if (!room || !slots[idx]) return;
+  const hasAnyBookingOnDate = slots.some((s) => !s.isAvailable && s.reason === 'RESERVED');
 
-    const slot = slots[idx];
-    const durationHours = (durationSlots * (room.slotIntervalMinutes || 30)) / 60;
-    const targetCompId = compId || (isAdminRole ? selectedCompanyId : user?.companyId);
-
-    try {
-      const est = await mobileApi.estimateAllowance({
-        durationHours,
-        startTime: slot.startTime,
-        companyId: targetCompId
-      });
-      setEstimate(est);
-    } catch (err) {
-      console.warn('Estimate error:', err);
-    }
+  const handleSelectStartTime = (index: number) => {
+    setStartSlotIndex(index);
+    const nextEndIndex = index + 1 < slots.length ? index + 1 : index;
+    setEndSlotIndex(nextEndIndex);
+    calculateEstimate(index, nextEndIndex);
   };
 
-  const handleDurationChange = async (count: number) => {
-    setDurationSlots(count);
-    if (selectedSlotIndex === null || !room || !slots[selectedSlotIndex]) return;
+  const handleSelectEndTime = (index: number) => {
+    if (startSlotIndex === null) return;
+    if (index <= startSlotIndex) return;
+    setEndSlotIndex(index);
+    calculateEstimate(startSlotIndex, index);
+  };
 
-    const slot = slots[selectedSlotIndex];
-    const durationHours = (count * (room.slotIntervalMinutes || 30)) / 60;
+  const isRangeAvailable = (): boolean => {
+    if (startSlotIndex === null || endSlotIndex === null) return false;
+    for (let i = startSlotIndex; i < endSlotIndex; i++) {
+      if (!slots[i] || !slots[i].isAvailable) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const calculateEstimate = async (startIdx: number, endIdx: number) => {
+    if (!room || startIdx === null || endIdx === null || startIdx >= endIdx) return;
+    const startSlot = slots[startIdx];
+    if (!startSlot) return;
+
+    const intervalMinutes = room.slotIntervalMinutes || 30;
+    const durationHours = ((endIdx - startIdx) * intervalMinutes) / 60;
     const targetCompId = isAdminRole ? selectedCompanyId : user?.companyId;
 
     try {
       const est = await mobileApi.estimateAllowance({
         durationHours,
-        startTime: slot.startTime,
+        startTime: startSlot.startTime,
         companyId: targetCompId
       });
       setEstimate(est);
@@ -134,9 +147,55 @@ export const BookModal: React.FC<BookModalProps> = ({
     }
   };
 
+  const handleDayPassSelect = async () => {
+    if (hasAnyBookingOnDate) {
+      Alert.alert(
+        'Day Pass Unavailable',
+        'A full-day pass is unavailable because partial-day bookings already exist for this room on this date. Please select available hourly time slots instead.'
+      );
+      return;
+    }
+
+    setBookingMode('DAY_PASS');
+    if (slots.length > 0) {
+      setStartSlotIndex(0);
+      setEndSlotIndex(slots.length);
+      calculateEstimate(0, slots.length);
+    }
+  };
+
+  const handleHourlySelect = () => {
+    setBookingMode('HOURLY');
+    setStartSlotIndex(null);
+    setEndSlotIndex(null);
+    setEstimate(null);
+  };
+
   const handleConfirm = async () => {
-    if (!room || selectedSlotIndex === null || !slots[selectedSlotIndex]) {
-      setError('Please select an available start time.');
+    if (!room) return;
+
+    if (bookingMode === 'DAY_PASS') {
+      if (hasAnyBookingOnDate) {
+        setError('Cannot book Day Pass: partial bookings exist on this date.');
+        return;
+      }
+      if (slots.length === 0) {
+        setError('No operating slots available on this date.');
+        return;
+      }
+    } else {
+      if (startSlotIndex === null || endSlotIndex === null || startSlotIndex >= endSlotIndex) {
+        setError('Please select both a Start Time and an End Time.');
+        return;
+      }
+      if (!isRangeAvailable()) {
+        setError('Selected time range contains unavailable or booked slots.');
+        return;
+      }
+    }
+
+    if (!title.trim()) {
+      setError('Please provide a meeting title.');
       return;
     }
 
@@ -144,20 +203,19 @@ export const BookModal: React.FC<BookModalProps> = ({
       setSubmitting(true);
       setError(null);
 
-      const startSlot = slots[selectedSlotIndex];
-      const slotMinutes = room.slotIntervalMinutes || 30;
-      const totalMinutes = durationSlots * slotMinutes;
-      const endMs = new Date(startSlot.startTime).getTime() + totalMinutes * 60 * 1000;
-      const endTime = new Date(endMs).toISOString();
+      const firstSlot = slots[startSlotIndex || 0];
+      const lastSlot = slots[(endSlotIndex || slots.length) - 1];
       const targetCompId = isAdminRole ? selectedCompanyId : user?.companyId;
 
       const booking = await mobileApi.createBooking({
         roomId: room._id,
-        title,
-        purpose,
+        title: title.trim(),
+        purpose: purpose.trim() || undefined,
         attendeeCount: parseInt(attendeeCount, 10) || 1,
-        startTime: startSlot.startTime,
-        endTime,
+        startTime: firstSlot.startTime,
+        endTime: lastSlot.endTime,
+        bookingType: bookingMode === 'DAY_PASS' ? 'DAY_PASS' : 'HOURLY',
+        workspaceType: room.workspaceType,
         companyId: targetCompId
       });
 
@@ -178,17 +236,12 @@ export const BookModal: React.FC<BookModalProps> = ({
 
     try {
       setSubmittingOverride(true);
-      const slotMinutes = room.slotIntervalMinutes || 30;
-      const totalMinutes = durationSlots * slotMinutes;
-      const endMs = new Date(overrideSlot.startTime).getTime() + totalMinutes * 60 * 1000;
-      const requestedEndTime = new Date(endMs).toISOString();
-
       await mobileApi.overrides.requestOverride({
         roomId: room._id,
         requestedStartTime: overrideSlot.startTime,
-        requestedEndTime,
+        requestedEndTime: overrideSlot.endTime,
         urgencyReason: urgencyReason.trim(),
-        attendeeCount: parseInt(attendeeCount, 10) || 4
+        attendeeCount: parseInt(attendeeCount, 10) || 1
       });
 
       setShowOverrideModal(false);
@@ -196,7 +249,7 @@ export const BookModal: React.FC<BookModalProps> = ({
       setOverrideSlot(null);
       Alert.alert(
         'Emergency Override Submitted',
-        'Your urgent room override request has been sent to Coworking Hub Administration for priority arbitration. Both parties will be notified once reviewed.'
+        'Your urgent room override request has been sent to Coworking Hub Administration for priority review.'
       );
       onClose();
     } catch (err: any) {
@@ -208,7 +261,9 @@ export const BookModal: React.FC<BookModalProps> = ({
 
   if (!room) return null;
 
-  const hasOccupiedSlots = slots.some((s) => !s.isAvailable);
+  const validRange = startSlotIndex !== null && endSlotIndex !== null && startSlotIndex < endSlotIndex;
+  const rangeOk = validRange && isRangeAvailable();
+  const rangeHours = validRange ? (((endSlotIndex! - startSlotIndex!) * (room.slotIntervalMinutes || 30)) / 60).toFixed(1) : '0';
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
@@ -218,11 +273,13 @@ export const BookModal: React.FC<BookModalProps> = ({
       >
         <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
           <View style={[styles.modalHeader, { borderBottomColor: theme.cardBorder }]}>
-            <View>
-              <Text style={[styles.modalSubtitle, { color: theme.gold }]}>RESERVE EXECUTIVE SUITE</Text>
-              <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>{room.name}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.modalSubtitle, { color: '#00A859' }]}>RESERVE WORKSPACE</Text>
+              <Text style={[styles.modalTitle, { color: theme.textPrimary }]} numberOfLines={1}>
+                {room.name}
+              </Text>
               <Text style={[styles.modalSpecs, { color: theme.textSecondary }]}>
-                {room.capacity} seats • ₹{room.hourlyRate}/hr rate
+                {room.capacity} seats • ₹{room.hourlyRate}/hr
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: theme.card }]}>
@@ -230,7 +287,7 @@ export const BookModal: React.FC<BookModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
+          <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             {error && (
               <View style={[styles.errorBox, { backgroundColor: `${theme.danger}15`, borderColor: theme.danger }]}>
                 <Ionicons name="alert-circle" size={16} color={theme.danger} />
@@ -241,7 +298,7 @@ export const BookModal: React.FC<BookModalProps> = ({
             {isAdminRole && companies.length > 0 && (
               <View style={styles.companySelectBox}>
                 <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
-                  Target Corporate Account (Required for Admin)
+                  Client Account (Corporate Quota)
                 </Text>
                 <ScrollView
                   horizontal
@@ -253,30 +310,25 @@ export const BookModal: React.FC<BookModalProps> = ({
                     return (
                       <TouchableOpacity
                         key={c._id}
-                        onPress={() => {
-                          setSelectedCompanyId(c._id);
-                          if (selectedSlotIndex !== null) {
-                            handleSelectSlot(selectedSlotIndex, c._id);
-                          }
-                        }}
+                        onPress={() => setSelectedCompanyId(c._id)}
                         style={[
                           styles.companyPill,
                           {
-                            backgroundColor: isCompSelected ? theme.gold : theme.card,
-                            borderColor: isCompSelected ? theme.gold : theme.cardBorder
+                            backgroundColor: isCompSelected ? '#00A859' : theme.card,
+                            borderColor: isCompSelected ? '#00A859' : theme.cardBorder
                           }
                         ]}
                       >
                         <Ionicons
                           name="business"
                           size={13}
-                          color={isCompSelected ? '#090D16' : theme.gold}
+                          color={isCompSelected ? '#FFFFFF' : '#00A859'}
                           style={{ marginRight: 6 }}
                         />
                         <Text
                           style={[
                             styles.companyPillText,
-                            { color: isCompSelected ? '#090D16' : theme.textPrimary }
+                            { color: isCompSelected ? '#FFFFFF' : theme.textPrimary }
                           ]}
                         >
                           {c.name}
@@ -288,9 +340,9 @@ export const BookModal: React.FC<BookModalProps> = ({
               </View>
             )}
 
-            <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Date: {selectedDate}</Text>
-            <View style={styles.dateRow}>
-              {[0, 1, 2, 3, 4].map((offset) => {
+            <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Reservation Date</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateRow}>
+              {[0, 1, 2, 3, 4, 5, 6].map((offset) => {
                 const d = new Date();
                 d.setDate(d.getDate() + offset);
                 const iso = d.toISOString().split('T')[0];
@@ -303,23 +355,23 @@ export const BookModal: React.FC<BookModalProps> = ({
                     style={[
                       styles.datePill,
                       {
-                        backgroundColor: isSelected ? theme.gold : theme.card,
-                        borderColor: isSelected ? theme.gold : theme.cardBorder
+                        backgroundColor: isSelected ? '#00A859' : theme.card,
+                        borderColor: isSelected ? '#00A859' : theme.cardBorder
                       }
                     ]}
                   >
                     <Text
                       style={[
                         styles.dateDayText,
-                        { color: isSelected ? '#050814' : theme.textMuted }
+                        { color: isSelected ? '#FFFFFF' : theme.textMuted }
                       ]}
                     >
-                      {d.toLocaleDateString(undefined, { weekday: 'short' })}
+                      {d.toLocaleDateString('en-US', { weekday: 'short' })}
                     </Text>
                     <Text
                       style={[
                         styles.dateNumText,
-                        { color: isSelected ? '#050814' : theme.textPrimary }
+                        { color: isSelected ? '#FFFFFF' : theme.textPrimary }
                       ]}
                     >
                       {d.getDate()}
@@ -327,144 +379,266 @@ export const BookModal: React.FC<BookModalProps> = ({
                   </TouchableOpacity>
                 );
               })}
-            </View>
+            </ScrollView>
 
-            <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Duration</Text>
-            <View style={styles.durationRow}>
-              {[
-                { label: '30m', slots: 1 },
-                { label: '1 hr', slots: 2 },
-                { label: '1.5h', slots: 3 },
-                { label: '2 hrs', slots: 4 },
-                { label: '3 hrs', slots: 6 }
-              ].map((item) => (
-                <TouchableOpacity
-                  key={item.slots}
-                  onPress={() => handleDurationChange(item.slots)}
+            <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Reservation Type</Text>
+            <View style={styles.modeRow}>
+              <TouchableOpacity
+                style={[
+                  styles.modeButton,
+                  bookingMode === 'HOURLY' && styles.modeButtonActive,
+                  {
+                    backgroundColor: bookingMode === 'HOURLY' ? '#00A859' : theme.card,
+                    borderColor: bookingMode === 'HOURLY' ? '#00A859' : theme.cardBorder
+                  }
+                ]}
+                onPress={handleHourlySelect}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="time-outline"
+                  size={16}
+                  color={bookingMode === 'HOURLY' ? '#FFFFFF' : theme.textPrimary}
+                  style={{ marginRight: 6 }}
+                />
+                <Text
                   style={[
-                    styles.durationPill,
+                    styles.modeButtonText,
+                    { color: bookingMode === 'HOURLY' ? '#FFFFFF' : theme.textPrimary }
+                  ]}
+                >
+                  Hourly / Custom Range
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modeButton,
+                  bookingMode === 'DAY_PASS' && styles.modeButtonActive,
+                  hasAnyBookingOnDate && styles.modeButtonDisabled,
+                  {
+                    backgroundColor: bookingMode === 'DAY_PASS' ? '#00A859' : theme.card,
+                    borderColor: hasAnyBookingOnDate
+                      ? (isDark ? '#334155' : '#CBD5E1')
+                      : bookingMode === 'DAY_PASS'
+                      ? '#00A859'
+                      : theme.cardBorder
+                  }
+                ]}
+                onPress={handleDayPassSelect}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="sunny-outline"
+                  size={16}
+                  color={hasAnyBookingOnDate ? theme.textMuted : bookingMode === 'DAY_PASS' ? '#FFFFFF' : theme.textPrimary}
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={[
+                    styles.modeButtonText,
                     {
-                      backgroundColor: durationSlots === item.slots ? theme.gold : theme.card,
-                      borderColor: durationSlots === item.slots ? theme.gold : theme.cardBorder
+                      color: hasAnyBookingOnDate
+                        ? theme.textMuted
+                        : bookingMode === 'DAY_PASS'
+                        ? '#FFFFFF'
+                        : theme.textPrimary
                     }
                   ]}
                 >
-                  <Text
+                  Full Day Pass
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {hasAnyBookingOnDate && (
+              <View style={[styles.dayPassNotice, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.12)' : '#FEF3C7', borderColor: '#F59E0B' }]}>
+                <Ionicons name="information-circle-outline" size={16} color="#D97706" style={{ marginRight: 6 }} />
+                <Text style={[styles.dayPassNoticeText, { color: isDark ? '#FCD34D' : '#92400E' }]}>
+                  Day Pass is unavailable for this date because partial-day bookings already exist for this room.
+                </Text>
+              </View>
+            )}
+
+            {bookingMode === 'HOURLY' && (
+              <>
+                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+                  1. Select Start Time (From)
+                </Text>
+                {loadingSlots ? (
+                  <View style={styles.slotsLoading}>
+                    <ActivityIndicator size="small" color="#00A859" />
+                    <Text style={[styles.slotsLoadingText, { color: theme.textSecondary }]}>
+                      Loading live slot availability...
+                    </Text>
+                  </View>
+                ) : slots.length === 0 ? (
+                  <Text style={[styles.noSlotsText, { color: theme.textMuted }]}>
+                    No operating slots available on this date.
+                  </Text>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.slotsRow}>
+                    {slots.map((s, idx) => {
+                      const timeStr = new Date(s.startTime).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      });
+                      const isSelected = startSlotIndex === idx;
+
+                      if (!s.isAvailable) {
+                        return (
+                          <TouchableOpacity
+                            key={s.startTime}
+                            onPress={() => {
+                              setOverrideSlot(s);
+                              setShowOverrideModal(true);
+                            }}
+                            style={[
+                              styles.slotChip,
+                              { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : '#FEE2E2', borderColor: '#EF4444' }
+                            ]}
+                          >
+                            <Text style={[styles.slotChipText, { color: '#EF4444' }]}>{timeStr}</Text>
+                            <Text style={styles.occupiedTag}>Booked</Text>
+                          </TouchableOpacity>
+                        );
+                      }
+
+                      return (
+                        <TouchableOpacity
+                          key={s.startTime}
+                          onPress={() => handleSelectStartTime(idx)}
+                          style={[
+                            styles.slotChip,
+                            {
+                              backgroundColor: isSelected ? '#00A859' : theme.card,
+                              borderColor: isSelected ? '#00A859' : theme.cardBorder
+                            }
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.slotChipText,
+                              { color: isSelected ? '#FFFFFF' : theme.textPrimary }
+                            ]}
+                          >
+                            {timeStr}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+
+                {startSlotIndex !== null && (
+                  <>
+                    <Text style={[styles.sectionLabel, { color: theme.textSecondary, marginTop: spacing.md }]}>
+                      2. Select End Time (To)
+                    </Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.slotsRow}>
+                      {slots.slice(startSlotIndex + 1).map((s, sliceIdx) => {
+                        const actualIdx = startSlotIndex + 1 + sliceIdx;
+                        const timeStr = new Date(s.endTime).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        });
+                        const isSelected = endSlotIndex === actualIdx;
+                        const durationMins = (actualIdx - startSlotIndex) * (room.slotIntervalMinutes || 30);
+                        const durationText = `${durationMins / 60}h`;
+
+                        return (
+                          <TouchableOpacity
+                            key={s.endTime}
+                            onPress={() => handleSelectEndTime(actualIdx)}
+                            style={[
+                              styles.slotChip,
+                              {
+                                backgroundColor: isSelected ? '#00A859' : theme.card,
+                                borderColor: isSelected ? '#00A859' : theme.cardBorder
+                              }
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.slotChipText,
+                                { color: isSelected ? '#FFFFFF' : theme.textPrimary }
+                              ]}
+                            >
+                              {timeStr}
+                            </Text>
+                            <Text style={[styles.durationSub, { color: isSelected ? '#FFFFFF' : theme.textMuted }]}>
+                              {durationText}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </>
+                )}
+
+                {validRange && (
+                  <View
                     style={[
-                      styles.durationText,
-                      { color: durationSlots === item.slots ? '#050814' : theme.textPrimary }
+                      styles.rangeStatusCard,
+                      {
+                        backgroundColor: rangeOk
+                          ? (isDark ? 'rgba(0, 168, 89, 0.12)' : '#DCFCE7')
+                          : (isDark ? 'rgba(239, 68, 68, 0.12)' : '#FEE2E2'),
+                        borderColor: rangeOk ? '#00A859' : '#EF4444'
+                      }
                     ]}
                   >
-                    {item.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <View style={styles.slotHeaderRow}>
-              <Text style={[styles.sectionLabel, { color: theme.textSecondary, marginBottom: 0 }]}>
-                Select Start Time
-              </Text>
-              {hasOccupiedSlots && (
-                <Text style={[styles.slotHelpText, { color: theme.textMuted }]}>
-                  Red slots are booked (Tap for emergency override)
-                </Text>
-              )}
-            </View>
-
-            {loadingSlots ? (
-              <View style={styles.slotsLoading}>
-                <ActivityIndicator size="small" color={theme.gold} />
-                <Text style={[styles.slotsLoadingText, { color: theme.textSecondary }]}>
-                  Checking live availability...
-                </Text>
-              </View>
-            ) : slots.length === 0 ? (
-              <Text style={[styles.noSlotsText, { color: theme.textMuted }]}>
-                No operating slots available on this date.
-              </Text>
-            ) : (
-              <View style={styles.slotsGrid}>
-                {slots.map((s, idx) => {
-                  const time = new Date(s.startTime).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  });
-                  const isSelected = selectedSlotIndex === idx;
-
-                  if (!s.isAvailable) {
-                    return (
-                      <TouchableOpacity
-                        key={s.startTime}
-                        onPress={() => {
-                          setOverrideSlot(s);
-                          setShowOverrideModal(true);
-                        }}
-                        style={[
-                          styles.slotButton,
-                          {
-                            backgroundColor: `${theme.danger}12`,
-                            borderColor: theme.danger
-                          }
-                        ]}
-                      >
-                        <Text style={[styles.slotText, { color: theme.danger }]}>{time}</Text>
-                        <Text style={styles.occupiedBadge}>Occupied</Text>
-                      </TouchableOpacity>
-                    );
-                  }
-
-                  return (
-                    <TouchableOpacity
-                      key={s.startTime}
-                      onPress={() => handleSelectSlot(idx)}
-                      style={[
-                        styles.slotButton,
-                        {
-                          backgroundColor: isSelected ? theme.gold : theme.card,
-                          borderColor: isSelected ? theme.gold : theme.cardBorder
-                        }
-                      ]}
-                    >
+                    <Ionicons
+                      name={rangeOk ? 'checkmark-circle' : 'alert-circle'}
+                      size={18}
+                      color={rangeOk ? '#00A859' : '#EF4444'}
+                      style={{ marginRight: 8 }}
+                    />
+                    <View style={{ flex: 1 }}>
                       <Text
                         style={[
-                          styles.slotText,
-                          { color: isSelected ? '#050814' : theme.textPrimary }
+                          styles.rangeStatusTitle,
+                          { color: rangeOk ? '#00A859' : '#EF4444' }
                         ]}
                       >
-                        {time}
+                        {rangeOk ? 'All Slots Available' : 'Time Range Conflict'}
                       </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                      <Text style={[styles.rangeStatusSub, { color: theme.textSecondary }]}>
+                        {rangeOk
+                          ? `${rangeHours} hrs reserved • From ${new Date(slots[startSlotIndex!].startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} to ${new Date(slots[endSlotIndex! - 1].endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                          : 'Selected range overlaps with an existing reservation. Please adjust From or To.'}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </>
             )}
 
             {estimate && (
               <View style={[styles.estimateCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-                <Text style={[styles.estimateHeader, { color: theme.gold }]}>Quota Application:</Text>
+                <Text style={[styles.estimateHeader, { color: '#00A859' }]}>Allowance & Rate Breakdown</Text>
                 <View style={styles.estimateRow}>
                   <Text style={[styles.estimateLabel, { color: theme.textSecondary }]}>
-                    Free Allowance Applied:
+                    Complimentary Quota:
                   </Text>
-                  <Text style={[styles.estimateFree, { color: theme.success }]}>
-                    {estimate.freeHoursToApply || 0} hrs free
+                  <Text style={[styles.estimateFree, { color: '#00A859' }]}>
+                    {estimate.freeHoursToApply || 0} hrs applied
                   </Text>
                 </View>
                 {estimate.chargeableHours > 0 ? (
                   <View style={styles.estimateRow}>
                     <Text style={[styles.estimateLabel, { color: theme.textSecondary }]}>
-                      Chargeable Overage:
+                      Chargeable Extra Hours:
                     </Text>
-                    <Text style={[styles.estimateOverage, { color: theme.warning }]}>
+                    <Text style={[styles.estimateOverage, { color: '#F59E0B' }]}>
                       +{estimate.chargeableHours} hrs (₹{estimate.estimatedCharge})
                     </Text>
                   </View>
                 ) : (
                   <View style={styles.estimateRow}>
-                    <Text style={[styles.estimateLabel, { color: theme.textSecondary }]}>Total Due Now:</Text>
-                    <Text style={[styles.estimateFree, { color: theme.success }]}>
-                      ₹0.00 (100% Free Quota)
+                    <Text style={[styles.estimateLabel, { color: theme.textSecondary }]}>Estimated Total:</Text>
+                    <Text style={[styles.estimateFree, { color: '#00A859' }]}>
+                      ₹0 (Covered by Allowance)
                     </Text>
                   </View>
                 )}
@@ -472,24 +646,24 @@ export const BookModal: React.FC<BookModalProps> = ({
             )}
 
             <View style={styles.formSection}>
-              <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Meeting Title</Text>
+              <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Reservation Title *</Text>
               <TextInput
                 style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
                 value={title}
                 onChangeText={setTitle}
-                placeholder="Session title"
+                placeholder="e.g. Executive Strategy Review, Deep Focus Session"
                 placeholderTextColor={theme.textMuted}
               />
 
               <View style={styles.twoCol}>
                 <View style={styles.col}>
-                  <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Guests</Text>
+                  <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Attendees</Text>
                   <TextInput
                     style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
                     value={attendeeCount}
                     onChangeText={setAttendeeCount}
                     keyboardType="number-pad"
-                    placeholder="4"
+                    placeholder="1"
                     placeholderTextColor={theme.textMuted}
                   />
                 </View>
@@ -499,94 +673,78 @@ export const BookModal: React.FC<BookModalProps> = ({
                     style={[styles.textInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
                     value={purpose}
                     onChangeText={setPurpose}
-                    placeholder="Planning"
+                    placeholder="e.g. Client meeting"
                     placeholderTextColor={theme.textMuted}
                   />
                 </View>
               </View>
             </View>
-          </ScrollView>
 
-          <View style={[styles.modalFooter, { borderTopColor: theme.cardBorder }]}>
             <TouchableOpacity
-              onPress={handleConfirm}
-              disabled={submitting || selectedSlotIndex === null}
               style={[
                 styles.confirmButton,
-                { backgroundColor: theme.gold },
-                (submitting || selectedSlotIndex === null) && styles.confirmDisabled
+                { backgroundColor: '#00A859' },
+                ((bookingMode === 'HOURLY' && !rangeOk) || (bookingMode === 'DAY_PASS' && hasAnyBookingOnDate) || submitting) && styles.confirmButtonDisabled
               ]}
-              activeOpacity={0.8}
+              onPress={handleConfirm}
+              disabled={(bookingMode === 'HOURLY' && !rangeOk) || (bookingMode === 'DAY_PASS' && hasAnyBookingOnDate) || submitting}
+              activeOpacity={0.85}
             >
               {submitting ? (
-                <ActivityIndicator color="#090D16" size="small" />
+                <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={styles.confirmButtonText}>
-                  {selectedSlotIndex === null
-                    ? 'Select a Start Slot'
-                    : 'Confirm & Lock Reservation'}
-                </Text>
+                <Text style={styles.confirmButtonText}>Confirm Reservation</Text>
               )}
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         </View>
-      </KeyboardAvoidingView>
 
-      
-      <Modal visible={showOverrideModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: theme.cardBorder }]}>
-              <View>
-                <Text style={[styles.modalSubtitle, { color: theme.danger }]}>EMERGENCY PROTOCOL</Text>
-                <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Request Slot Override</Text>
-              </View>
-              <TouchableOpacity onPress={() => setShowOverrideModal(false)}>
-                <Ionicons name="close" size={24} color={theme.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} style={{ padding: 16 }}>
-              <View style={[styles.alertBanner, { backgroundColor: `${theme.danger}15`, borderColor: theme.danger }]}>
-                <Ionicons name="warning-outline" size={20} color={theme.danger} style={{ marginRight: 8 }} />
-                <Text style={[styles.alertBannerText, { color: theme.textPrimary }]}>
-                  This slot is occupied. Emergency override requests are forwarded directly to Coworking Hub Administration for priority arbitration.
+        {showOverrideModal && (
+          <Modal visible={showOverrideModal} animationType="fade" transparent>
+            <View style={styles.overrideOverlay}>
+              <View style={[styles.overrideCard, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
+                <View style={styles.overrideHeader}>
+                  <Ionicons name="flash" size={20} color="#F59E0B" />
+                  <Text style={[styles.overrideTitle, { color: theme.textPrimary }]}>
+                    Emergency Slot Override Request
+                  </Text>
+                </View>
+                <Text style={[styles.overrideSubtitle, { color: theme.textSecondary }]}>
+                  This room is currently occupied for this slot. Submit an executive urgency reason for Hub Administrator review.
                 </Text>
+                <TextInput
+                  style={[styles.overrideInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                  multiline
+                  numberOfLines={4}
+                  value={urgencyReason}
+                  onChangeText={setUrgencyReason}
+                  placeholder="Provide urgent business justification..."
+                  placeholderTextColor={theme.textMuted}
+                />
+                <View style={styles.overrideActions}>
+                  <TouchableOpacity
+                    style={[styles.overrideCancel, { borderColor: theme.cardBorder }]}
+                    onPress={() => setShowOverrideModal(false)}
+                  >
+                    <Text style={[styles.overrideCancelText, { color: theme.textSecondary }]}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.overrideSubmit, { backgroundColor: '#00A859' }]}
+                    onPress={handleRequestOverride}
+                    disabled={submittingOverride}
+                  >
+                    {submittingOverride ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <Text style={styles.overrideSubmitText}>Submit Request</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
-
-              <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Slot Details</Text>
-              <Text style={[styles.overrideSlotSummary, { color: theme.gold }]}>
-                {room.name} • {overrideSlot && new Date(overrideSlot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({durationSlots * (room.slotIntervalMinutes || 30)} mins)
-              </Text>
-
-              <Text style={[styles.sectionLabel, { color: theme.textSecondary, marginTop: 12 }]}>
-                Executive Justification *
-              </Text>
-              <TextInput
-                style={[styles.overrideInputArea, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
-                placeholder="Detail urgent client visit, foreign delegation, or critical investor meeting..."
-                placeholderTextColor={theme.textMuted}
-                value={urgencyReason}
-                onChangeText={setUrgencyReason}
-                multiline
-                numberOfLines={4}
-              />
-
-              <TouchableOpacity
-                style={[styles.overrideSubmitBtn, { backgroundColor: theme.danger }]}
-                onPress={handleRequestOverride}
-                disabled={submittingOverride}
-              >
-                {submittingOverride ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.overrideSubmitBtnText}>Submit Emergency Override Request</Text>
-                )}
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+            </View>
+          </Modal>
+        )}
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -594,184 +752,215 @@ export const BookModal: React.FC<BookModalProps> = ({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'flex-end'
   },
   modalCard: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    maxHeight: '92%',
+    borderTopLeftRadius: radii.xl,
+    borderTopRightRadius: radii.xl,
     borderWidth: 1,
-    maxHeight: '90%',
-    paddingBottom: 20
+    overflow: 'hidden'
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    padding: 20,
+    alignItems: 'center',
+    padding: spacing.md,
     borderBottomWidth: 1
   },
   modalSubtitle: {
     fontSize: 10,
-    letterSpacing: 1.5,
-    fontWeight: '700',
-    marginBottom: 4
+    fontWeight: '800',
+    letterSpacing: 0.8
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '800'
+    ...typography.title2,
+    marginTop: 2
   },
   modalSpecs: {
-    fontSize: 12,
+    ...typography.subtext,
     marginTop: 2
   },
   closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center'
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   modalScroll: {
-    paddingHorizontal: 20
+    padding: spacing.md
   },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 10,
+    padding: spacing.sm,
+    borderRadius: radii.md,
     borderWidth: 1,
-    marginTop: 14,
-    gap: 8
+    marginBottom: spacing.md
   },
   errorText: {
-    fontSize: 12,
+    ...typography.subtextMedium,
+    marginLeft: 6,
     flex: 1
   },
   companySelectBox: {
-    marginTop: 14
+    marginBottom: spacing.md
   },
   companyPillRow: {
-    flexDirection: 'row',
-    gap: 8,
+    gap: spacing.xs,
     paddingVertical: 4
   },
   companyPill: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderRadius: radii.full,
     borderWidth: 1
   },
   companyPillText: {
     fontSize: 12,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   sectionLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 16,
-    marginBottom: 8
+    ...typography.caption,
+    textTransform: 'uppercase',
+    marginBottom: spacing.xs,
+    fontWeight: '700'
   },
   dateRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between'
+    gap: spacing.xs,
+    paddingBottom: spacing.md
   },
   datePill: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
+    width: 52,
+    height: 62,
+    borderRadius: radii.md,
     borderWidth: 1,
     alignItems: 'center',
-    marginHorizontal: 3
+    justifyContent: 'center'
   },
   dateDayText: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginBottom: 2
+    fontSize: 11,
+    fontWeight: '600'
   },
   dateNumText: {
-    fontSize: 14,
-    fontWeight: '800'
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 2
   },
-  durationRow: {
+  modeRow: {
     flexDirection: 'row',
-    gap: 8
+    gap: spacing.sm,
+    marginBottom: spacing.md
   },
-  durationPill: {
+  modeButton: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center'
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: radii.md,
+    borderWidth: 1
   },
-  durationText: {
+  modeButtonActive: {
+    borderColor: '#00A859'
+  },
+  modeButtonDisabled: {
+    opacity: 0.5
+  },
+  modeButtonText: {
     fontSize: 12,
     fontWeight: '700'
   },
-  slotHeaderRow: {
+  dayPassNotice: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginTop: 16,
-    marginBottom: 8
+    alignItems: 'center',
+    padding: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    marginBottom: spacing.md
   },
-  slotHelpText: {
-    fontSize: 10,
-    fontStyle: 'italic'
+  dayPassNoticeText: {
+    fontSize: 11,
+    lineHeight: 16,
+    flex: 1,
+    fontWeight: '600'
   },
   slotsLoading: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 16
+    paddingVertical: spacing.md
   },
   slotsLoadingText: {
-    fontSize: 12
+    ...typography.subtext,
+    marginLeft: 8
   },
   noSlotsText: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    paddingVertical: 12
+    ...typography.subtext,
+    paddingVertical: spacing.md
   },
-  slotsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8
+  slotsRow: {
+    gap: spacing.xs,
+    paddingVertical: 4
   },
-  slotButton: {
-    width: '23%',
+  slotChip: {
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: radii.md,
     borderWidth: 1,
-    alignItems: 'center'
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 72
   },
-  slotText: {
-    fontSize: 11,
+  slotChipText: {
+    fontSize: 12,
     fontWeight: '700'
   },
-  occupiedBadge: {
-    fontSize: 8,
+  occupiedTag: {
+    fontSize: 9,
     color: '#EF4444',
     fontWeight: '700',
     marginTop: 2
   },
+  durationSub: {
+    fontSize: 9,
+    marginTop: 2
+  },
+  rangeStatusCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    marginTop: spacing.md
+  },
+  rangeStatusTitle: {
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  rangeStatusSub: {
+    fontSize: 11,
+    marginTop: 2
+  },
   estimateCard: {
-    marginTop: 16,
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1
+    padding: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    marginTop: spacing.md,
+    gap: 6
   },
   estimateHeader: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    marginBottom: 6
+    letterSpacing: 0.5
   },
   estimateRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 2
+    alignItems: 'center'
   },
   estimateLabel: {
     fontSize: 12
@@ -785,78 +974,102 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   formSection: {
-    marginTop: 8,
-    marginBottom: 16
+    marginTop: spacing.md,
+    gap: spacing.sm
   },
   textInput: {
-    height: 42,
-    borderWidth: 1,
-    borderRadius: 8,
     paddingHorizontal: 12,
-    fontSize: 13,
-    marginBottom: 10
+    paddingVertical: 10,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    fontSize: 13
   },
   twoCol: {
     flexDirection: 'row',
-    gap: 10
+    gap: spacing.sm
   },
   col: {
     flex: 1
   },
-  modalFooter: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    borderTopWidth: 1
-  },
   confirmButton: {
     paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center'
+    borderRadius: radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.lg,
+    marginBottom: spacing.xxl
   },
-  confirmDisabled: {
+  confirmButtonDisabled: {
     opacity: 0.4
   },
   confirmButtonText: {
-    color: '#050814',
+    color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '800'
+    fontWeight: '700'
   },
-  alertBanner: {
+  overrideOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg
+  },
+  overrideCard: {
+    width: '100%',
+    padding: spacing.lg,
+    borderRadius: radii.xl,
+    borderWidth: 1
+  },
+  overrideHeader: {
     flexDirection: 'row',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 12,
-    alignItems: 'center'
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+    gap: 6
   },
-  alertBannerText: {
-    fontSize: 12,
-    lineHeight: 16,
+  overrideTitle: {
+    ...typography.title3,
     flex: 1
   },
-  overrideSlotSummary: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginTop: 2
+  overrideSubtitle: {
+    ...typography.subtext,
+    lineHeight: 18,
+    marginBottom: spacing.md
   },
-  overrideInputArea: {
+  overrideInput: {
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: radii.md,
     padding: 12,
-    fontSize: 13,
+    fontSize: 12,
     height: 90,
     textAlignVertical: 'top',
-    marginBottom: 16
+    marginBottom: spacing.md
   },
-  overrideSubmitBtn: {
-    paddingVertical: 13,
-    borderRadius: 10,
+  overrideActions: {
+    flexDirection: 'row',
+    gap: spacing.sm
+  },
+  overrideCancel: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: radii.md,
+    borderWidth: 1,
     alignItems: 'center',
-    marginBottom: 20
+    justifyContent: 'center'
   },
-  overrideSubmitBtnText: {
+  overrideCancelText: {
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  overrideSubmit: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: radii.md,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  overrideSubmitText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700'
   }
 });
