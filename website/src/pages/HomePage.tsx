@@ -330,7 +330,7 @@ export const HomePage: React.FC = () => {
             </p>
           </div>
           <a
-            href="http://localhost:6018/docs"
+            href="http://localhost:6050/docs"
             target="_blank"
             rel="noopener noreferrer"
             className="px-6 py-3 rounded-2xl bg-[#0B1120] dark:bg-emerald-500 text-white dark:text-black font-bold text-xs hover:opacity-95 transition-all flex items-center space-x-2 shrink-0"

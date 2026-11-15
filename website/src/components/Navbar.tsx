@@ -279,7 +279,7 @@ export const Navbar: React.FC = () => {
                     </Link>
 
                     <a
-                      href="http://localhost:6018/docs"
+                      href="http://localhost:6050/docs"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-2.5 rounded-xl hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-all flex items-center space-x-3 group"
@@ -384,7 +384,7 @@ export const Navbar: React.FC = () => {
                 Insights & Blog
               </Link>
               <a
-                href="http://localhost:6018/docs"
+                href="http://localhost:6050/docs"
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setMobileMenuOpen(false)}

@@ -35,7 +35,7 @@ Premium commercial marketing website built with React 18, TypeScript, Vite, and 
 Copy `.env.example` to `.env`:
 
 ```env
-VITE_API_BASE_URL=http://localhost:6018/api/v1
+VITE_API_BASE_URL=http://localhost:6050/api/v1
 VITE_PORTAL_URL=http://localhost:5174
 ```
 
