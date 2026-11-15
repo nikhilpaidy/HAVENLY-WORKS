@@ -288,6 +288,9 @@ export const roomsApi = {
     maxHourlyRate?: number;
     minRating?: number;
     amenity?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
   } = {}) => {
     const q = new URLSearchParams();
     if (params.workspaceType) q.append('workspaceType', params.workspaceType);
@@ -295,6 +298,9 @@ export const roomsApi = {
     if (params.maxHourlyRate) q.append('maxHourlyRate', params.maxHourlyRate.toString());
     if (params.minRating) q.append('minRating', params.minRating.toString());
     if (params.amenity) q.append('amenity', params.amenity);
+    if (params.search) q.append('search', params.search);
+    if (params.page) q.append('page', params.page.toString());
+    if (params.limit) q.append('limit', params.limit.toString());
     const qs = q.toString();
     return request<any[]>(`/rooms/public${qs ? `?${qs}` : ''}`);
   },
@@ -330,12 +336,23 @@ export const roomsApi = {
 };
 
 export const bookingsApi = {
-  getBookings: (params: { myOnly?: boolean; status?: string; companyId?: string; tab?: string } = {}) => {
+  getBookings: (params: {
+    myOnly?: boolean;
+    status?: string;
+    companyId?: string;
+    tab?: string;
+    page?: number;
+    limit?: number;
+    organizationId?: string;
+  } = {}) => {
     const q = new URLSearchParams();
     if (params.myOnly) q.append('myOnly', 'true');
     if (params.status) q.append('status', params.status);
     if (params.companyId) q.append('companyId', params.companyId);
     if (params.tab) q.append('tab', params.tab);
+    if (params.page) q.append('page', params.page.toString());
+    if (params.limit) q.append('limit', params.limit.toString());
+    if (params.organizationId) q.append('organizationId', params.organizationId);
     const qs = q.toString();
     return request<any[]>(`/bookings${qs ? `?${qs}` : ''}`);
   },
@@ -396,7 +413,15 @@ export const bookingsApi = {
 };
 
 export const companiesApi = {
-  getCompanies: () => request<any[]>('/companies'),
+  getCompanies: (params: { page?: number; limit?: number; status?: string; organizationId?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.page) q.append('page', params.page.toString());
+    if (params.limit) q.append('limit', params.limit.toString());
+    if (params.status) q.append('status', params.status);
+    if (params.organizationId) q.append('organizationId', params.organizationId);
+    const qs = q.toString();
+    return request<any[]>(`/companies${qs ? `?${qs}` : ''}`);
+  },
   createCompany: (payload: {
     name: string;
     domain?: string;
@@ -422,14 +447,25 @@ export const allowancesApi = {
     const q = companyId ? `?companyId=${companyId}` : '';
     return request<any>(`/allowances/current${q}`);
   },
-  getHistory: (companyId?: string) => {
-    const q = companyId ? `?companyId=${companyId}` : '';
-    return request<any>(`/allowances/history${q}`);
+  getHistory: (companyId?: string, page?: number, limit?: number) => {
+    const q = new URLSearchParams();
+    if (companyId) q.append('companyId', companyId);
+    if (page) q.append('page', page.toString());
+    if (limit) q.append('limit', limit.toString());
+    const qs = q.toString();
+    return request<any>(`/allowances/history${qs ? `?${qs}` : ''}`);
   }
 };
 
 export const billingApi = {
-  getInvoices: () => request<any[]>('/billing/invoices'),
+  getInvoices: (params: { page?: number; limit?: number; status?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.page) q.append('page', params.page.toString());
+    if (params.limit) q.append('limit', params.limit.toString());
+    if (params.status) q.append('status', params.status);
+    const qs = q.toString();
+    return request<any[]>(`/billing/invoices${qs ? `?${qs}` : ''}`);
+  },
   getInvoiceById: (id: string) => request<any>(`/billing/${id}`)
 };
 

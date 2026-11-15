@@ -5,12 +5,10 @@ import { ThemeProvider } from './context/ThemeContext.js';
 import { DashboardLayout } from './layouts/DashboardLayout.js';
 import { ProtectedRoute } from './components/ProtectedRoute.js';
 
-// Auth Pages
 import { SuperAdminLoginPage } from './pages/auth/SuperAdminLoginPage.js';
 import { AdminLoginPage } from './pages/auth/AdminLoginPage.js';
 import { ClientLoginPage } from './pages/auth/ClientLoginPage.js';
 
-// Super Admin Pages
 import { SuperAdminDashboardPage } from './pages/super-admin/SuperAdminDashboardPage.js';
 import { SuperAdminAdminsPage } from './pages/super-admin/SuperAdminAdminsPage.js';
 import { SuperAdminOrganizationsPage } from './pages/super-admin/SuperAdminOrganizationsPage.js';
@@ -20,7 +18,6 @@ import { SuperAdminAuditLogsPage } from './pages/super-admin/SuperAdminAuditLogs
 import { SuperAdminStaffPage } from './pages/super-admin/SuperAdminStaffPage.js';
 import { SuperAdminMonitoringPage } from './pages/super-admin/SuperAdminMonitoringPage.js';
 
-// Coworking Admin Pages
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage.js';
 import { AdminLocationsPage } from './pages/admin/AdminLocationsPage.js';
 import { AdminRoomsPage } from './pages/admin/AdminRoomsPage.js';
@@ -32,7 +29,6 @@ import { AdminReportsPage } from './pages/admin/AdminReportsPage.js';
 import { AdminTicketsPage } from './pages/admin/AdminTicketsPage.js';
 import { AdminStaffPage } from './pages/admin/AdminStaffPage.js';
 
-// Client Portal Pages
 import { ClientDashboardPage } from './pages/client/ClientDashboardPage.js';
 import { ClientRoomsPage } from './pages/client/ClientRoomsPage.js';
 import { ClientBookingsPage } from './pages/client/ClientBookingsPage.js';
@@ -42,7 +38,6 @@ import { ClientProfilePage } from './pages/client/ClientProfilePage.js';
 import { ClientTicketsPage } from './pages/client/ClientTicketsPage.js';
 import { ClientStaffPage } from './pages/client/ClientStaffPage.js';
 
-// Common Pages
 import { UnauthorizedPage } from './pages/UnauthorizedPage.js';
 import { NotFoundPage } from './pages/NotFoundPage.js';
 
@@ -73,16 +68,13 @@ export const App: React.FC = () => {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            {/* Direct Login Routing without Portal Selector Hub */}
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<RootRedirect />} />
 
-            {/* Public Dedicated Auth Routes */}
             <Route path="/super-admin/login" element={<SuperAdminLoginPage />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/client/login" element={<ClientLoginPage />} />
 
-            {/* Super Admin Protected Routes */}
             <Route
               path="/super-admin"
               element={
@@ -95,6 +87,7 @@ export const App: React.FC = () => {
               <Route path="dashboard" element={<SuperAdminDashboardPage />} />
               <Route path="admins" element={<SuperAdminAdminsPage />} />
               <Route path="organizations" element={<SuperAdminOrganizationsPage />} />
+              <Route path="bookings" element={<AdminBookingsPage />} />
               <Route path="workspace-types" element={<AdminWorkspaceTypesPage />} />
               <Route path="staff" element={<SuperAdminStaffPage />} />
               <Route path="reports" element={<SuperAdminReportsPage />} />
@@ -103,7 +96,6 @@ export const App: React.FC = () => {
               <Route path="monitoring" element={<SuperAdminMonitoringPage />} />
             </Route>
 
-            {/* Coworking Admin Protected Routes */}
             <Route
               path="/admin"
               element={
@@ -132,7 +124,6 @@ export const App: React.FC = () => {
               <Route path="reports" element={<AdminReportsPage />} />
             </Route>
 
-            {/* Client Portal Protected Routes */}
             <Route
               path="/client"
               element={
@@ -159,7 +150,6 @@ export const App: React.FC = () => {
               <Route path="profile" element={<ClientProfilePage />} />
             </Route>
 
-            {/* Common Error Pages */}
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

@@ -124,9 +124,9 @@ export async function getBookingsHandler(req: Request, res: Response, next: Next
   try {
     let query: any = {};
 
-    if (req.user?.role === UserRole.SUPER_ADMIN) {
+    if (req.user?.role === UserRole.SUPER_ADMIN || req.user?.role === UserRole.SUPER_ADMIN_STAFF) {
       if (req.query.organizationId) query.organizationId = req.query.organizationId;
-    } else if (req.user?.role === UserRole.COWORKING_ADMIN) {
+    } else if (req.user?.role === UserRole.COWORKING_ADMIN || req.user?.role === UserRole.COWORKING_ADMIN_STAFF) {
       query.organizationId = req.user.organizationId;
     } else {
       query.companyId = req.user?.companyId;
@@ -146,7 +146,6 @@ export async function getBookingsHandler(req: Request, res: Response, next: Next
 
     if (req.query.tab === 'ONGOING') {
       query.status = { $in: [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN, BookingStatus.PENDING_CONFIRMATION] };
-      query.endTime = { $gte: new Date() };
     } else if (req.query.tab === 'COMPLETED') {
       query.$or = [
         { status: BookingStatus.COMPLETED },
@@ -163,13 +162,24 @@ export async function getBookingsHandler(req: Request, res: Response, next: Next
       };
     }
 
-    const bookings = await Booking.find(query)
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
+    const skip = (page - 1) * limit;
+
+    let bookingQuery = Booking.find(query)
       .populate('roomId', 'name code capacity hourlyRate dailyRate photos amenities workspaceType rating')
       .populate('locationId', 'name city timezone address managerName managerPhone paymentQrCodeUrl')
       .populate('companyId', 'name')
       .populate('bookedByUserId', 'name email')
-      .sort({ startTime: -1 })
-      .limit(100);
+      .sort({ startTime: -1 });
+
+    if (req.query.page || req.query.limit) {
+      bookingQuery = bookingQuery.skip(skip).limit(limit);
+    } else {
+      bookingQuery = bookingQuery.limit(100);
+    }
+
+    const bookings = await bookingQuery;
 
     return apiSuccess(res, bookings);
   } catch (error) {
@@ -192,13 +202,16 @@ export async function getBookingByIdHandler(req: Request, res: Response, next: N
 
     if (
       req.user?.role !== UserRole.SUPER_ADMIN &&
+      req.user?.role !== UserRole.SUPER_ADMIN_STAFF &&
       booking.organizationId.toString() !== req.user?.organizationId
     ) {
       throw new AppError('Unauthorized access to this booking', 403);
     }
     if (
       req.user?.role !== UserRole.SUPER_ADMIN &&
+      req.user?.role !== UserRole.SUPER_ADMIN_STAFF &&
       req.user?.role !== UserRole.COWORKING_ADMIN &&
+      req.user?.role !== UserRole.COWORKING_ADMIN_STAFF &&
       booking.companyId &&
       booking.companyId.toString() !== req.user?.companyId
     ) {

@@ -47,6 +47,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
         items: [
           { label: 'Coworking Admins', to: '/super-admin/admins', icon: UserCheck },
           { label: 'Hub Organizations', to: '/super-admin/organizations', icon: Building },
+          { label: 'Master Reservations', to: '/super-admin/bookings', icon: Calendar },
           { label: 'Workspace Types', to: '/super-admin/workspace-types', icon: Layers },
           { label: 'Operations Staff', to: '/super-admin/staff', icon: Shield }
         ]
@@ -90,7 +91,6 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
       }
     ];
   } else {
-    // Client roles
     sections = [
       {
         title: 'DASHBOARD',
@@ -149,7 +149,6 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
         collapsed ? 'w-20' : 'w-64'
       }`}
     >
-      {/* Collapse Toggle Button (desktop only) */}
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="hidden lg:flex absolute -right-3 top-7 w-6 h-6 rounded-full bg-white dark:bg-obsidian-900 border border-slate-200 dark:border-slate-700 shadow-md items-center justify-center text-slate-500 hover:text-brand-500 z-30 transition-transform"
@@ -159,7 +158,6 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
       </button>
 
       <div className="space-y-6">
-        {/* Brand header */}
         <div className={`flex items-center space-x-3 px-2 ${collapsed ? 'justify-center' : ''}`}>
           {collapsed ? (
             <HavenlyLogoMark size={32} />
@@ -177,7 +175,6 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
           )}
         </div>
 
-        {/* Navigation Section List */}
         <nav className="space-y-5 overflow-y-auto max-h-[calc(100vh-210px)] pr-1">
           {sections.map((section, idx) => (
             <div key={idx} className="space-y-1">
@@ -217,7 +214,6 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
         </nav>
       </div>
 
-      {/* Footer Tenant / User Summary */}
       <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800/80 px-2">
         {!collapsed ? (
           <div className="flex items-center space-x-2.5">

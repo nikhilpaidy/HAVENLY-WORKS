@@ -4,11 +4,12 @@ import { useAuth, UserRole } from '../../context/AuthContext.js';
 import { ThemeToggle } from '../../components/ThemeToggle.js';
 import { AuthRoleSwitcher } from '../../components/AuthRoleSwitcher.js';
 import { HavenlyLogo } from '../../components/HavenlyLogo.js';
-import { ShieldCheck, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, AlertCircle, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export const SuperAdminLoginPage: React.FC = () => {
-  const [email, setEmail] = useState('paidynikhil@gmail.com');
-  const [password, setPassword] = useState('Nikhil@123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -32,7 +33,6 @@ export const SuperAdminLoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-[#050814] text-slate-900 dark:text-slate-100 relative overflow-hidden transition-colors">
-      {/* Background architectural glow */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-gradient-to-b from-brand-500/15 via-gold-500/10 to-transparent blur-3xl pointer-events-none" />
 
       <div className="absolute top-6 right-6">
@@ -40,7 +40,6 @@ export const SuperAdminLoginPage: React.FC = () => {
       </div>
 
       <div className="max-w-md w-full glass-panel p-8 sm:p-10 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xl relative z-10 space-y-6 bg-white/90 dark:bg-[#0e1424]/90 backdrop-blur-xl">
-        {/* Role Switcher Tabs */}
         <AuthRoleSwitcher currentRole="SUPER_ADMIN" />
 
         <div className="text-center space-y-2">
@@ -78,7 +77,7 @@ export const SuperAdminLoginPage: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-brand-500 text-slate-900 dark:text-white transition-colors"
-                placeholder="paidynikhil@gmail.com"
+                placeholder="admin@havenlywork.com"
               />
             </div>
           </div>
@@ -90,13 +89,21 @@ export const SuperAdminLoginPage: React.FC = () => {
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-brand-500 text-slate-900 dark:text-white transition-colors"
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-brand-500 text-slate-900 dark:text-white transition-colors"
                 placeholder="••••••••••••"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 

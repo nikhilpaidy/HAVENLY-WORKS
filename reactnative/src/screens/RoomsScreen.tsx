@@ -86,23 +86,66 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
   const [typeDesc, setTypeDesc] = useState('');
   const [creatingType, setCreatingType] = useState(false);
 
-  const fetchRooms = async () => {
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [savedRoomIds, setSavedRoomIds] = useState<string[]>(user?.favoriteRoomIds || []);
+
+  useEffect(() => {
+    if (user?.favoriteRoomIds) {
+      setSavedRoomIds(user.favoriteRoomIds);
+    }
+  }, [user?.favoriteRoomIds]);
+
+  const handleToggleBookmark = async (roomId: string) => {
+    const isCurrentlySaved = savedRoomIds.includes(roomId);
+    const updated = isCurrentlySaved
+      ? savedRoomIds.filter((id) => id !== roomId)
+      : [...savedRoomIds, roomId];
+    setSavedRoomIds(updated);
+
     try {
+      const res = await mobileApi.toggleRoomLike(roomId);
+      if (res?.favoriteRoomIds) {
+        setSavedRoomIds(res.favoriteRoomIds);
+      }
+    } catch {
+      setSavedRoomIds(savedRoomIds);
+    }
+  };
+
+  const fetchRooms = async (pageToFetch: number = 1, append: boolean = false) => {
+    try {
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
       const [data, typesData, locsData] = await Promise.all([
         mobileApi.getPublicRooms({
-          workspaceType: selectedCategory !== 'ALL' ? selectedCategory : undefined
+          workspaceType: selectedCategory !== 'ALL' ? selectedCategory : undefined,
+          page: pageToFetch,
+          limit: 12
         }),
-        mobileApi.getWorkspaceTypes(),
-        mobileApi.getPublicLocations()
+        pageToFetch === 1 ? mobileApi.getWorkspaceTypes() : Promise.resolve(null),
+        pageToFetch === 1 ? mobileApi.getPublicLocations() : Promise.resolve(null)
       ]);
-      setRooms(Array.isArray(data) ? data : []);
-      if (Array.isArray(locsData) && locsData.length > 0) {
+      const items = Array.isArray(data) ? data : [];
+      if (append) {
+        setRooms((prev) => [...prev, ...items]);
+      } else {
+        setRooms(items);
+      }
+      setHasMore(items.length >= 12);
+      setPage(pageToFetch);
+
+      if (locsData && Array.isArray(locsData) && locsData.length > 0) {
         setLocations(locsData);
         if (!selectedHubId) {
           setSelectedHubId(locsData[0]._id);
         }
       }
-      if (Array.isArray(typesData) && typesData.length > 0) {
+      if (typesData && Array.isArray(typesData) && typesData.length > 0) {
         setWorkspaceTypes(typesData);
         if (!roomType && typesData[0]?.code) {
           setRoomType(typesData[0].code);
@@ -112,17 +155,28 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
       console.warn('Failed to load rooms:', err);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
       setRefreshing(false);
     }
   };
 
+  const handleLoadMore = () => {
+    if (!loading && !loadingMore && hasMore) {
+      fetchRooms(page + 1, true);
+    }
+  };
+
   useEffect(() => {
-    fetchRooms();
+    setPage(1);
+    setHasMore(true);
+    fetchRooms(1, false);
   }, [selectedCategory]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchRooms();
+    setPage(1);
+    setHasMore(true);
+    fetchRooms(1, false);
   };
 
   const pickImagesForRoom = async (isEdit: boolean = false) => {
@@ -295,6 +349,7 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
   const renderCard = ({ item }: { item: any }) => {
     const loc = item.locationId || {};
     const photo = (item.photos && item.photos[0]) || loc.images?.[0] || 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=80';
+    const isSaved = savedRoomIds.includes(item._id);
 
     return (
       <TouchableOpacity
@@ -310,9 +365,28 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
           <View style={styles.typeBadge}>
             <Text style={styles.typeText}>{item.workspaceType?.replace('_', ' ') || 'DESK'}</Text>
           </View>
-          <View style={styles.ratingBadge}>
-            <Ionicons name="star" size={12} color="#F59E0B" style={{ marginRight: 3 }} />
-            <Text style={styles.ratingText}>{item.rating || 4.9}</Text>
+          <View style={styles.topRightActions}>
+            <TouchableOpacity
+              style={[
+                styles.bookmarkBtn,
+                { backgroundColor: isSaved ? '#00A859' : 'rgba(15, 23, 42, 0.75)' }
+              ]}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                handleToggleBookmark(item._id);
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={isSaved ? 'bookmark' : 'bookmark-outline'}
+                size={15}
+                color="#FFFFFF"
+              />
+            </TouchableOpacity>
+            <View style={styles.ratingBadge}>
+              <Ionicons name="star" size={12} color="#F59E0B" style={{ marginRight: 3 }} />
+              <Text style={styles.ratingText}>{item.rating || 4.9}</Text>
+            </View>
           </View>
         </View>
 
@@ -473,6 +547,9 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
           renderItem={renderCard}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#00A859" style={{ marginVertical: 16 }} /> : undefined}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
         />
       )}
@@ -1112,15 +1189,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase'
   },
-  ratingBadge: {
+  topRightActions: {
     position: 'absolute',
     top: 12,
     right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  bookmarkBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  ratingBadge: {
     backgroundColor: 'rgba(0,0,0,0.65)',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 12
   },
   ratingText: {

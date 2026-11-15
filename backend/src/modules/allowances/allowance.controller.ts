@@ -14,11 +14,20 @@ import { createAuditLog } from '../audit-logs/audit-log.service.js';
 export async function getCurrentAllowance(req: Request, res: Response, next: NextFunction) {
   try {
     let companyId =
-      req.user?.role === UserRole.SUPER_ADMIN || req.user?.role === UserRole.COWORKING_ADMIN
+      req.user?.role === UserRole.SUPER_ADMIN ||
+      req.user?.role === UserRole.SUPER_ADMIN_STAFF ||
+      req.user?.role === UserRole.COWORKING_ADMIN ||
+      req.user?.role === UserRole.COWORKING_ADMIN_STAFF
         ? (req.query.companyId as string) || req.user?.companyId
         : req.user?.companyId;
 
-    if (!companyId && (req.user?.role === UserRole.SUPER_ADMIN || req.user?.role === UserRole.COWORKING_ADMIN)) {
+    if (
+      !companyId &&
+      (req.user?.role === UserRole.SUPER_ADMIN ||
+        req.user?.role === UserRole.SUPER_ADMIN_STAFF ||
+        req.user?.role === UserRole.COWORKING_ADMIN ||
+        req.user?.role === UserRole.COWORKING_ADMIN_STAFF)
+    ) {
       const companyFilter = req.user?.organizationId ? { organizationId: req.user.organizationId } : {};
       const firstComp = await Company.findOne(companyFilter);
       if (firstComp) {
@@ -52,11 +61,20 @@ export async function getCurrentAllowance(req: Request, res: Response, next: Nex
 export async function getAllowanceHistory(req: Request, res: Response, next: NextFunction) {
   try {
     let companyId =
-      req.user?.role === UserRole.SUPER_ADMIN || req.user?.role === UserRole.COWORKING_ADMIN
+      req.user?.role === UserRole.SUPER_ADMIN ||
+      req.user?.role === UserRole.SUPER_ADMIN_STAFF ||
+      req.user?.role === UserRole.COWORKING_ADMIN ||
+      req.user?.role === UserRole.COWORKING_ADMIN_STAFF
         ? (req.query.companyId as string) || req.user?.companyId
         : req.user?.companyId;
 
-    if (!companyId && (req.user?.role === UserRole.SUPER_ADMIN || req.user?.role === UserRole.COWORKING_ADMIN)) {
+    if (
+      !companyId &&
+      (req.user?.role === UserRole.SUPER_ADMIN ||
+        req.user?.role === UserRole.SUPER_ADMIN_STAFF ||
+        req.user?.role === UserRole.COWORKING_ADMIN ||
+        req.user?.role === UserRole.COWORKING_ADMIN_STAFF)
+    ) {
       const companyFilter = req.user?.organizationId ? { organizationId: req.user.organizationId } : {};
       const firstComp = await Company.findOne(companyFilter);
       if (firstComp) {
@@ -76,11 +94,21 @@ export async function getAllowanceHistory(req: Request, res: Response, next: Nex
       periodMonth: -1
     });
 
-    const ledger = await AllowanceLedgerEntry.find({ companyId })
+    let ledgerQuery = AllowanceLedgerEntry.find({ companyId })
       .populate('bookingId', 'bookingNumber startTime endTime')
       .populate('createdBy', 'name email')
-      .sort({ createdAt: -1 })
-      .limit(50);
+      .sort({ createdAt: -1 });
+
+    if (req.query.page || req.query.limit) {
+      const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
+      const skip = (page - 1) * limit;
+      ledgerQuery = ledgerQuery.skip(skip).limit(limit);
+    } else {
+      ledgerQuery = ledgerQuery.limit(50);
+    }
+
+    const ledger = await ledgerQuery;
 
     return apiSuccess(res, {
       periods,

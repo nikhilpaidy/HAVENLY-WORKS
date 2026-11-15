@@ -13,12 +13,11 @@ import bcrypt from 'bcryptjs';
 export async function getCompanies(req: Request, res: Response, next: NextFunction) {
   try {
     let query: any = {};
-    if (req.user?.role === UserRole.SUPER_ADMIN) {
+    if (req.user?.role === UserRole.SUPER_ADMIN || req.user?.role === UserRole.SUPER_ADMIN_STAFF) {
       if (req.query.organizationId) query.organizationId = req.query.organizationId;
-    } else if (req.user?.role === UserRole.COWORKING_ADMIN) {
+    } else if (req.user?.role === UserRole.COWORKING_ADMIN || req.user?.role === UserRole.COWORKING_ADMIN_STAFF) {
       query.organizationId = req.user.organizationId;
     } else {
-      
       query._id = req.user?.companyId;
     }
 
@@ -26,7 +25,15 @@ export async function getCompanies(req: Request, res: Response, next: NextFuncti
       query.status = req.query.status;
     }
 
-    const companies = await Company.find(query).sort({ name: 1 });
+    let companyQuery = Company.find(query).sort({ name: 1 });
+    if (req.query.page || req.query.limit) {
+      const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
+      const skip = (page - 1) * limit;
+      companyQuery = companyQuery.skip(skip).limit(limit);
+    }
+
+    const companies = await companyQuery;
     return apiSuccess(res, companies);
   } catch (error) {
     next(error);
@@ -43,7 +50,9 @@ export async function getCompanyById(req: Request, res: Response, next: NextFunc
 
     if (
       req.user?.role !== UserRole.SUPER_ADMIN &&
+      req.user?.role !== UserRole.SUPER_ADMIN_STAFF &&
       req.user?.role !== UserRole.COWORKING_ADMIN &&
+      req.user?.role !== UserRole.COWORKING_ADMIN_STAFF &&
       req.user?.companyId !== id
     ) {
       throw new AppError('Unauthorized access to this company', 403);

@@ -40,9 +40,22 @@ export async function getPublicRooms(req: Request, res: Response, next: NextFunc
       query.amenities = req.query.amenity;
     }
 
-    const rooms = await MeetingRoom.find(query)
+    if (req.query.search) {
+      query.name = { $regex: req.query.search as string, $options: 'i' };
+    }
+
+    let roomQuery = MeetingRoom.find(query)
       .populate('locationId', 'name city state timezone address managerName managerPhone managerEmail managerAvatarUrl paymentQrCodeUrl upiId')
       .sort({ rating: -1, hourlyRate: 1 });
+
+    if (req.query.page || req.query.limit) {
+      const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
+      const skip = (page - 1) * limit;
+      roomQuery = roomQuery.skip(skip).limit(limit);
+    }
+
+    const rooms = await roomQuery;
 
     return apiSuccess(res, rooms);
   } catch (error) {
@@ -76,7 +89,10 @@ export async function getRooms(req: Request, res: Response, next: NextFunction) 
       }
     }
 
-    if (req.user?.role !== UserRole.SUPER_ADMIN) {
+    if (
+      req.user?.role !== UserRole.SUPER_ADMIN &&
+      req.user?.role !== UserRole.SUPER_ADMIN_STAFF
+    ) {
       query.organizationId = req.user?.organizationId;
     } else if (req.query.organizationId) {
       query.organizationId = req.query.organizationId;
@@ -103,9 +119,18 @@ export async function getRooms(req: Request, res: Response, next: NextFunction) 
       query.amenities = req.query.amenity;
     }
 
-    const rooms = await MeetingRoom.find(query)
+    let roomQuery = MeetingRoom.find(query)
       .populate('locationId', 'name city timezone businessHours managerName managerPhone managerEmail managerAvatarUrl paymentQrCodeUrl upiId')
       .sort({ capacity: 1, name: 1 });
+
+    if (req.query.page || req.query.limit) {
+      const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
+      const skip = (page - 1) * limit;
+      roomQuery = roomQuery.skip(skip).limit(limit);
+    }
+
+    const rooms = await roomQuery;
 
     return apiSuccess(res, rooms);
   } catch (error) {

@@ -68,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:6018/api/v1';
+  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:6050/api/v1';
 
   // Verify token on mount
   useEffect(() => {

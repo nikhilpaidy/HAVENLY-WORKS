@@ -383,7 +383,7 @@ export const SuperAdminBlogCMSPage: React.FC = () => {
                     <img
                       src={
                         formData.coverImageUrl.startsWith('/')
-                          ? `http://localhost:6018${formData.coverImageUrl}`
+                          ? `http://localhost:6050${formData.coverImageUrl}`
                           : formData.coverImageUrl
                       }
                       alt="Preview"

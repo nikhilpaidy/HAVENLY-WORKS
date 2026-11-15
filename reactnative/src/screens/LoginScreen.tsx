@@ -27,6 +27,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToExplore }) => 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<'email' | 'password' | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,6 +52,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToExplore }) => 
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+      <View style={styles.ambientGlow} />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
@@ -58,20 +61,25 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToExplore }) => 
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           {onBackToExplore && (
             <TouchableOpacity
-              style={[styles.backBtn, { borderColor: theme.cardBorder }]}
+              style={[styles.backBtn, { borderColor: theme.cardBorder, backgroundColor: theme.card }]}
               onPress={onBackToExplore}
+              activeOpacity={0.8}
             >
               <Ionicons name="chevron-back" size={20} color={theme.textPrimary} />
             </TouchableOpacity>
           )}
 
           <View style={styles.brandContainer}>
-            <HavenlyLogo variant="vertical" size={74} textColor={theme.textPrimary} />
-            <Text style={[styles.brandSubtitle, { color: theme.textSecondary, marginTop: 10 }]}>
-              SPACE FOR TOGETHERNESS{'\n'}Sign in to manage bookings, teams & quotas
+            <HavenlyLogo variant="vertical" size={82} textColor={theme.textPrimary} />
+            <View style={styles.brandBadge}>
+              <Text style={styles.brandBadgeText}>ENTERPRISE WORKSPACE SUITE</Text>
+            </View>
+            <Text style={[styles.brandSubtitle, { color: theme.textSecondary }]}>
+              Sign in to manage room bookings, team desks & monthly allowances
             </Text>
           </View>
 
@@ -98,14 +106,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToExplore }) => 
                   styles.inputWrapper,
                   {
                     backgroundColor: theme.inputBg,
-                    borderColor: theme.inputBorder
+                    borderColor: focusedInput === 'email' ? '#00A859' : theme.inputBorder
                   }
                 ]}
               >
                 <Ionicons
                   name="mail-outline"
                   size={18}
-                  color={theme.textMuted}
+                  color={focusedInput === 'email' ? '#00A859' : theme.textMuted}
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -117,6 +125,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToExplore }) => 
                     setEmail(val);
                     if (error) setError(null);
                   }}
+                  onFocus={() => setFocusedInput('email')}
+                  onBlur={() => setFocusedInput(null)}
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="email-address"
@@ -131,14 +141,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToExplore }) => 
                   styles.inputWrapper,
                   {
                     backgroundColor: theme.inputBg,
-                    borderColor: theme.inputBorder
+                    borderColor: focusedInput === 'password' ? '#00A859' : theme.inputBorder
                   }
                 ]}
               >
                 <Ionicons
                   name="lock-closed-outline"
                   size={18}
-                  color={theme.textMuted}
+                  color={focusedInput === 'password' ? '#00A859' : theme.textMuted}
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -150,12 +160,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToExplore }) => 
                     setPassword(val);
                     if (error) setError(null);
                   }}
+                  onFocus={() => setFocusedInput('password')}
+                  onBlur={() => setFocusedInput(null)}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeIcon}
+                  activeOpacity={0.7}
                 >
                   <Ionicons
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -178,19 +191,28 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToExplore }) => 
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={styles.submitButtonText}>Sign In</Text>
+                <View style={styles.submitBtnContent}>
+                  <Text style={styles.submitButtonText}>Sign In</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                </View>
               )}
             </TouchableOpacity>
           </View>
 
           {onBackToExplore && (
             <TouchableOpacity
-              style={styles.guestLink}
+              style={[styles.guestCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
               onPress={onBackToExplore}
-              activeOpacity={0.7}
+              activeOpacity={0.85}
             >
-              <Ionicons name="compass-outline" size={16} color="#00A859" style={{ marginRight: 6 }} />
-              <Text style={styles.guestLinkText}>Continue as Guest / Explore Nearby</Text>
+              <View style={styles.guestIconBox}>
+                <Ionicons name="compass-outline" size={18} color="#00A859" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={[styles.guestCardTitle, { color: theme.textPrimary }]}>Continue as Guest</Text>
+                <Text style={[styles.guestCardSub, { color: theme.textMuted }]}>Explore public workspaces and hubs nearby</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
             </TouchableOpacity>
           )}
 
@@ -207,13 +229,23 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1
   },
+  ambientGlow: {
+    position: 'absolute',
+    top: -100,
+    left: '10%',
+    width: '80%',
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(0, 168, 89, 0.08)'
+  },
   keyboardView: {
     flex: 1
   },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 22,
-    paddingBottom: 30,
+    paddingTop: 10,
+    paddingBottom: 36,
     justifyContent: 'center'
   },
   backBtn: {
@@ -230,34 +262,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24
   },
-  logoBadge: {
-    width: 58,
-    height: 58,
+  brandBadge: {
+    backgroundColor: 'rgba(0, 168, 89, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
     borderRadius: 20,
-    backgroundColor: '#00A859',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-    shadowColor: '#00A859',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 4
-  },
-  brandTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    marginTop: 14,
     marginBottom: 6
   },
+  brandBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#00A859',
+    letterSpacing: 1.5
+  },
   brandSubtitle: {
-    fontSize: 14,
-    textAlign: 'center'
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    maxWidth: 280
   },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#FCA5A5',
     padding: 12,
@@ -268,32 +296,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginLeft: 8,
     flex: 1,
-    fontWeight: '500'
+    fontWeight: '600'
   },
   formCard: {
-    borderRadius: 22,
+    borderRadius: 24,
     borderWidth: 1,
     padding: 22,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 2
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3
   },
   inputGroup: {
-    marginBottom: 18
+    marginBottom: 16
   },
   label: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     marginBottom: 8
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 14,
-    height: 50,
+    borderWidth: 1.5,
+    borderRadius: 16,
+    height: 52,
     paddingHorizontal: 14
   },
   inputIcon: {
@@ -305,12 +333,12 @@ const styles = StyleSheet.create({
     height: '100%'
   },
   eyeIcon: {
-    padding: 6
+    padding: 8
   },
   submitButton: {
     backgroundColor: '#00A859',
     height: 52,
-    borderRadius: 26,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
@@ -320,25 +348,42 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 4
   },
+  submitBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   submitButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700'
   },
-  guestLink: {
+  guestCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-    paddingVertical: 8
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginTop: 20
   },
-  guestLinkText: {
-    color: '#00A859',
+  guestIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0, 168, 89, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  guestCardTitle: {
     fontSize: 14,
-    fontWeight: '600'
+    fontWeight: '700'
+  },
+  guestCardSub: {
+    fontSize: 11,
+    marginTop: 1
   },
   securityNotice: {
-    fontSize: 12,
+    fontSize: 11,
     textAlign: 'center',
     marginTop: 24
   }

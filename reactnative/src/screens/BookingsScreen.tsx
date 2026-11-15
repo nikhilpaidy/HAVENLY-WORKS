@@ -9,7 +9,8 @@ import {
   Modal,
   ScrollView,
   RefreshControl,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { mobileApi } from '../services/api';
 import { useTheme } from '../theme/ThemeContext';
@@ -38,7 +39,7 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
   const isCoworkingAdmin = role === 'COWORKING_ADMIN';
   const isManagerRole = isSuperAdmin || isCoworkingAdmin;
 
-  const [viewMode, setViewMode] = useState<'HIERARCHY' | 'ALL_FEED'>('HIERARCHY');
+  const [viewMode, setViewMode] = useState<'HIERARCHY' | 'ALL_FEED'>('ALL_FEED');
   const [activeTab, setActiveTab] = useState<'ONGOING' | 'COMPLETED' | 'CANCELLED'>('ONGOING');
 
   const [superAdminAdmins, setSuperAdminAdmins] = useState<any[]>([]);
@@ -50,6 +51,9 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const [selectedReceipt, setSelectedReceipt] = useState<any | null>(null);
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
@@ -73,20 +77,42 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
     }
   };
 
-  const fetchBookings = async () => {
+  const fetchBookings = async (pageToFetch: number = 1, append: boolean = false) => {
     try {
-      setLoading(true);
-      const params: any = { tab: activeTab };
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+      const params: any = {
+        tab: activeTab,
+        page: pageToFetch,
+        limit: 15
+      };
       if (isManagerRole && viewMode === 'HIERARCHY' && selectedCompany) {
         params.companyId = selectedCompany._id;
       }
       const data = await mobileApi.getBookings(params);
-      setBookings(data || []);
+      const items = Array.isArray(data) ? data : [];
+      if (append) {
+        setBookings((prev) => [...prev, ...items]);
+      } else {
+        setBookings(items);
+      }
+      setHasMore(items.length >= 15);
+      setPage(pageToFetch);
     } catch (err) {
       console.warn('Failed to load bookings:', err);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
       setRefreshing(false);
+    }
+  };
+
+  const handleLoadMore = () => {
+    if (!loading && !loadingMore && hasMore) {
+      fetchBookings(page + 1, true);
     }
   };
 
@@ -96,7 +122,9 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
 
   useEffect(() => {
     if (!isManagerRole || viewMode === 'ALL_FEED' || (viewMode === 'HIERARCHY' && selectedCompany)) {
-      fetchBookings();
+      setPage(1);
+      setHasMore(true);
+      fetchBookings(1, false);
     } else {
       setLoading(false);
       setRefreshing(false);
@@ -105,10 +133,12 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
 
   const onRefresh = () => {
     setRefreshing(true);
+    setPage(1);
+    setHasMore(true);
     if (isManagerRole) {
       loadHierarchyData();
     }
-    fetchBookings();
+    fetchBookings(1, false);
   };
 
   const toggleReminder = (bookingId: string) => {
@@ -363,16 +393,55 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
       );
     }
 
+    return renderCompanyDrilldown(`Back to ${selectedAdmin?.name || 'Operator'} Clients`);
+  };
+
+  const renderCompanyDrilldown = (backLabel: string) => {
     return (
       <View style={{ flex: 1 }}>
-        <TouchableOpacity
-          style={styles.backBreadcrumb}
-          onPress={() => setSelectedCompany(null)}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="arrow-back" size={16} color="#00A859" style={{ marginRight: 6 }} />
-          <Text style={styles.backBreadcrumbText}>Back to {selectedAdmin.name} Clients</Text>
-        </TouchableOpacity>
+        <View style={[styles.clientTopBanner, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+          <TouchableOpacity
+            style={styles.backBreadcrumb}
+            onPress={() => setSelectedCompany(null)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="arrow-back" size={16} color="#00A859" style={{ marginRight: 6 }} />
+            <Text style={styles.backBreadcrumbText}>{backLabel}</Text>
+          </TouchableOpacity>
+
+          <View style={styles.clientBannerContent}>
+            <View style={styles.clientAvatarBox}>
+              <Ionicons name="business" size={22} color="#00A859" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={[styles.clientBannerName, { color: theme.textPrimary }]} numberOfLines={1}>
+                  {selectedCompany.name}
+                </Text>
+                <View style={styles.clientActiveBadge}>
+                  <Text style={styles.clientActiveBadgeText}>Active Tenant</Text>
+                </View>
+              </View>
+              <Text style={[styles.clientBannerMeta, { color: theme.textSecondary }]}>
+                {selectedCompany.billingEmail || selectedCompany.domain || 'Corporate Account'}
+              </Text>
+              <View style={styles.clientBannerPillsRow}>
+                <View style={[styles.clientSubPill, { backgroundColor: theme.inputBg }]}>
+                  <Ionicons name="location-outline" size={11} color="#00A859" style={{ marginRight: 4 }} />
+                  <Text style={[styles.clientSubPillText, { color: theme.textSecondary }]}>
+                    {selectedCompany.locationId?.name || 'Assigned Hub'}
+                  </Text>
+                </View>
+                <View style={[styles.clientSubPill, { backgroundColor: theme.inputBg }]}>
+                  <Ionicons name="time-outline" size={11} color="#00A859" style={{ marginRight: 4 }} />
+                  <Text style={[styles.clientSubPillText, { color: theme.textSecondary }]}>
+                    Allowance: {selectedCompany.allowanceConfig?.annualFreeHours || 240}h / yr
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
 
         <View style={[styles.tabBar, { borderBottomColor: theme.cardBorder }]}>
           {(['ONGOING', 'COMPLETED', 'CANCELLED'] as const).map((tab) => (
@@ -395,7 +464,7 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
           ))}
         </View>
 
-        {loading ? (
+        {loading && bookings.length === 0 ? (
           <View style={{ padding: 20 }}>
             <ListRowSkeleton />
             <ListRowSkeleton />
@@ -414,6 +483,9 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
             renderItem={renderBookingCard}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.4}
+            ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#00A859" style={{ marginVertical: 16 }} /> : undefined}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
           />
         )}
@@ -468,62 +540,7 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
       );
     }
 
-    return (
-      <View style={{ flex: 1 }}>
-        <TouchableOpacity
-          style={styles.backBreadcrumb}
-          onPress={() => setSelectedCompany(null)}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="arrow-back" size={16} color="#00A859" style={{ marginRight: 6 }} />
-          <Text style={styles.backBreadcrumbText}>Back to All Client Companies</Text>
-        </TouchableOpacity>
-
-        <View style={[styles.tabBar, { borderBottomColor: theme.cardBorder }]}>
-          {(['ONGOING', 'COMPLETED', 'CANCELLED'] as const).map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tabItem, activeTab === tab && styles.tabItemActive]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  { color: activeTab === tab ? '#00A859' : theme.textSecondary },
-                  activeTab === tab && { fontWeight: '700' }
-                ]}
-              >
-                {tab === 'ONGOING' ? 'Ongoing' : tab === 'COMPLETED' ? 'Completed' : 'Cancelled'}
-              </Text>
-              {activeTab === tab && <View style={styles.tabIndicator} />}
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {loading ? (
-          <View style={{ padding: 20 }}>
-            <ListRowSkeleton />
-            <ListRowSkeleton />
-          </View>
-        ) : bookings.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="calendar-outline" size={44} color={theme.textMuted} />
-            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-              No {activeTab.toLowerCase()} reservations for {selectedCompany.name}.
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={bookings}
-            keyExtractor={(item) => item._id}
-            renderItem={renderBookingCard}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
-          />
-        )}
-      </View>
-    );
+    return renderCompanyDrilldown('Back to All Client Companies');
   };
 
   return (
@@ -646,6 +663,9 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({
               renderItem={renderBookingCard}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
+              onEndReached={handleLoadMore}
+              onEndReachedThreshold={0.4}
+              ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#00A859" style={{ marginVertical: 16 }} /> : undefined}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
             />
           )}
@@ -768,13 +788,71 @@ const styles = StyleSheet.create({
   backBreadcrumb: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10
+    paddingVertical: 6
   },
   backBreadcrumbText: {
     color: '#00A859',
     fontSize: 13,
     fontWeight: '700'
+  },
+  clientTopBanner: {
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 8,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1
+  },
+  clientBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6
+  },
+  clientAvatarBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,168,89,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  clientBannerName: {
+    fontSize: 17,
+    fontWeight: '800',
+    flex: 1
+  },
+  clientActiveBadge: {
+    backgroundColor: 'rgba(0,168,89,0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginLeft: 8
+  },
+  clientActiveBadgeText: {
+    color: '#00A859',
+    fontSize: 11,
+    fontWeight: '700'
+  },
+  clientBannerMeta: {
+    fontSize: 12,
+    marginTop: 2
+  },
+  clientBannerPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6
+  },
+  clientSubPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6
+  },
+  clientSubPillText: {
+    fontSize: 11,
+    fontWeight: '600'
   },
   sectionHeaderCard: {
     paddingHorizontal: 20,

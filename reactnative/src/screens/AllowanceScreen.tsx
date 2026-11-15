@@ -135,7 +135,7 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
         <View style={styles.heroTop}>
           <View>
             <Text style={[styles.heroPretitle, { color: '#00A859' }]}>
-              ANNUAL COMPLIMENTARY ALLOWANCE
+              ALLOWANCE BALANCE
             </Text>
             <View style={styles.availableRow}>
               <Text style={[styles.availableNum, { color: theme.textPrimary }]}>
@@ -148,7 +148,7 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
           </View>
           <View style={[styles.activeBadge, { backgroundColor: isDark ? 'rgba(0, 168, 89, 0.15)' : '#DCFCE7' }]}>
             <Ionicons name="shield-checkmark" size={13} color="#00A859" style={{ marginRight: 4 }} />
-            <Text style={styles.activeBadgeText}>Active Quota</Text>
+            <Text style={styles.activeBadgeText}>Active Balance</Text>
           </View>
         </View>
 
@@ -157,28 +157,34 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
             <View
               style={[
                 styles.progressSegmentConsumed,
-                { width: `${Math.min(100, (consumed / (granted || 1)) * 100)}%` }
+                {
+                  width: `${Math.min(100, (consumed / (granted || 1)) * 100)}%`,
+                  backgroundColor: isDark ? '#475569' : '#334155'
+                }
               ]}
             />
             <View
               style={[
                 styles.progressSegmentReserved,
-                { width: `${Math.min(100, (reserved / (granted || 1)) * 100)}%` }
+                {
+                  width: `${Math.min(100, (reserved / (granted || 1)) * 100)}%`,
+                  backgroundColor: isDark ? '#64748B' : '#94A3B8'
+                }
               ]}
             />
           </View>
           <View style={styles.progressLegendRow}>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#3B82F6' }]} />
+              <View style={[styles.legendDot, { backgroundColor: isDark ? '#475569' : '#334155' }]} />
               <Text style={[styles.legendText, { color: theme.textSecondary }]}>Consumed ({consumed}h)</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
+              <View style={[styles.legendDot, { backgroundColor: isDark ? '#64748B' : '#94A3B8' }]} />
               <Text style={[styles.legendText, { color: theme.textSecondary }]}>Reserved ({reserved}h)</Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: '#00A859' }]} />
-              <Text style={[styles.legendText, { color: theme.textSecondary }]}>Free ({available}h)</Text>
+              <Text style={[styles.legendText, { color: theme.textSecondary }]}>Available ({available}h)</Text>
             </View>
           </View>
         </View>
@@ -191,12 +197,12 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
           <View style={[styles.breakdownDivider, { backgroundColor: theme.divider }]} />
           <View style={styles.breakdownItem}>
             <Text style={[styles.breakdownLabel, { color: theme.textMuted }]}>CONSUMED</Text>
-            <Text style={[styles.breakdownVal, { color: '#3B82F6' }]}>{consumed}h</Text>
+            <Text style={[styles.breakdownVal, { color: theme.textPrimary }]}>{consumed}h</Text>
           </View>
           <View style={[styles.breakdownDivider, { backgroundColor: theme.divider }]} />
           <View style={styles.breakdownItem}>
             <Text style={[styles.breakdownLabel, { color: theme.textMuted }]}>RESERVED</Text>
-            <Text style={[styles.breakdownVal, { color: '#F59E0B' }]}>{reserved}h</Text>
+            <Text style={[styles.breakdownVal, { color: theme.textPrimary }]}>{reserved}h</Text>
           </View>
           <View style={[styles.breakdownDivider, { backgroundColor: theme.divider }]} />
           <View style={styles.breakdownItem}>
@@ -276,16 +282,14 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
                     {
                       backgroundColor: isCredit
                         ? (isDark ? 'rgba(0, 168, 89, 0.15)' : '#DCFCE7')
-                        : item.changeType === 'RESERVE'
-                        ? (isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF3C7')
-                        : (isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2')
+                        : (isDark ? 'rgba(148, 163, 184, 0.12)' : '#F1F5F9')
                     }
                   ]}
                 >
                   <Ionicons
                     name={isCredit ? 'arrow-down' : item.changeType === 'RESERVE' ? 'time' : 'arrow-up'}
                     size={16}
-                    color={isCredit ? '#00A859' : item.changeType === 'RESERVE' ? '#D97706' : '#EF4444'}
+                    color={isCredit ? '#00A859' : '#64748B'}
                   />
                 </View>
 
@@ -302,7 +306,7 @@ export const AllowanceScreen: React.FC<AllowanceScreenProps> = ({
                   style={[
                     styles.hoursChange,
                     {
-                      color: isCredit ? '#00A859' : item.changeType === 'RESERVE' ? '#D97706' : '#EF4444'
+                      color: isCredit ? '#00A859' : theme.textPrimary
                     }
                   ]}
                 >
