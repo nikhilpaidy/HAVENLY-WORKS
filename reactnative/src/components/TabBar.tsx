@@ -5,16 +5,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
-  LayoutAnimation,
-  UIManager
+  LayoutAnimation
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { radii, shadows } from '../theme/tokens';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 export type TabKey =
   | 'rooms'

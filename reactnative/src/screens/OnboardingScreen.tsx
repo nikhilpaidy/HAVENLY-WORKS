@@ -4,8 +4,7 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Dimensions,
-  ImageBackground
+  Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
@@ -28,13 +27,12 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#0A0F1D' : '#F7F9FC' }]}>
       <View style={styles.imageContainer}>
-        <ImageBackground
-          source={{
-            uri: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=1000&q=80'
-          }}
-          style={styles.heroImage}
-          imageStyle={styles.heroImageRadius}
-        >
+        <View style={styles.heroImage}>
+          <SafeImage
+            uri="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=1000&q=80"
+            style={[StyleSheet.absoluteFill, styles.heroImageRadius]}
+            borderRadius={28}
+          />
           <View style={styles.overlay} />
 
           <View style={styles.tagBadge}>
@@ -57,7 +55,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
               <Text style={styles.circularBadgeText}>BOOK NOW</Text>
             </View>
           </View>
-        </ImageBackground>
+        </View>
       </View>
 
       <View style={styles.contentSection}>
@@ -110,7 +108,9 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     justifyContent: 'space-between',
-    padding: 16
+    padding: 16,
+    position: 'relative',
+    overflow: 'hidden'
   },
   heroImageRadius: {
     borderRadius: 28

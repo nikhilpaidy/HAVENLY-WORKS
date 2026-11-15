@@ -156,7 +156,11 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
       ]);
       const items = Array.isArray(data) ? data : [];
       if (append) {
-        setRooms((prev) => [...prev, ...items]);
+        setRooms((prev) => {
+          const existingIds = new Set(prev.map((r) => r._id));
+          const fresh = items.filter((r) => !existingIds.has(r._id));
+          return [...prev, ...fresh];
+        });
       } else {
         setRooms(items);
       }
@@ -605,9 +609,9 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
-          {categories.map((c) => (
+          {categories.map((c, idx) => (
             <TouchableOpacity
-              key={c.value}
+              key={`cat-${c.value}-${idx}`}
               style={[
                 styles.categoryChip,
                 selectedCategory === c.value && styles.categoryChipActive,
@@ -643,13 +647,13 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
             snapToInterval={width * 0.76 + 16}
             decelerationRate="fast"
           >
-            {popularWorkspaces.map((item) => {
+            {popularWorkspaces.map((item, idx) => {
               const loc = item.locationId || {};
               const photo = (item.photos && item.photos[0]) || loc.images?.[0] || 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=80';
               const isSaved = savedRoomIds.includes(item._id);
               return (
                 <TouchableOpacity
-                  key={item._id}
+                  key={`popular-${item._id || idx}-${idx}`}
                   style={[styles.popularCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
                   onPress={() => {
                     setSelectedSpace(item);
@@ -717,11 +721,11 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
             Nearby Spaces ({selectedRadiusKm === 'ALL' ? '2' : selectedRadiusKm}km Radius)
           </Text>
           <View style={{ flexDirection: 'row', gap: 6 }}>
-            {[1, 2, 5].map((km) => {
+            {[1, 2, 5].map((km, idx) => {
               const isActive = selectedRadiusKm === km || (selectedRadiusKm === 'ALL' && km === 2);
               return (
                 <TouchableOpacity
-                  key={km}
+                  key={`radius-${km}-${idx}`}
                   style={[
                     styles.radiusPill,
                     isActive && styles.radiusPillActive,
@@ -738,15 +742,15 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
           </View>
         </View>
 
-        <View style={{ paddingHorizontal: 20 }}>
+        <View style={{ paddingHorizontal: 0 }}>
           {nearbyLocations.length === 0 ? (
             <Text style={{ color: theme.textMuted, fontSize: 13, marginVertical: 6 }}>
               No nearby hubs within {selectedRadiusKm === 'ALL' ? 2 : selectedRadiusKm}km. Tap 5km to expand radius.
             </Text>
           ) : (
-            nearbyLocations.map((loc) => (
+            nearbyLocations.map((loc, idx) => (
               <TouchableOpacity
-                key={loc._id}
+                key={`nearby-${loc._id || idx}-${idx}`}
                 style={[styles.nearbyCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
                 onPress={() => {
                   setSelectedCategory('ALL');
@@ -799,7 +803,7 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
 
       <FlatList
         data={filtered}
-        keyExtractor={(item) => item._id}
+        keyExtractor={(item, index) => (item._id ? `${item._id}-${index}` : String(index))}
         renderItem={renderCard}
         ListHeaderComponent={renderListHeader}
         contentContainerStyle={styles.listContent}
@@ -810,7 +814,7 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
         ListEmptyComponent={
           loading ? (
-            <View style={{ paddingHorizontal: 20 }}>
+            <View style={{ paddingHorizontal: 0 }}>
               <WorkspaceCardSkeleton />
               <WorkspaceCardSkeleton />
             </View>
@@ -886,9 +890,9 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
         >
           <View style={[styles.pickerSheet, { backgroundColor: theme.card }]}>
             <Text style={[styles.pickerTitle, { color: theme.textPrimary }]}>Select Pass Type</Text>
-            {['Hourly', 'Day Pass', 'Week Pass', 'Monthly Pass'].map((opt) => (
+            {['Hourly', 'Day Pass', 'Week Pass', 'Monthly Pass'].map((opt, idx) => (
               <TouchableOpacity
-                key={opt}
+                key={`pass-${opt}-${idx}`}
                 style={styles.pickerOptionRow}
                 onPress={() => {
                   setPassType(opt);
@@ -913,9 +917,9 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
         >
           <View style={[styles.pickerSheet, { backgroundColor: theme.card }]}>
             <Text style={[styles.pickerTitle, { color: theme.textPrimary }]}>Select Number of People</Text>
-            {[1, 2, 4, 6, 8, 12, 16].map((num) => (
+            {[1, 2, 4, 6, 8, 12, 16].map((num, idx) => (
               <TouchableOpacity
-                key={num}
+                key={`person-${num}-${idx}`}
                 style={styles.pickerOptionRow}
                 onPress={() => {
                   setPersonCount(num);
@@ -973,9 +977,9 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
               'Private Office',
               'Day Pass',
               'Podcast Studio'
-            ].map((d) => (
+            ].map((d, idx) => (
               <TouchableOpacity
-                key={d}
+                key={`desk-${d}-${idx}`}
                 style={styles.pickerOptionRow}
                 onPress={() => {
                   setDeskType(d);
@@ -1024,11 +1028,11 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
 
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Coworking Hub / Facility</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-                {locations.map((loc) => {
+                {locations.map((loc, idx) => {
                   const isSelected = selectedHubId === loc._id;
                   return (
                     <TouchableOpacity
-                      key={loc._id}
+                      key={`add-hub-${loc._id || idx}-${idx}`}
                       style={[
                         styles.typeOptionChip,
                         isSelected && styles.typeOptionActive,
@@ -1051,9 +1055,9 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
 
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Workspace Type</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                {categories.filter((c) => c.value !== 'ALL').map((c) => (
+                {categories.filter((c) => c.value !== 'ALL').map((c, idx) => (
                   <TouchableOpacity
-                    key={c.value}
+                    key={`add-type-${c.value}-${idx}`}
                     style={[
                       styles.typeOptionChip,
                       roomType === c.value && styles.typeOptionActive,
@@ -1240,11 +1244,11 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
 
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Coworking Hub / Facility</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-                {locations.map((loc) => {
+                {locations.map((loc, idx) => {
                   const isSelected = editHubId === loc._id;
                   return (
                     <TouchableOpacity
-                      key={loc._id}
+                      key={`edit-hub-${loc._id || idx}-${idx}`}
                       style={[
                         styles.typeOptionChip,
                         isSelected && styles.typeOptionActive,
@@ -1267,9 +1271,9 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
 
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Workspace Type</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                {categories.filter((c) => c.value !== 'ALL').map((c) => (
+                {categories.filter((c) => c.value !== 'ALL').map((c, idx) => (
                   <TouchableOpacity
-                    key={c.value}
+                    key={`edit-type-${c.value}-${idx}`}
                     style={[
                       styles.typeOptionChip,
                       editRoomType === c.value && styles.typeOptionActive,
@@ -1525,7 +1529,7 @@ const styles = StyleSheet.create({
   },
   adminActionRow: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
     paddingVertical: 10,
     gap: 10
   },
@@ -1678,7 +1682,7 @@ const styles = StyleSheet.create({
     marginLeft: 4
   },
   listContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 100
   },
   card: {
@@ -1918,7 +1922,7 @@ const styles = StyleSheet.create({
     marginTop: 2
   },
   searchSectionCurved: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     paddingTop: 8,
     paddingBottom: 4
   },
@@ -1989,6 +1993,7 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   categoryScroll: {
+    marginHorizontal: -16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 8
@@ -2001,7 +2006,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     marginBottom: 12
   },
   sectionTitle: {
@@ -2014,6 +2019,7 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   popularCarousel: {
+    marginHorizontal: -16,
     paddingHorizontal: 16,
     gap: 14
   },

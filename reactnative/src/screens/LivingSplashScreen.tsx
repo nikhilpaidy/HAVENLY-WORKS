@@ -6,361 +6,179 @@ import {
   Animated,
   Dimensions,
   Easing,
-  TouchableOpacity
+  TouchableOpacity,
+  SafeAreaView,
+  StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../theme/ThemeContext';
 import { HavenlyLogo } from '../components/HavenlyLogo';
+import { SafeImage } from '../components/SafeImage';
 
 interface LivingSplashScreenProps {
   onFinish: () => void;
 }
 
-const { width } = Dimensions.get('window');
-const SCENE_DURATION = 3500;
+const { width, height } = Dimensions.get('window');
+const SLIDE_DURATION = 3200;
+
+interface SlideItem {
+  id: string;
+  tag: string;
+  title: string;
+  highlight: string;
+  description: string;
+  imageUrl: string;
+  locationBadge: string;
+  features: string[];
+}
+
+const SLIDES: SlideItem[] = [
+  {
+    id: 'slide-1',
+    tag: 'HYDERABAD HUBS',
+    title: 'World-Class Spaces in',
+    highlight: 'Prime Locations',
+    description: 'Executive boardrooms, private studios and flexible desks across Madhapur, Hitec City, and Gachibowli.',
+    imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1000&q=80',
+    locationBadge: 'Madhapur • Hitec City • Gachibowli',
+    features: ['5 Prime Hubs', 'Acoustic Glass', '24/7 Power']
+  },
+  {
+    id: 'slide-2',
+    tag: 'INSTANT BOOKING',
+    title: 'Live Slots & Full Day',
+    highlight: 'Passes On-Demand',
+    description: 'Select start to end times with real-time seat availability and seamless instant day passes.',
+    imageUrl: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=1000&q=80',
+    locationBadge: 'From ₹120/hr • Day Passes Available',
+    features: ['Real-Time Slots', 'Strict Day Pass Rules', 'Instant QR']
+  },
+  {
+    id: 'slide-3',
+    tag: 'ENTERPRISE READY',
+    title: 'Corporate Quotas &',
+    highlight: 'Central Billing',
+    description: 'Annual 50-hour team allowances, multi-hub access for employees, and unified corporate invoicing.',
+    imageUrl: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=1000&q=80',
+    locationBadge: '50h Annual Team Quota',
+    features: ['Multi-Tenant Access', 'Unified Invoicing', 'Zero Overage']
+  }
+];
 
 export const LivingSplashScreen: React.FC<LivingSplashScreenProps> = ({ onFinish }) => {
-  const { isDark } = useTheme();
-
-  const [sceneIndex, setSceneIndex] = useState(0);
-  const [currentFloorText, setCurrentFloorText] = useState('G');
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const progressAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
+  const progressAnimRef = useRef<Animated.CompositeAnimation | null>(null);
 
-  const walkLeg1 = useRef(new Animated.Value(0)).current;
-  const walkLeg2 = useRef(new Animated.Value(0)).current;
-  const walkArm1 = useRef(new Animated.Value(0)).current;
-  const walkArm2 = useRef(new Animated.Value(0)).current;
-  const walkBob = useRef(new Animated.Value(0)).current;
-  const walkPathMove = useRef(new Animated.Value(0)).current;
-  const glassDoorLeft = useRef(new Animated.Value(0)).current;
-  const glassDoorRight = useRef(new Animated.Value(0)).current;
-
-  const liftDoorsSlide = useRef(new Animated.Value(0)).current;
-  const liftCabinY = useRef(new Animated.Value(20)).current;
-  const liftIndicatorPulse = useRef(new Animated.Value(1)).current;
-  const chimePulse = useRef(new Animated.Value(0)).current;
-  const workspaceRevealOpacity = useRef(new Animated.Value(0)).current;
-
-  const deskChairSlide = useRef(new Animated.Value(30)).current;
-  const deskChairOpacity = useRef(new Animated.Value(0)).current;
-  const laptopLidAngle = useRef(new Animated.Value(0)).current;
-  const laptopScreenGlow = useRef(new Animated.Value(0)).current;
-  const coffeeSteam = useRef(new Animated.Value(0)).current;
-  const deskPassCardScale = useRef(new Animated.Value(0.8)).current;
-  const deskPassCardOpacity = useRef(new Animated.Value(0)).current;
-
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
   const exitOpacity = useRef(new Animated.Value(1)).current;
   const exitScale = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  const startSceneLoop = (idx: number) => {
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.15,
+          duration: 2400,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 2400,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true
+        })
+      ])
+    ).start();
+  }, [pulseAnim]);
+
+  const startProgress = (targetIndex: number) => {
     progressAnim.setValue(0);
-
-    if (progressAnimationRef.current) {
-      progressAnimationRef.current.stop();
+    if (progressAnimRef.current) {
+      progressAnimRef.current.stop();
     }
 
     const anim = Animated.timing(progressAnim, {
       toValue: 1,
-      duration: SCENE_DURATION,
+      duration: SLIDE_DURATION,
       easing: Easing.linear,
       useNativeDriver: false
     });
-    progressAnimationRef.current = anim;
+    progressAnimRef.current = anim;
 
     anim.start(({ finished }) => {
       if (finished) {
-        if (idx < 2) {
-          handleNext(idx + 1);
+        if (targetIndex < SLIDES.length - 1) {
+          goToSlide(targetIndex + 1);
         } else {
-          triggerExit();
+          handleFinish();
         }
       }
     });
+  };
 
-    if (idx === 0) {
-      glassDoorLeft.setValue(0);
-      glassDoorRight.setValue(0);
-      Animated.sequence([
-        Animated.delay(1200),
-        Animated.parallel([
-          Animated.timing(glassDoorLeft, {
-            toValue: -36,
-            duration: 1200,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true
-          }),
-          Animated.timing(glassDoorRight, {
-            toValue: 36,
-            duration: 1200,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true
-          })
-        ])
+  const goToSlide = (nextIndex: number) => {
+    if (nextIndex < 0 || nextIndex >= SLIDES.length) return;
+
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true
+      }),
+      Animated.timing(slideAnim, {
+        toValue: nextIndex > currentIndex ? -20 : 20,
+        duration: 180,
+        useNativeDriver: true
+      })
+    ]).start(() => {
+      setCurrentIndex(nextIndex);
+      slideAnim.setValue(nextIndex > currentIndex ? 20 : -20);
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 260,
+          useNativeDriver: true
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 260,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true
+        })
       ]).start();
-    } else if (idx === 1) {
-      liftDoorsSlide.setValue(0);
-      liftCabinY.setValue(20);
-      chimePulse.setValue(0);
-      workspaceRevealOpacity.setValue(0);
-      setCurrentFloorText('G');
-
-      setTimeout(() => setCurrentFloorText('1'), 600);
-      setTimeout(() => setCurrentFloorText('2'), 1200);
-      setTimeout(() => setCurrentFloorText('3'), 1800);
-      setTimeout(() => setCurrentFloorText('Floor 4'), 2400);
-
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(liftCabinY, {
-            toValue: 0,
-            duration: 2200,
-            easing: Easing.inOut(Easing.quad),
-            useNativeDriver: true
-          }),
-          Animated.sequence([
-            Animated.delay(2300),
-            Animated.timing(chimePulse, {
-              toValue: 1,
-              duration: 400,
-              easing: Easing.out(Easing.ease),
-              useNativeDriver: true
-            })
-          ])
-        ]),
-        Animated.parallel([
-          Animated.timing(liftDoorsSlide, {
-            toValue: 1,
-            duration: 800,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true
-          }),
-          Animated.timing(workspaceRevealOpacity, {
-            toValue: 1,
-            duration: 600,
-            useNativeDriver: true
-          })
-        ])
-      ]).start();
-    } else if (idx === 2) {
-      deskChairSlide.setValue(30);
-      deskChairOpacity.setValue(0);
-      laptopLidAngle.setValue(0);
-      laptopScreenGlow.setValue(0);
-      deskPassCardScale.setValue(0.8);
-      deskPassCardOpacity.setValue(0);
-
-      Animated.sequence([
-        Animated.parallel([
-          Animated.spring(deskChairSlide, {
-            toValue: 0,
-            friction: 6,
-            tension: 50,
-            useNativeDriver: true
-          }),
-          Animated.timing(deskChairOpacity, {
-            toValue: 1,
-            duration: 350,
-            useNativeDriver: true
-          })
-        ]),
-        Animated.parallel([
-          Animated.timing(laptopLidAngle, {
-            toValue: 1,
-            duration: 500,
-            easing: Easing.out(Easing.quad),
-            useNativeDriver: true
-          }),
-          Animated.timing(laptopScreenGlow, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true
-          })
-        ]),
-        Animated.parallel([
-          Animated.spring(deskPassCardScale, {
-            toValue: 1,
-            friction: 5,
-            tension: 40,
-            useNativeDriver: true
-          }),
-          Animated.timing(deskPassCardOpacity, {
-            toValue: 1,
-            duration: 400,
-            useNativeDriver: true
-          })
-        ])
-      ]).start();
-    }
+      startProgress(nextIndex);
+    });
   };
 
   useEffect(() => {
-    const walkCycle = Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(walkLeg1, {
-            toValue: 20,
-            duration: 260,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true
-          }),
-          Animated.timing(walkLeg2, {
-            toValue: -20,
-            duration: 260,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true
-          }),
-          Animated.timing(walkArm1, {
-            toValue: -15,
-            duration: 260,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true
-          }),
-          Animated.timing(walkArm2, {
-            toValue: 15,
-            duration: 260,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true
-          }),
-          Animated.sequence([
-            Animated.timing(walkBob, {
-              toValue: -4,
-              duration: 130,
-              useNativeDriver: true
-            }),
-            Animated.timing(walkBob, {
-              toValue: 0,
-              duration: 130,
-              useNativeDriver: true
-            })
-          ])
-        ]),
-        Animated.parallel([
-          Animated.timing(walkLeg1, {
-            toValue: -20,
-            duration: 260,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true
-          }),
-          Animated.timing(walkLeg2, {
-            toValue: 20,
-            duration: 260,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true
-          }),
-          Animated.timing(walkArm1, {
-            toValue: 15,
-            duration: 260,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true
-          }),
-          Animated.timing(walkArm2, {
-            toValue: -15,
-            duration: 260,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true
-          }),
-          Animated.sequence([
-            Animated.timing(walkBob, {
-              toValue: -4,
-              duration: 130,
-              useNativeDriver: true
-            }),
-            Animated.timing(walkBob, {
-              toValue: 0,
-              duration: 130,
-              useNativeDriver: true
-            })
-          ])
-        ])
-      ])
-    );
-    walkCycle.start();
-
-    const pathCycle = Animated.loop(
-      Animated.timing(walkPathMove, {
-        toValue: 1,
-        duration: 800,
-        easing: Easing.linear,
-        useNativeDriver: true
-      })
-    );
-    pathCycle.start();
-
-    const steamCycle = Animated.loop(
-      Animated.sequence([
-        Animated.timing(coffeeSteam, {
-          toValue: 1,
-          duration: 900,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true
-        }),
-        Animated.timing(coffeeSteam, {
-          toValue: 0,
-          duration: 900,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true
-        })
-      ])
-    );
-    steamCycle.start();
-
-    const indicatorCycle = Animated.loop(
-      Animated.sequence([
-        Animated.timing(liftIndicatorPulse, {
-          toValue: 1.25,
-          duration: 400,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true
-        }),
-        Animated.timing(liftIndicatorPulse, {
-          toValue: 1,
-          duration: 400,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true
-        })
-      ])
-    );
-    indicatorCycle.start();
-
-    startSceneLoop(0);
-
+    startProgress(0);
     return () => {
-      walkCycle.stop();
-      pathCycle.stop();
-      steamCycle.stop();
-      indicatorCycle.stop();
-      if (progressAnimationRef.current) {
-        progressAnimationRef.current.stop();
+      if (progressAnimRef.current) {
+        progressAnimRef.current.stop();
       }
     };
   }, []);
 
-  const handleNext = (targetIdx: number) => {
-    if (targetIdx > 2) {
-      triggerExit();
-      return;
-    }
-    setSceneIndex(targetIdx);
-    startSceneLoop(targetIdx);
-  };
-
-  const triggerExit = () => {
-    if (progressAnimationRef.current) {
-      progressAnimationRef.current.stop();
+  const handleFinish = () => {
+    if (progressAnimRef.current) {
+      progressAnimRef.current.stop();
     }
     Animated.parallel([
       Animated.timing(exitOpacity, {
         toValue: 0,
-        duration: 350,
-        easing: Easing.out(Easing.ease),
+        duration: 320,
+        easing: Easing.inOut(Easing.quad),
         useNativeDriver: true
       }),
       Animated.timing(exitScale, {
-        toValue: 0.96,
-        duration: 350,
-        easing: Easing.out(Easing.ease),
+        toValue: 1.05,
+        duration: 320,
+        easing: Easing.out(Easing.quad),
         useNativeDriver: true
       })
     ]).start(() => {
@@ -368,966 +186,367 @@ export const LivingSplashScreen: React.FC<LivingSplashScreenProps> = ({ onFinish
     });
   };
 
-  const scenes = [
-    {
-      step: 'STEP 1 OF 3 • ARRIVAL',
-      title: 'Walking into HavenlyWork',
-      subtitle: 'Arriving at the premium coworking & private office tower in Madhapur'
-    },
-    {
-      step: 'STEP 2 OF 3 • ASCENDING',
-      title: 'Taking the High-Speed Lift',
-      subtitle: 'Ascending to Floor 4 executive workspace & private cabin deck'
-    },
-    {
-      step: 'STEP 3 OF 3 • PRODUCTIVITY',
-      title: 'Settled In & Ready to Build',
-      subtitle: 'Your reserved desk is prepped with 500 Mbps WiFi and artisan coffee'
-    }
-  ];
-
-  const currentScene = scenes[sceneIndex];
+  const currentSlide = SLIDES[currentIndex];
 
   return (
     <Animated.View
       style={[
-        styles.fullScreen,
+        styles.container,
         {
-          backgroundColor: isDark ? '#060A14' : '#F8FAFC',
           opacity: exitOpacity,
           transform: [{ scale: exitScale }]
         }
       ]}
     >
-      <View style={styles.topProgressRow}>
-        {[0, 1, 2].map((idx) => {
-          let fillWidth: any = '0%';
-          if (idx < sceneIndex) {
-            fillWidth = '100%';
-          } else if (idx === sceneIndex) {
-            fillWidth = progressAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: ['0%', '100%']
-            });
+      <StatusBar barStyle="light-content" />
+
+      <Animated.View
+        style={[
+          styles.ambientGlow,
+          {
+            transform: [{ scale: pulseAnim }]
           }
-          return (
-            <View
-              key={idx}
-              style={[
-                styles.progressTrack,
-                { backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }
-              ]}
-            >
-              <Animated.View
-                style={[
-                  styles.progressBarFill,
-                  { width: fillWidth, backgroundColor: '#00A859' }
-                ]}
-              />
-            </View>
-          );
-        })}
-      </View>
+        ]}
+      />
 
-      <View style={styles.headerBar}>
-        <HavenlyLogo variant="horizontal" size={26} textColor={isDark ? '#FFFFFF' : '#0F172A'} />
-        <TouchableOpacity style={styles.skipButton} onPress={triggerExit} activeOpacity={0.7}>
-          <Text style={[styles.skipButtonText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-            Skip
-          </Text>
-          <Ionicons name="chevron-forward" size={14} color={isDark ? '#94A3B8' : '#64748B'} />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.canvasContainer}>
-        {sceneIndex === 0 && (
-          <View style={styles.sceneCanvas}>
-            <View style={styles.buildingFacade}>
-              <View style={[styles.buildingRoof, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0' }]}>
-                <View style={styles.hubSignBadge}>
-                  <Text style={styles.hubSignText}>HAVENLYWORK TOWER</Text>
-                </View>
-              </View>
-              <View style={styles.buildingGlassWall}>
-                <View style={[styles.glassPane, { backgroundColor: isDark ? 'rgba(0,168,89,0.08)' : 'rgba(0,168,89,0.12)' }]} />
-                <View style={[styles.glassPane, { backgroundColor: isDark ? 'rgba(0,168,89,0.08)' : 'rgba(0,168,89,0.12)' }]} />
-                <View style={[styles.glassPane, { backgroundColor: isDark ? 'rgba(0,168,89,0.08)' : 'rgba(0,168,89,0.12)' }]} />
-              </View>
-              <View style={styles.lobbyEntranceFrame}>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.topProgressRow}>
+          {SLIDES.map((slide, index) => {
+            let widthPercent: any = '0%';
+            if (index < currentIndex) {
+              widthPercent = '100%';
+            } else if (index === currentIndex) {
+              widthPercent = progressAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['0%', '100%']
+              });
+            }
+            return (
+              <View key={slide.id} style={styles.progressBarTrack}>
                 <Animated.View
                   style={[
-                    styles.slidingDoor,
-                    styles.doorLeft,
-                    { transform: [{ translateX: glassDoorLeft }] }
-                  ]}
-                />
-                <Animated.View
-                  style={[
-                    styles.slidingDoor,
-                    styles.doorRight,
-                    { transform: [{ translateX: glassDoorRight }] }
-                  ]}
-                />
-                <View style={styles.lobbyInterior}>
-                  <Ionicons name="business" size={28} color="#00A859" />
-                  <Text style={styles.lobbyWelcome}>Main Lobby</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.walkwayContainer}>
-              <Animated.View
-                style={[
-                  styles.walkingCharacterWrap,
-                  {
-                    transform: [{ translateY: walkBob }]
-                  }
-                ]}
-              >
-                <View style={styles.charHead} />
-                <View style={styles.charTorso}>
-                  <Animated.View
-                    style={[
-                      styles.charArm,
-                      {
-                        transform: [
-                          { rotate: walkArm1.interpolate({ inputRange: [-20, 20], outputRange: ['-20deg', '20deg'] }) }
-                        ]
-                      }
-                    ]}
-                  />
-                  <View style={styles.charBriefcase} />
-                  <Animated.View
-                    style={[
-                      styles.charArm,
-                      {
-                        transform: [
-                          { rotate: walkArm2.interpolate({ inputRange: [-20, 20], outputRange: ['20deg', '-20deg'] }) }
-                        ]
-                      }
-                    ]}
-                  />
-                </View>
-                <View style={styles.charLegsRow}>
-                  <Animated.View
-                    style={[
-                      styles.charLeg,
-                      {
-                        transform: [
-                          { rotate: walkLeg1.interpolate({ inputRange: [-20, 20], outputRange: ['-20deg', '20deg'] }) }
-                        ]
-                      }
-                    ]}
-                  />
-                  <Animated.View
-                    style={[
-                      styles.charLeg,
-                      {
-                        transform: [
-                          { rotate: walkLeg2.interpolate({ inputRange: [-20, 20], outputRange: ['20deg', '-20deg'] }) }
-                        ]
-                      }
-                    ]}
-                  />
-                </View>
-                <View style={styles.charShadow} />
-              </Animated.View>
-
-              <View style={styles.pathLinesWrap}>
-                <View style={[styles.pathLine, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]} />
-                <View style={[styles.pathLine, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]} />
-              </View>
-            </View>
-          </View>
-        )}
-
-        {sceneIndex === 1 && (
-          <View style={styles.sceneCanvas}>
-            <View style={styles.liftHousing}>
-              <View style={styles.liftHeaderDisplay}>
-                <Animated.View
-                  style={{
-                    transform: [{ scale: liftIndicatorPulse }]
-                  }}
-                >
-                  <Ionicons name="caret-up" size={16} color="#00A859" />
-                </Animated.View>
-                <View style={styles.liftFloorBadge}>
-                  <Text style={styles.liftFloorText}>{currentFloorText}</Text>
-                </View>
-                <Ionicons name="notifications" size={14} color="#F59E0B" />
-              </View>
-
-              <View style={styles.liftShaftFrame}>
-                <Animated.View
-                  style={[
-                    styles.liftInteriorWorkspaceReveal,
-                    { opacity: workspaceRevealOpacity }
-                  ]}
-                >
-                  <View style={styles.revealDeskRow}>
-                    <Ionicons name="desktop-outline" size={24} color="#00A859" />
-                    <Ionicons name="cafe-outline" size={20} color="#F59E0B" />
-                    <Ionicons name="wifi" size={20} color="#00A859" />
-                  </View>
-                  <Text style={styles.revealDeckTitle}>Floor 4 Executive Deck</Text>
-                  <Text style={styles.revealDeckSub}>Workspace reserved and ready</Text>
-                </Animated.View>
-
-                <Animated.View
-                  style={[
-                    styles.liftSlidingDoorLeft,
+                    styles.progressBarFill,
                     {
-                      transform: [
-                        {
-                          translateX: liftDoorsSlide.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0, -80]
-                          })
-                        }
-                      ]
-                    }
-                  ]}
-                >
-                  <View style={styles.liftDoorHandle} />
-                </Animated.View>
-
-                <Animated.View
-                  style={[
-                    styles.liftSlidingDoorRight,
-                    {
-                      transform: [
-                        {
-                          translateX: liftDoorsSlide.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0, 80]
-                          })
-                        }
-                      ]
-                    }
-                  ]}
-                >
-                  <View style={styles.liftDoorHandle} />
-                </Animated.View>
-
-                <Animated.View
-                  style={[
-                    styles.chimeRing,
-                    {
-                      opacity: chimePulse.interpolate({
-                        inputRange: [0, 0.5, 1],
-                        outputRange: [0, 0.8, 0]
-                      }),
-                      transform: [
-                        {
-                          scale: chimePulse.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0.8, 1.4]
-                          })
-                        }
-                      ]
+                      width: widthPercent
                     }
                   ]}
                 />
               </View>
-
-              <View style={styles.liftCallPill}>
-                <Ionicons name="speedometer-outline" size={13} color="#00A859" style={{ marginRight: 4 }} />
-                <Text style={styles.liftCallPillText}>High-Speed Smart Elevator</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {sceneIndex === 2 && (
-          <View style={styles.sceneCanvas}>
-            <Animated.View
-              style={[
-                styles.workstationArea,
-                {
-                  opacity: deskChairOpacity,
-                  transform: [{ translateY: deskChairSlide }]
-                }
-              ]}
-            >
-              <View style={styles.workstationLampCone} />
-
-              <View style={styles.chairAndCharGroup}>
-                <View style={styles.seatedWorkerHead} />
-                <View style={styles.seatedWorkerTorso}>
-                  <View style={styles.seatedWorkerArms} />
-                </View>
-                <View style={styles.ergonomicChairBack} />
-              </View>
-
-              <View style={styles.modernDeskSurface}>
-                <View style={styles.deskLamp}>
-                  <Ionicons name="sunny" size={14} color="#F59E0B" />
-                </View>
-
-                <Animated.View
-                  style={[
-                    styles.laptopUnit,
-                    {
-                      transform: [
-                        {
-                          rotateX: laptopLidAngle.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: ['80deg', '0deg']
-                          })
-                        }
-                      ]
-                    }
-                  ]}
-                >
-                  <Animated.View
-                    style={[
-                      styles.laptopDisplayScreen,
-                      {
-                        borderColor: laptopScreenGlow.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: ['#334155', '#00A859']
-                        })
-                      }
-                    ]}
-                  >
-                    <Ionicons name="code-slash" size={12} color="#00A859" />
-                  </Animated.View>
-                  <View style={styles.laptopKeyboardBase} />
-                </Animated.View>
-
-                <View style={styles.coffeeCupUnit}>
-                  <Animated.View
-                    style={[
-                      styles.coffeeSteamWrap,
-                      {
-                        transform: [
-                          {
-                            translateY: coffeeSteam.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: [0, -6]
-                            })
-                          }
-                        ],
-                        opacity: coffeeSteam.interpolate({
-                          inputRange: [0, 0.5, 1],
-                          outputRange: [0.3, 0.9, 0.3]
-                        })
-                      }
-                    ]}
-                  >
-                    <Ionicons name="cloud" size={10} color="#94A3B8" />
-                  </Animated.View>
-                  <View style={styles.coffeeMugBody}>
-                    <View style={styles.coffeeMugHandle} />
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.deskLegsRow}>
-                <View style={styles.deskLeg} />
-                <View style={styles.deskLeg} />
-              </View>
-            </Animated.View>
-
-            <Animated.View
-              style={[
-                styles.confirmedPassBadge,
-                {
-                  opacity: deskPassCardOpacity,
-                  transform: [{ scale: deskPassCardScale }],
-                  backgroundColor: isDark ? '#0F1E17' : '#ECFDF5',
-                  borderColor: isDark ? '#065F46' : '#A7F3D0'
-                }
-              ]}
-            >
-              <View style={styles.passIconCircle}>
-                <Ionicons name="checkmark-sharp" size={16} color="#FFFFFF" />
-              </View>
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.passDeskName}>Dedicated Desk #04 Confirmed</Text>
-                <Text style={styles.passDeskAmenities}>500 Mbps WiFi • Power Pod • Unlimited Coffee</Text>
-              </View>
-            </Animated.View>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.narrativeBox}>
-        <View style={styles.stepPill}>
-          <Text style={styles.stepPillText}>{currentScene.step}</Text>
-        </View>
-        <Text style={[styles.sceneTitle, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
-          {currentScene.title}
-        </Text>
-        <Text style={[styles.sceneSubtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-          {currentScene.subtitle}
-        </Text>
-      </View>
-
-      <View style={styles.bottomControlsBar}>
-        <View style={styles.dotsRow}>
-          {[0, 1, 2].map((idx) => (
-            <TouchableOpacity
-              key={idx}
-              onPress={() => handleNext(idx)}
-              style={[
-                styles.dotIndicator,
-                sceneIndex === idx
-                  ? [styles.dotActive, { backgroundColor: '#00A859' }]
-                  : [styles.dotInactive, { backgroundColor: isDark ? '#334155' : '#CBD5E1' }]
-              ]}
-            />
-          ))}
+            );
+          })}
         </View>
 
-        <TouchableOpacity
-          style={styles.primaryActionButton}
-          onPress={() => handleNext(sceneIndex + 1)}
-          activeOpacity={0.85}
+        <View style={styles.navHeader}>
+          <View style={styles.logoBadgeContainer}>
+            <HavenlyLogo variant="horizontal" theme="dark" size={105} />
+          </View>
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={handleFinish}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.skipButtonText}>Skip</Text>
+            <Ionicons name="chevron-forward" size={14} color="#94A3B8" />
+          </TouchableOpacity>
+        </View>
+
+        <Animated.View
+          style={[
+            styles.cardContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
         >
-          <Text style={styles.primaryActionButtonText}>
-            {sceneIndex === 2 ? 'Get Started' : 'Next Step'}
-          </Text>
-          <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
-        </TouchableOpacity>
-      </View>
+          <View style={styles.heroCard}>
+            <SafeImage
+              uri={currentSlide.imageUrl}
+              style={styles.heroImage}
+              borderRadius={24}
+            />
+            <View style={styles.heroCardOverlay} />
+
+            <View style={styles.floatingLocationBadge}>
+              <Ionicons name="location" size={12} color="#00A859" style={{ marginRight: 4 }} />
+              <Text style={styles.floatingLocationText} numberOfLines={1}>
+                {currentSlide.locationBadge}
+              </Text>
+            </View>
+
+            <View style={styles.featureChipsRow}>
+              {currentSlide.features.map((feat, idx) => (
+                <View key={`feat-${currentSlide.id}-${idx}`} style={styles.featureChip}>
+                  <Ionicons name="checkmark-circle" size={11} color="#00A859" style={{ marginRight: 4 }} />
+                  <Text style={styles.featureChipText}>{feat}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.contentSection}>
+            <View style={styles.tagPill}>
+              <Text style={styles.tagPillText}>{currentSlide.tag}</Text>
+            </View>
+
+            <Text style={styles.headline}>
+              {currentSlide.title}{' '}
+              <Text style={styles.headlineHighlight}>{currentSlide.highlight}</Text>
+            </Text>
+
+            <Text style={styles.bodyDescription}>
+              {currentSlide.description}
+            </Text>
+          </View>
+        </Animated.View>
+
+        <View style={styles.bottomBar}>
+          <View style={styles.dotsRow}>
+            {SLIDES.map((slide, idx) => {
+              const isActive = idx === currentIndex;
+              return (
+                <TouchableOpacity
+                  key={`dot-${slide.id}`}
+                  onPress={() => goToSlide(idx)}
+                  activeOpacity={0.8}
+                >
+                  <View
+                    style={[
+                      styles.dot,
+                      isActive ? styles.dotActive : styles.dotInactive
+                    ]}
+                  />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={() => {
+              if (currentIndex < SLIDES.length - 1) {
+                goToSlide(currentIndex + 1);
+              } else {
+                handleFinish();
+              }
+            }}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.primaryBtnText}>
+              {currentIndex === SLIDES.length - 1 ? 'Get Started' : 'Next'}
+            </Text>
+            <Ionicons
+              name={currentIndex === SLIDES.length - 1 ? 'arrow-forward' : 'chevron-forward'}
+              size={18}
+              color="#FFFFFF"
+              style={{ marginLeft: 6 }}
+            />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  fullScreen: {
+  container: {
     flex: 1,
-    paddingTop: 18,
-    paddingBottom: 24,
-    justifyContent: 'space-between'
+    backgroundColor: '#070A12',
+    position: 'relative',
+    overflow: 'hidden'
+  },
+  ambientGlow: {
+    position: 'absolute',
+    top: -80,
+    alignSelf: 'center',
+    width: width * 0.9,
+    height: width * 0.9,
+    borderRadius: (width * 0.9) / 2,
+    backgroundColor: 'rgba(0, 168, 89, 0.12)',
+    zIndex: 0
+  },
+  safeArea: {
+    flex: 1,
+    zIndex: 1,
+    justifyContent: 'space-between',
+    paddingBottom: 16
   },
   topProgressRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 20,
     gap: 8,
-    marginTop: 8
+    marginTop: 10,
+    marginBottom: 8
   },
-  progressTrack: {
+  progressBarTrack: {
     flex: 1,
-    height: 4,
+    height: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: 2,
     overflow: 'hidden'
   },
   progressBarFill: {
     height: '100%',
+    backgroundColor: '#00A859',
     borderRadius: 2
   },
-  headerBar: {
+  navHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 22,
-    marginTop: 14
+    paddingHorizontal: 20,
+    paddingVertical: 8
+  },
+  logoBadgeContainer: {
+    justifyContent: 'center'
   },
   skipButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    paddingHorizontal: 10
+    borderRadius: 14
   },
   skipButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
+    color: '#CBD5E1',
+    fontSize: 12,
+    fontWeight: '600',
     marginRight: 2
   },
-  canvasContainer: {
-    height: 250,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 10
-  },
-  sceneCanvas: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  buildingFacade: {
-    width: width * 0.72,
-    height: 120,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#00A859',
-    backgroundColor: 'rgba(0,168,89,0.05)',
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  },
-  buildingRoof: {
-    width: '100%',
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,168,89,0.3)'
-  },
-  hubSignBadge: {
-    backgroundColor: '#00A859',
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    borderRadius: 8
-  },
-  hubSignText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1
-  },
-  buildingGlassWall: {
-    flexDirection: 'row',
-    width: '90%',
-    justifyContent: 'space-between',
-    height: 40
-  },
-  glassPane: {
+  cardContainer: {
     flex: 1,
-    marginHorizontal: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(0,168,89,0.25)'
+    justifyContent: 'center',
+    paddingHorizontal: 20
   },
-  lobbyEntranceFrame: {
-    width: 110,
-    height: 48,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-    backgroundColor: '#0F172A',
+  heroCard: {
+    width: '100%',
+    height: height * 0.38,
+    borderRadius: 24,
     overflow: 'hidden',
     position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  slidingDoor: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 55,
-    backgroundColor: 'rgba(0,168,89,0.4)',
     borderWidth: 1,
-    borderColor: '#00A859',
-    zIndex: 2
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 18,
+    elevation: 8
   },
-  doorLeft: {
-    left: 0
-  },
-  doorRight: {
-    right: 0
-  },
-  lobbyInterior: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1
-  },
-  lobbyWelcome: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '700',
-    marginTop: 1
-  },
-  walkwayContainer: {
-    alignItems: 'center',
-    marginTop: 12
-  },
-  walkingCharacterWrap: {
-    alignItems: 'center',
-    zIndex: 3
-  },
-  charHead: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#F59E0B'
-  },
-  charTorso: {
-    width: 24,
-    height: 28,
-    backgroundColor: '#00A859',
-    borderRadius: 6,
-    marginTop: 2,
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  charArm: {
-    position: 'absolute',
-    width: 5,
-    height: 20,
-    backgroundColor: '#00A859',
-    borderRadius: 3,
-    top: 4
-  },
-  charBriefcase: {
-    width: 12,
-    height: 9,
-    borderRadius: 2,
-    backgroundColor: '#78350F',
-    position: 'absolute',
-    bottom: 2,
-    right: -6
-  },
-  charLegsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 2
-  },
-  charLeg: {
-    width: 5,
-    height: 22,
-    backgroundColor: '#1E293B',
-    borderRadius: 3
-  },
-  charShadow: {
-    width: 32,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(0,0,0,0.18)',
-    marginTop: 2
-  },
-  pathLinesWrap: {
-    flexDirection: 'row',
-    width: 80,
-    justifyContent: 'space-between',
-    marginTop: -8,
-    zIndex: 1
-  },
-  pathLine: {
-    width: 1,
-    height: 36,
-    borderStyle: 'dashed',
-    borderWidth: 1
-  },
-  liftHousing: {
-    width: width * 0.72,
-    height: 210,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    borderColor: '#00A859',
-    backgroundColor: 'rgba(0,168,89,0.04)',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12
-  },
-  liftHeaderDisplay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  heroImage: {
     width: '100%',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: '#0F172A'
+    height: '100%'
   },
-  liftFloorBadge: {
-    backgroundColor: '#00A859',
-    paddingHorizontal: 12,
-    paddingVertical: 2,
+  heroCardOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(7, 10, 18, 0.32)'
+  },
+  floatingLocationBadge: {
+    position: 'absolute',
+    top: 14,
+    left: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(7, 10, 18, 0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12
+  },
+  floatingLocationText: {
+    color: '#F8FAFC',
+    fontSize: 11,
+    fontWeight: '600'
+  },
+  featureChipsRow: {
+    position: 'absolute',
+    bottom: 14,
+    left: 14,
+    right: 14,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6
+  },
+  featureChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(7, 10, 18, 0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 168, 89, 0.35)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 8
   },
-  liftFloorText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.5
-  },
-  liftShaftFrame: {
-    width: 180,
-    height: 120,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#334155',
-    backgroundColor: '#0B1120',
-    overflow: 'hidden',
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  liftInteriorWorkspaceReveal: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1
-  },
-  revealDeskRow: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-    marginBottom: 6
-  },
-  revealDeckTitle: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800'
-  },
-  revealDeckSub: {
-    color: '#94A3B8',
+  featureChipText: {
+    color: '#E2E8F0',
     fontSize: 10,
-    marginTop: 2
+    fontWeight: '700'
   },
-  liftSlidingDoorLeft: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    width: 90,
-    backgroundColor: '#1E293B',
-    borderRightWidth: 1,
-    borderRightColor: '#475569',
-    zIndex: 2,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    paddingRight: 6
+  contentSection: {
+    marginTop: 22,
+    paddingHorizontal: 4
   },
-  liftSlidingDoorRight: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    right: 0,
-    width: 90,
-    backgroundColor: '#1E293B',
-    borderLeftWidth: 1,
-    borderLeftColor: '#475569',
-    zIndex: 2,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    paddingLeft: 6
-  },
-  liftDoorHandle: {
-    width: 3,
-    height: 24,
-    borderRadius: 1.5,
-    backgroundColor: '#00A859'
-  },
-  chimeRing: {
-    position: 'absolute',
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    borderWidth: 2,
-    borderColor: '#00A859',
-    zIndex: 3
-  },
-  liftCallPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  tagPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(0, 168, 89, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 168, 89, 0.4)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
-    backgroundColor: 'rgba(0,168,89,0.1)'
+    marginBottom: 10
   },
-  liftCallPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#00A859'
-  },
-  workstationArea: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 140,
-    width: '100%',
-    position: 'relative'
-  },
-  workstationLampCone: {
-    position: 'absolute',
-    top: -10,
-    width: 90,
-    height: 70,
-    backgroundColor: 'rgba(245,158,11,0.08)',
-    borderBottomLeftRadius: 45,
-    borderBottomRightRadius: 45
-  },
-  chairAndCharGroup: {
-    alignItems: 'center',
-    marginBottom: -16,
-    zIndex: 1
-  },
-  seatedWorkerHead: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#F59E0B'
-  },
-  seatedWorkerTorso: {
-    width: 26,
-    height: 26,
-    backgroundColor: '#00A859',
-    borderRadius: 6,
-    marginTop: 2,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  seatedWorkerArms: {
-    width: 32,
-    height: 5,
-    backgroundColor: '#00A859',
-    borderRadius: 2.5
-  },
-  ergonomicChairBack: {
-    position: 'absolute',
-    width: 36,
-    height: 38,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#475569',
-    top: 4,
-    zIndex: -1
-  },
-  modernDeskSurface: {
-    width: 200,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#92400E',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    zIndex: 2
-  },
-  deskLamp: {
-    marginTop: -16
-  },
-  laptopUnit: {
-    alignItems: 'center',
-    marginTop: -18
-  },
-  laptopDisplayScreen: {
-    width: 38,
-    height: 24,
-    borderRadius: 4,
-    backgroundColor: '#0F172A',
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  laptopKeyboardBase: {
-    width: 42,
-    height: 3,
-    backgroundColor: '#64748B',
-    borderRadius: 1.5
-  },
-  coffeeCupUnit: {
-    alignItems: 'center',
-    marginTop: -14
-  },
-  coffeeSteamWrap: {
-    marginBottom: -2
-  },
-  coffeeMugBody: {
-    width: 12,
-    height: 13,
-    backgroundColor: '#00A859',
-    borderRadius: 3,
-    position: 'relative'
-  },
-  coffeeMugHandle: {
-    position: 'absolute',
-    right: -4,
-    top: 2,
-    width: 4,
-    height: 7,
-    borderWidth: 1,
-    borderColor: '#00A859',
-    borderTopRightRadius: 3,
-    borderBottomRightRadius: 3
-  },
-  deskLegsRow: {
-    flexDirection: 'row',
-    width: 170,
-    justifyContent: 'space-between',
-    zIndex: 1
-  },
-  deskLeg: {
-    width: 4,
-    height: 28,
-    backgroundColor: '#1E293B',
-    borderRadius: 2
-  },
-  confirmedPassBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: width * 0.84,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    marginTop: 16
-  },
-  passIconCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#00A859',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  passDeskName: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#00A859'
-  },
-  passDeskAmenities: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 2
-  },
-  narrativeBox: {
-    alignItems: 'center',
-    paddingHorizontal: 24
-  },
-  stepPill: {
-    backgroundColor: 'rgba(0,168,89,0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginBottom: 8
-  },
-  stepPillText: {
+  tagPillText: {
     color: '#00A859',
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1
   },
-  sceneTitle: {
-    fontSize: 22,
+  headline: {
+    color: '#FFFFFF',
+    fontSize: 24,
     fontWeight: '800',
     letterSpacing: -0.4,
-    textAlign: 'center',
-    marginBottom: 6
+    lineHeight: 31,
+    marginBottom: 8
   },
-  sceneSubtitle: {
+  headlineHighlight: {
+    color: '#00A859'
+  },
+  bodyDescription: {
+    color: '#94A3B8',
     fontSize: 13,
-    lineHeight: 19,
-    textAlign: 'center',
-    maxWidth: 320
+    lineHeight: 20
   },
-  bottomControlsBar: {
+  bottomBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    marginTop: 8
+    paddingHorizontal: 20,
+    paddingTop: 12
   },
   dotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6
   },
-  dotIndicator: {
+  dot: {
     height: 6,
     borderRadius: 3
   },
   dotActive: {
-    width: 22
+    width: 24,
+    backgroundColor: '#00A859'
   },
   dotInactive: {
-    width: 6
+    width: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)'
   },
-  primaryActionButton: {
+  primaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#00A859',
@@ -1336,11 +555,11 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     shadowColor: '#00A859',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 3
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 4
   },
-  primaryActionButtonText: {
+  primaryBtnText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700'
