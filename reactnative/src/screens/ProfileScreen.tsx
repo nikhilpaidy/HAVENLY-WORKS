@@ -95,7 +95,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   };
 
   const getRoleDisplayName = () => {
-    if (!user) return 'Guest Explorer';
+    if (!user) return 'Guest Account';
     switch (user.role) {
       case 'SUPER_ADMIN':
         return 'Platform Super Admin';
@@ -166,20 +166,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         showsVerticalScrollIndicator={false}
       >
         {isGuest && (
-          <View style={[styles.guestCard, { backgroundColor: isDark ? 'rgba(0, 168, 89, 0.12)' : '#DCFCE7', borderColor: '#00A859' }]}>
-            <View style={styles.guestHeader}>
-              <Ionicons name="sparkles" size={18} color="#00A859" style={{ marginRight: 6 }} />
-              <Text style={[styles.guestTitle, { color: theme.textPrimary }]}>Guest Explorer</Text>
-            </View>
+          <View style={[styles.guestCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <Text style={[styles.guestTitle, { color: theme.textPrimary }]}>Guest Session</Text>
             <Text style={[styles.guestSubtitle, { color: theme.textSecondary }]}>
-              Sign in with your enterprise account to unlock meeting room bookings, complimentary allowance tracking, and statements.
+              Sign in with your enterprise account to unlock meeting room bookings, track allowances, and download invoices.
             </Text>
             <TouchableOpacity
               style={[styles.signInBtn, { backgroundColor: '#00A859' }]}
               onPress={onSignInRequest}
               activeOpacity={0.85}
             >
-              <Text style={styles.signInBtnText}>Sign In to HavenlyWork</Text>
+              <Text style={styles.signInBtnText}>Sign In</Text>
             </TouchableOpacity>
           </View>
         )}

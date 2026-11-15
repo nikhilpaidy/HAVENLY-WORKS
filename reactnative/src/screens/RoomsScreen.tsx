@@ -18,6 +18,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeImage } from '../components/SafeImage';
 import { WorkspaceCardSkeleton } from '../components/SkeletonLoader';
 import { WorkspaceDetailModal } from './WorkspaceDetailModal';
+import { RadiusSearchModal } from './RadiusSearchModal';
+import { BookModal } from './BookModal';
 import { Header } from '../components/Header';
 import { useAuth } from '../context/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
@@ -90,6 +92,11 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [savedRoomIds, setSavedRoomIds] = useState<string[]>(user?.favoriteRoomIds || []);
+
+  const [selectedRadiusKm, setSelectedRadiusKm] = useState<number | 'ALL'>('ALL');
+  const [showRadiusModal, setShowRadiusModal] = useState(false);
+  const [quickBookRoom, setQuickBookRoom] = useState<any | null>(null);
+  const [showQuickBookModal, setShowQuickBookModal] = useState(false);
 
   useEffect(() => {
     if (user?.favoriteRoomIds) {
@@ -340,11 +347,24 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
       ];
 
   const filtered = rooms.filter((r) => {
-    if (!searchQuery.trim()) return true;
-    const nameMatch = r.name?.toLowerCase().includes(searchQuery.toLowerCase());
-    const locMatch = (r.locationId?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
-    return nameMatch || locMatch;
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch = !q ||
+      (r.name && r.name.toLowerCase().includes(q)) ||
+      (r.locationId?.name && r.locationId.name.toLowerCase().includes(q)) ||
+      (r.locationId?.city && r.locationId.city.toLowerCase().includes(q));
+
+    let matchesRadius = true;
+    if (selectedRadiusKm !== 'ALL') {
+      const distanceNum = parseFloat(r.locationId?.distanceLabel || '2.0');
+      matchesRadius = isNaN(distanceNum) || distanceNum <= selectedRadiusKm;
+    }
+
+    return matchesSearch && matchesRadius;
   });
+
+  const dayPassRoom = rooms.find(
+    (r) => r.workspaceType === 'DAY_PASS' || r.workspaceType === 'HOT_DESK' || r.workspaceType === 'FLEX_DESK'
+  ) || rooms[0];
 
   const renderCard = ({ item }: { item: any }) => {
     const loc = item.locationId || {};
@@ -528,6 +548,82 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
         />
       </View>
 
+      {dayPassRoom && (
+        <View style={[styles.quickPassCard, { backgroundColor: isDark ? '#0D1829' : '#F0FDF4', borderColor: isDark ? '#1E293B' : '#BBF7D0' }]}>
+          <View style={styles.quickPassLeft}>
+            <View style={styles.quickPassBadge}>
+              <Ionicons name="flash" size={12} color="#00A859" style={{ marginRight: 4 }} />
+              <Text style={styles.quickPassBadgeText}>INSTANT DAY PASS</Text>
+            </View>
+            <Text style={[styles.quickPassTitle, { color: theme.textPrimary }]} numberOfLines={1}>
+              {dayPassRoom.name || 'Drop-In Flex Desk'}
+            </Text>
+            <Text style={[styles.quickPassMeta, { color: theme.textSecondary }]} numberOfLines={1}>
+              Includes 500 Mbps WiFi, Power & Unlimited Coffee
+            </Text>
+          </View>
+          <View style={styles.quickPassRight}>
+            <Text style={styles.quickPassPrice}>
+              ₹{dayPassRoom.dailyRate || dayPassRoom.hourlyRate || 150}
+              <Text style={{ fontSize: 11, fontWeight: '500', color: theme.textMuted }}>/day</Text>
+            </Text>
+            <TouchableOpacity
+              style={styles.quickBookBtn}
+              onPress={() => {
+                setQuickBookRoom(dayPassRoom);
+                setShowQuickBookModal(true);
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.quickBookBtnText}>Book Now</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      <View style={styles.radiusBar}>
+        <View style={styles.radiusHeader}>
+          <Ionicons name="location" size={13} color="#00A859" style={{ marginRight: 4 }} />
+          <Text style={[styles.radiusLabel, { color: theme.textPrimary }]}>
+            Radius: {selectedRadiusKm === 'ALL' ? 'All Locations' : `${selectedRadiusKm} km`}
+          </Text>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.radiusPillsRow}>
+          {(['ALL', 1, 2, 5, 10] as const).map((km) => {
+            const isActive = selectedRadiusKm === km;
+            return (
+              <TouchableOpacity
+                key={String(km)}
+                style={[
+                  styles.radiusPill,
+                  isActive && styles.radiusPillActive,
+                  { borderColor: theme.cardBorder }
+                ]}
+                onPress={() => setSelectedRadiusKm(km)}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.radiusPillText,
+                    { color: isActive ? '#FFFFFF' : theme.textSecondary },
+                    isActive && { fontWeight: '700' }
+                  ]}
+                >
+                  {km === 'ALL' ? 'All' : `${km} km`}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+          <TouchableOpacity
+            style={[styles.filterIconBtn, { borderColor: theme.cardBorder }]}
+            onPress={() => setShowRadiusModal(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="options-outline" size={14} color="#00A859" />
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+
       {loading ? (
         <View style={{ paddingHorizontal: 20 }}>
           <WorkspaceCardSkeleton />
@@ -561,6 +657,37 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
         currentUser={user}
         onBookSuccess={fetchRooms}
       />
+
+      <RadiusSearchModal
+        visible={showRadiusModal}
+        currentRadius={typeof selectedRadiusKm === 'number' ? selectedRadiusKm : 2}
+        onClose={() => setShowRadiusModal(false)}
+        onApply={(filters) => {
+          if (filters.workspaceType && filters.workspaceType !== 'ALL') {
+            setSelectedCategory(filters.workspaceType);
+          }
+          if (filters.radiusKm) {
+            setSelectedRadiusKm(filters.radiusKm);
+          }
+        }}
+      />
+
+      {quickBookRoom && (
+        <BookModal
+          visible={showQuickBookModal}
+          room={quickBookRoom}
+          onClose={() => {
+            setShowQuickBookModal(false);
+            setQuickBookRoom(null);
+          }}
+          onSuccess={() => {
+            setShowQuickBookModal(false);
+            setQuickBookRoom(null);
+            fetchRooms(1, false);
+            Alert.alert('Booking Confirmed', 'Your workspace pass has been reserved successfully.');
+          }}
+        />
+      )}
 
       <Modal
         visible={showAddRoomModal}
@@ -1149,6 +1276,103 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 13,
     fontWeight: '500'
+  },
+  quickPassCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 10,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1
+  },
+  quickPassLeft: {
+    flex: 1,
+    paddingRight: 10
+  },
+  quickPassBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4
+  },
+  quickPassBadgeText: {
+    color: '#00A859',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8
+  },
+  quickPassTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 2
+  },
+  quickPassMeta: {
+    fontSize: 11,
+    lineHeight: 15
+  },
+  quickPassRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'center'
+  },
+  quickPassPrice: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#00A859',
+    marginBottom: 6
+  },
+  quickBookBtn: {
+    backgroundColor: '#00A859',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10
+  },
+  quickBookBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  radiusBar: {
+    paddingHorizontal: 20,
+    marginBottom: 12
+  },
+  radiusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6
+  },
+  radiusLabel: {
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  radiusPillsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  radiusPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1
+  },
+  radiusPillActive: {
+    backgroundColor: '#00A859',
+    borderColor: '#00A859'
+  },
+  radiusPillText: {
+    fontSize: 11,
+    fontWeight: '600'
+  },
+  filterIconBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4
   },
   listContent: {
     paddingHorizontal: 20,
