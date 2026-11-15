@@ -10,7 +10,8 @@ import {
   Modal,
   ScrollView,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Dimensions
 } from 'react-native';
 import { mobileApi } from '../services/api';
 import { useTheme } from '../theme/ThemeContext';
@@ -22,6 +23,7 @@ import { RadiusSearchModal } from './RadiusSearchModal';
 import { BookModal } from './BookModal';
 import { Header } from '../components/Header';
 import { useAuth } from '../context/AuthContext';
+import { LocationPickerModal, HYDERABAD_AREAS, LocationArea, USER_DEFAULT_LOCATION } from '../components/LocationPickerModal';
 import * as ImagePicker from 'expo-image-picker';
 
 interface RoomsScreenProps {
@@ -29,6 +31,8 @@ interface RoomsScreenProps {
   unreadNotifsCount: number;
   onOpenDrawer?: () => void;
 }
+
+const { width } = Dimensions.get('window');
 
 export const RoomsScreen: React.FC<RoomsScreenProps> = ({
   onOpenNotifications,
@@ -48,6 +52,17 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const [selectedLocation, setSelectedLocation] = useState<LocationArea>(USER_DEFAULT_LOCATION);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [passType, setPassType] = useState<string>('Day Pass');
+  const [showPassPicker, setShowPassPicker] = useState(false);
+  const [personCount, setPersonCount] = useState<number | string>(1);
+  const [showPersonPicker, setShowPersonPicker] = useState(false);
+  const [customPersonInput, setCustomPersonInput] = useState('');
+  const [deskType, setDeskType] = useState<string>('Desk');
+  const [showDeskPicker, setShowDeskPicker] = useState(false);
+  const [nearbyLocations, setNearbyLocations] = useState<any[]>([]);
 
   const [selectedSpace, setSelectedSpace] = useState<any | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -128,14 +143,16 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
       } else {
         setLoading(true);
       }
-      const [data, typesData, locsData] = await Promise.all([
+      const radiusKm = typeof selectedRadiusKm === 'number' ? selectedRadiusKm : 2;
+      const [data, typesData, locsData, nearbyData] = await Promise.all([
         mobileApi.getPublicRooms({
           workspaceType: selectedCategory !== 'ALL' ? selectedCategory : undefined,
           page: pageToFetch,
           limit: 12
         }),
         pageToFetch === 1 ? mobileApi.getWorkspaceTypes() : Promise.resolve(null),
-        pageToFetch === 1 ? mobileApi.getPublicLocations() : Promise.resolve(null)
+        pageToFetch === 1 ? mobileApi.getPublicLocations() : Promise.resolve(null),
+        pageToFetch === 1 ? mobileApi.getNearbyLocations(selectedLocation.lat, selectedLocation.lng, radiusKm) : Promise.resolve(null)
       ]);
       const items = Array.isArray(data) ? data : [];
       if (append) {
@@ -151,6 +168,9 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
         if (!selectedHubId) {
           setSelectedHubId(locsData[0]._id);
         }
+      }
+      if (nearbyData?.locations && Array.isArray(nearbyData.locations)) {
+        setNearbyLocations(nearbyData.locations);
       }
       if (typesData && Array.isArray(typesData) && typesData.length > 0) {
         setWorkspaceTypes(typesData);
@@ -178,6 +198,15 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
     setHasMore(true);
     fetchRooms(1, false);
   }, [selectedCategory]);
+
+  useEffect(() => {
+    const radiusKm = typeof selectedRadiusKm === 'number' ? selectedRadiusKm : 2;
+    mobileApi.getNearbyLocations(selectedLocation.lat, selectedLocation.lng, radiusKm).then((res) => {
+      if (res?.locations) {
+        setNearbyLocations(res.locations);
+      }
+    }).catch(() => {});
+  }, [selectedLocation, selectedRadiusKm]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -472,183 +501,329 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
     );
   };
 
+  const popularWorkspaces = rooms.filter((r) => (r.rating || 0) >= 4.5).length > 0
+    ? rooms.filter((r) => (r.rating || 0) >= 4.5).slice(0, 8)
+    : rooms.slice(0, 6);
+
+  const renderListHeader = () => {
+    return (
+      <View>
+        {isAdminRole && (
+          <View style={styles.adminActionRow}>
+            <TouchableOpacity
+              style={styles.adminCreateBtn}
+              onPress={() => setShowAddRoomModal(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="add-circle" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.adminCreateText}>Add Workspace</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.adminCreateBtn, { backgroundColor: '#0284C7' }]}
+              onPress={() => setShowAddTypeModal(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="pricetag" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.adminCreateText}>Add Type</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <View style={styles.searchSectionCurved}>
+          <View style={[styles.searchCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <Text style={[styles.searchCardTitle, { color: theme.textPrimary }]}>
+              Where do you <Text style={{ color: '#00A859' }}>want to work?</Text>
+            </Text>
+
+            <View style={[styles.searchInputWrapper, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+              <Ionicons name="search-outline" size={18} color={theme.textMuted} style={{ marginRight: 8 }} />
+              <TextInput
+                style={[styles.searchInput, { color: theme.textPrimary }]}
+                placeholder="Search Workspace by name or area.."
+                placeholderTextColor={theme.textMuted}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.fullWidthOptionPill, { borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}
+              onPress={() => setShowPassPicker(true)}
+              activeOpacity={0.8}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="calendar-outline" size={15} color="#00A859" style={{ marginRight: 8 }} />
+                <Text style={[styles.optionPillText, { color: theme.textPrimary, fontSize: 13 }]}>
+                  {passType}
+                </Text>
+              </View>
+              <Ionicons name="chevron-down" size={14} color={theme.textMuted} />
+            </TouchableOpacity>
+
+            <View style={styles.searchOptionRow}>
+              <TouchableOpacity
+                style={[styles.optionPill, { borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}
+                onPress={() => setShowPersonPicker(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="person-outline" size={15} color="#00A859" style={{ marginRight: 6 }} />
+                <Text style={[styles.optionPillText, { color: theme.textPrimary }]}>
+                  {personCount} {typeof personCount === 'number' && personCount === 1 ? 'Person' : 'People'}
+                </Text>
+                <Ionicons name="chevron-down" size={12} color={theme.textMuted} style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.optionPill, { borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}
+                onPress={() => setShowDeskPicker(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="briefcase-outline" size={15} color="#00A859" style={{ marginRight: 6 }} />
+                <Text style={[styles.optionPillText, { color: theme.textPrimary }]} numberOfLines={1}>
+                  {deskType}
+                </Text>
+                <Ionicons name="chevron-down" size={12} color={theme.textMuted} style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.findWorkspaceBtn}
+              onPress={() => {
+                if (deskType !== 'Desk') {
+                  const match = workspaceTypes.find((t) => t.name.toLowerCase().includes(deskType.toLowerCase()));
+                  if (match) {
+                    setSelectedCategory(match.code);
+                  }
+                }
+              }}
+              activeOpacity={0.88}
+            >
+              <Text style={styles.findWorkspaceText}>Find Workspace</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
+          {categories.map((c) => (
+            <TouchableOpacity
+              key={c.value}
+              style={[
+                styles.categoryChip,
+                selectedCategory === c.value && styles.categoryChipActive,
+                { borderColor: theme.cardBorder }
+              ]}
+              onPress={() => setSelectedCategory(c.value)}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.categoryChipText,
+                  { color: selectedCategory === c.value ? '#FFFFFF' : theme.textSecondary }
+                ]}
+              >
+                {c.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Popular Workspaces</Text>
+          <TouchableOpacity onPress={() => setSelectedCategory('ALL')}>
+            <Text style={styles.seeAllLink}>View All</Text>
+          </TouchableOpacity>
+        </View>
+
+        {popularWorkspaces.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.popularCarousel}
+            snapToInterval={width * 0.76 + 16}
+            decelerationRate="fast"
+          >
+            {popularWorkspaces.map((item) => {
+              const loc = item.locationId || {};
+              const photo = (item.photos && item.photos[0]) || loc.images?.[0] || 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=80';
+              const isSaved = savedRoomIds.includes(item._id);
+              return (
+                <TouchableOpacity
+                  key={item._id}
+                  style={[styles.popularCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
+                  onPress={() => {
+                    setSelectedSpace(item);
+                    setShowDetailModal(true);
+                  }}
+                  activeOpacity={0.88}
+                >
+                  <View style={styles.popularImageWrapper}>
+                    <SafeImage uri={photo} style={styles.popularImage} borderRadius={18} />
+                    <TouchableOpacity
+                      style={styles.cardHeartBtn}
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        handleToggleBookmark(item._id);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name={isSaved ? 'bookmark' : 'bookmark-outline'}
+                        size={17}
+                        color={isSaved ? '#00A859' : '#FFFFFF'}
+                      />
+                    </TouchableOpacity>
+                    <View style={styles.ratingBadgePill}>
+                      <Ionicons name="star" size={12} color="#F59E0B" />
+                      <Text style={styles.ratingBadgeText}>{item.rating || 4.9}</Text>
+                    </View>
+                    <View style={styles.typeBadgePill}>
+                      <Text style={styles.typeBadgeText}>{item.workspaceType?.replace('_', ' ') || 'DESK'}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.popularCardBody}>
+                    <Text style={[styles.cardTitle, { color: theme.textPrimary }]} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <View style={styles.cardLocationRow}>
+                      <Ionicons name="location-outline" size={14} color="#00A859" style={{ marginRight: 4 }} />
+                      <Text style={[styles.cardAddress, { color: theme.textSecondary }]} numberOfLines={1}>
+                        {loc.address?.street || 'Madhapur Main Rd'}, {loc.city || 'Hyderabad'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.cardFooter}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons name="time-outline" size={13} color={theme.textMuted} style={{ marginRight: 4 }} />
+                        <Text style={[styles.cardTime, { color: theme.textMuted }]}>
+                          {loc.distanceLabel || '15 Min • 3.0 km'}
+                        </Text>
+                      </View>
+                      <Text style={styles.cardPrice}>
+                        ₹{item.hourlyRate || 350}
+                        <Text style={{ fontSize: 11, fontWeight: '500', color: theme.textMuted }}>/hr</Text>
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        <View style={[styles.sectionHeader, { marginTop: 22 }]}>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
+            Nearby Spaces ({selectedRadiusKm === 'ALL' ? '2' : selectedRadiusKm}km Radius)
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {[1, 2, 5].map((km) => {
+              const isActive = selectedRadiusKm === km || (selectedRadiusKm === 'ALL' && km === 2);
+              return (
+                <TouchableOpacity
+                  key={km}
+                  style={[
+                    styles.radiusPill,
+                    isActive && styles.radiusPillActive,
+                    { borderColor: theme.cardBorder }
+                  ]}
+                  onPress={() => setSelectedRadiusKm(km)}
+                >
+                  <Text style={[styles.radiusPillText, isActive && { color: '#FFFFFF' }]}>
+                    {km}km
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={{ paddingHorizontal: 20 }}>
+          {nearbyLocations.length === 0 ? (
+            <Text style={{ color: theme.textMuted, fontSize: 13, marginVertical: 6 }}>
+              No nearby hubs within {selectedRadiusKm === 'ALL' ? 2 : selectedRadiusKm}km. Tap 5km to expand radius.
+            </Text>
+          ) : (
+            nearbyLocations.map((loc) => (
+              <TouchableOpacity
+                key={loc._id}
+                style={[styles.nearbyCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
+                onPress={() => {
+                  setSelectedCategory('ALL');
+                  setSearchQuery(loc.name || '');
+                }}
+                activeOpacity={0.88}
+              >
+                <SafeImage
+                  uri={loc.images?.[0] || 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=300&q=80'}
+                  style={styles.nearbyThumb}
+                  borderRadius={14}
+                />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.nearbyTitle, { color: theme.textPrimary }]} numberOfLines={1}>
+                    {loc.name}
+                  </Text>
+                  <Text style={[styles.nearbyAddress, { color: theme.textSecondary }]} numberOfLines={1}>
+                    {loc.address?.street}, {loc.address?.city}
+                  </Text>
+                  <View style={styles.nearbyMetaRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="navigate-outline" size={13} color="#00A859" style={{ marginRight: 4 }} />
+                      <Text style={{ fontSize: 12, color: theme.textMuted }}>{loc.distanceLabel}</Text>
+                    </View>
+                    <Text style={styles.nearbyPrice}>From ₹{loc.minHourlyRate || 250}/hr</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+
+        <View style={[styles.sectionHeader, { marginTop: 22, marginBottom: 8 }]}>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>All Available Workspaces</Text>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header
         title="Workspaces"
-        subtitle="Reserve Dedicated Desks & Meeting Rooms"
+        locationName={`${selectedLocation.name === 'Current Location' ? 'Madhapur' : selectedLocation.name}, Hyderabad`}
+        onPressLocation={() => setShowLocationPicker(true)}
         onOpenDrawer={onOpenDrawer}
         unreadNotifsCount={unreadNotifsCount}
         onOpenNotifications={onOpenNotifications}
       />
 
-      {isAdminRole && (
-        <View style={styles.adminActionRow}>
-          <TouchableOpacity
-            style={styles.adminCreateBtn}
-            onPress={() => setShowAddRoomModal(true)}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="add-circle" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-            <Text style={styles.adminCreateText}>Add Workspace</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.adminCreateBtn, { backgroundColor: '#0284C7' }]}
-            onPress={() => setShowAddTypeModal(true)}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="pricetag" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-            <Text style={styles.adminCreateText}>Add Type</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      <View style={styles.searchRow}>
-        <View style={[styles.searchBox, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
-          <Ionicons name="search-outline" size={18} color={theme.textMuted} style={{ marginRight: 8 }} />
-          <TextInput
-            style={[styles.searchInput, { color: theme.textPrimary }]}
-            placeholder="Search workspaces by name or area..."
-            placeholderTextColor={theme.textMuted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-      </View>
-
-      <View style={styles.categoryContainer}>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={categories}
-          keyExtractor={(item) => item.value}
-          contentContainerStyle={styles.categoryList}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[
-                styles.categoryChip,
-                selectedCategory === item.value && styles.categoryChipActive,
-                { borderColor: theme.cardBorder }
-              ]}
-              onPress={() => setSelectedCategory(item.value)}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  styles.categoryText,
-                  { color: selectedCategory === item.value ? '#FFFFFF' : theme.textSecondary },
-                  selectedCategory === item.value && { fontWeight: '700' }
-                ]}
-              >
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          )}
-        />
-      </View>
-
-      {dayPassRoom && (
-        <View style={[styles.quickPassCard, { backgroundColor: isDark ? '#0D1829' : '#F0FDF4', borderColor: isDark ? '#1E293B' : '#BBF7D0' }]}>
-          <View style={styles.quickPassLeft}>
-            <View style={styles.quickPassBadge}>
-              <Ionicons name="flash" size={12} color="#00A859" style={{ marginRight: 4 }} />
-              <Text style={styles.quickPassBadgeText}>INSTANT DAY PASS</Text>
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => item._id}
+        renderItem={renderCard}
+        ListHeaderComponent={renderListHeader}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#00A859" style={{ marginVertical: 16 }} /> : undefined}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
+        ListEmptyComponent={
+          loading ? (
+            <View style={{ paddingHorizontal: 20 }}>
+              <WorkspaceCardSkeleton />
+              <WorkspaceCardSkeleton />
             </View>
-            <Text style={[styles.quickPassTitle, { color: theme.textPrimary }]} numberOfLines={1}>
-              {dayPassRoom.name || 'Drop-In Flex Desk'}
-            </Text>
-            <Text style={[styles.quickPassMeta, { color: theme.textSecondary }]} numberOfLines={1}>
-              Includes 500 Mbps WiFi, Power & Unlimited Coffee
-            </Text>
-          </View>
-          <View style={styles.quickPassRight}>
-            <Text style={styles.quickPassPrice}>
-              ₹{dayPassRoom.dailyRate || dayPassRoom.hourlyRate || 150}
-              <Text style={{ fontSize: 11, fontWeight: '500', color: theme.textMuted }}>/day</Text>
-            </Text>
-            <TouchableOpacity
-              style={styles.quickBookBtn}
-              onPress={() => {
-                setQuickBookRoom(dayPassRoom);
-                setShowQuickBookModal(true);
-              }}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.quickBookBtnText}>Book Now</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      <View style={styles.radiusBar}>
-        <View style={styles.radiusHeader}>
-          <Ionicons name="location" size={13} color="#00A859" style={{ marginRight: 4 }} />
-          <Text style={[styles.radiusLabel, { color: theme.textPrimary }]}>
-            Radius: {selectedRadiusKm === 'ALL' ? 'All Locations' : `${selectedRadiusKm} km`}
-          </Text>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.radiusPillsRow}>
-          {(['ALL', 1, 2, 5, 10] as const).map((km) => {
-            const isActive = selectedRadiusKm === km;
-            return (
-              <TouchableOpacity
-                key={String(km)}
-                style={[
-                  styles.radiusPill,
-                  isActive && styles.radiusPillActive,
-                  { borderColor: theme.cardBorder }
-                ]}
-                onPress={() => setSelectedRadiusKm(km)}
-                activeOpacity={0.8}
-              >
-                <Text
-                  style={[
-                    styles.radiusPillText,
-                    { color: isActive ? '#FFFFFF' : theme.textSecondary },
-                    isActive && { fontWeight: '700' }
-                  ]}
-                >
-                  {km === 'ALL' ? 'All' : `${km} km`}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-          <TouchableOpacity
-            style={[styles.filterIconBtn, { borderColor: theme.cardBorder }]}
-            onPress={() => setShowRadiusModal(true)}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="options-outline" size={14} color="#00A859" />
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-
-      {loading ? (
-        <View style={{ paddingHorizontal: 20 }}>
-          <WorkspaceCardSkeleton />
-          <WorkspaceCardSkeleton />
-        </View>
-      ) : filtered.length === 0 ? (
-        <View style={styles.emptyView}>
-          <Ionicons name="search-outline" size={48} color={theme.textMuted} />
-          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-            No workspaces found matching "{searchQuery}".
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item._id}
-          renderItem={renderCard}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.4}
-          ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#00A859" style={{ marginVertical: 16 }} /> : undefined}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00A859" />}
-        />
-      )}
+          ) : (
+            <View style={styles.emptyView}>
+              <Ionicons name="search-outline" size={48} color={theme.textMuted} />
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                No workspaces found matching "{searchQuery}".
+              </Text>
+            </View>
+          )
+        }
+      />
 
       <WorkspaceDetailModal
         visible={showDetailModal}
@@ -688,6 +863,134 @@ export const RoomsScreen: React.FC<RoomsScreenProps> = ({
           }}
         />
       )}
+
+      <LocationPickerModal
+        visible={showLocationPicker}
+        selectedLocation={selectedLocation}
+        onClose={() => setShowLocationPicker(false)}
+        onSelectLocation={(area) => {
+          setSelectedLocation(area);
+          setShowLocationPicker(false);
+          const radiusKm = typeof selectedRadiusKm === 'number' ? selectedRadiusKm : 2;
+          mobileApi.getNearbyLocations(area.lat, area.lng, radiusKm).then((res) => {
+            if (res?.locations) setNearbyLocations(res.locations);
+          }).catch(() => {});
+        }}
+      />
+
+      <Modal visible={showPassPicker} transparent animationType="fade" onRequestClose={() => setShowPassPicker(false)}>
+        <TouchableOpacity
+          style={styles.pickerBackdrop}
+          activeOpacity={1}
+          onPress={() => setShowPassPicker(false)}
+        >
+          <View style={[styles.pickerSheet, { backgroundColor: theme.card }]}>
+            <Text style={[styles.pickerTitle, { color: theme.textPrimary }]}>Select Pass Type</Text>
+            {['Hourly', 'Day Pass', 'Week Pass', 'Monthly Pass'].map((opt) => (
+              <TouchableOpacity
+                key={opt}
+                style={styles.pickerOptionRow}
+                onPress={() => {
+                  setPassType(opt);
+                  setShowPassPicker(false);
+                }}
+              >
+                <Text style={[styles.pickerOptionText, { color: passType === opt ? '#00A859' : theme.textPrimary }]}>
+                  {opt}
+                </Text>
+                {passType === opt && <Ionicons name="checkmark-circle" size={18} color="#00A859" />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={showPersonPicker} transparent animationType="fade" onRequestClose={() => setShowPersonPicker(false)}>
+        <TouchableOpacity
+          style={styles.pickerBackdrop}
+          activeOpacity={1}
+          onPress={() => setShowPersonPicker(false)}
+        >
+          <View style={[styles.pickerSheet, { backgroundColor: theme.card }]}>
+            <Text style={[styles.pickerTitle, { color: theme.textPrimary }]}>Select Number of People</Text>
+            {[1, 2, 4, 6, 8, 12, 16].map((num) => (
+              <TouchableOpacity
+                key={num}
+                style={styles.pickerOptionRow}
+                onPress={() => {
+                  setPersonCount(num);
+                  setShowPersonPicker(false);
+                }}
+              >
+                <Text style={[styles.pickerOptionText, { color: personCount === num ? '#00A859' : theme.textPrimary }]}>
+                  {num} {num === 1 ? 'Person' : 'People'}
+                </Text>
+                {personCount === num && <Ionicons name="checkmark-circle" size={18} color="#00A859" />}
+              </TouchableOpacity>
+            ))}
+
+            <View style={styles.customInputRow}>
+              <TextInput
+                style={[styles.customInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.textPrimary }]}
+                placeholder="Or custom count (e.g. 25)"
+                placeholderTextColor={theme.textMuted}
+                keyboardType="number-pad"
+                value={customPersonInput}
+                onChangeText={setCustomPersonInput}
+              />
+              <TouchableOpacity
+                style={styles.customInputBtn}
+                onPress={() => {
+                  const val = parseInt(customPersonInput, 10);
+                  if (val && val > 0) {
+                    setPersonCount(val);
+                    setCustomPersonInput('');
+                    setShowPersonPicker(false);
+                  }
+                }}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Set</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={showDeskPicker} transparent animationType="fade" onRequestClose={() => setShowDeskPicker(false)}>
+        <TouchableOpacity
+          style={styles.pickerBackdrop}
+          activeOpacity={1}
+          onPress={() => setShowDeskPicker(false)}
+        >
+          <View style={[styles.pickerSheet, { backgroundColor: theme.card }]}>
+            <Text style={[styles.pickerTitle, { color: theme.textPrimary }]}>Select Workspace Type</Text>
+            {[
+              'Desk',
+              'Flex Desk',
+              'Fixed Desk',
+              'Meeting Room',
+              'Boardroom',
+              'Private Office',
+              'Day Pass',
+              'Podcast Studio'
+            ].map((d) => (
+              <TouchableOpacity
+                key={d}
+                style={styles.pickerOptionRow}
+                onPress={() => {
+                  setDeskType(d);
+                  setShowDeskPicker(false);
+                }}
+              >
+                <Text style={[styles.pickerOptionText, { color: deskType === d ? '#00A859' : theme.textPrimary }]}>
+                  {d}
+                </Text>
+                {deskType === d && <Ionicons name="checkmark-circle" size={18} color="#00A859" />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       <Modal
         visible={showAddRoomModal}
@@ -1613,5 +1916,276 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     marginTop: 2
+  },
+  searchSectionCurved: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4
+  },
+  searchCard: {
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3
+  },
+  searchCardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 12
+  },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    height: 46,
+    paddingHorizontal: 12,
+    marginBottom: 10
+  },
+
+  fullWidthOptionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    marginBottom: 10
+  },
+  searchOptionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12
+  },
+  optionPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 10
+  },
+  optionPillText: {
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  findWorkspaceBtn: {
+    backgroundColor: '#00A859',
+    height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  findWorkspaceText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700'
+  },
+  categoryScroll: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8
+  },
+  categoryChipText: {
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 12
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800'
+  },
+  seeAllLink: {
+    color: '#00A859',
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  popularCarousel: {
+    paddingHorizontal: 16,
+    gap: 14
+  },
+  popularCard: {
+    width: width * 0.76,
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden'
+  },
+  popularImageWrapper: {
+    height: 150,
+    position: 'relative'
+  },
+  popularImage: {
+    width: '100%',
+    height: '100%'
+  },
+  cardHeartBtn: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10
+  },
+  ratingBadgePill: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10
+  },
+  ratingBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+    marginLeft: 3
+  },
+  typeBadgePill: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    backgroundColor: '#00A859',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8
+  },
+  typeBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase'
+  },
+  popularCardBody: {
+    padding: 12
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 4
+  },
+  cardLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8
+  },
+  cardAddress: {
+    fontSize: 12,
+    flex: 1
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  cardTime: {
+    fontSize: 11
+  },
+  cardPrice: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#00A859'
+  },
+
+  nearbyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 10,
+    marginBottom: 10
+  },
+  nearbyThumb: {
+    width: 70,
+    height: 70
+  },
+  nearbyTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 3
+  },
+  nearbyAddress: {
+    fontSize: 12,
+    marginBottom: 4
+  },
+  nearbyMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  nearbyPrice: {
+    color: '#00A859',
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  pickerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end'
+  },
+  pickerSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: 460
+  },
+  pickerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 16,
+    textAlign: 'center'
+  },
+  pickerOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.08)'
+  },
+  pickerOptionText: {
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  customInputRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+    alignItems: 'center'
+  },
+  customInput: {
+    flex: 1,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    fontSize: 14
+  },
+  customInputBtn: {
+    backgroundColor: '#00A859',
+    height: 42,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center'
   }
 });

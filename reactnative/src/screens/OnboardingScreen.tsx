@@ -15,15 +15,13 @@ import { HavenlyLogo } from '../components/HavenlyLogo';
 interface OnboardingScreenProps {
   onGetStarted: () => void;
   onSignIn: () => void;
-  onExploreNearby: () => void;
 }
 
 const { width, height } = Dimensions.get('window');
 
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
   onGetStarted,
-  onSignIn,
-  onExploreNearby
+  onSignIn
 }) => {
   const { theme, isDark } = useTheme();
 
@@ -84,22 +82,11 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
           <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.secondaryButton, { borderColor: isDark ? '#1E293B' : '#E2E8F0' }]}
-          onPress={onExploreNearby}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="navigate-outline" size={16} color="#00A859" style={{ marginRight: 6 }} />
-          <Text style={[styles.secondaryButtonText, { color: theme.textPrimary }]}>
-            Explore Nearby Spaces (1km - 5km)
-          </Text>
-        </TouchableOpacity>
-
         <View style={styles.footerRow}>
           <Text style={[styles.footerText, { color: theme.textMuted }]}>
             Already have an account?{' '}
           </Text>
-          <TouchableOpacity onPress={onSignIn}>
+          <TouchableOpacity onPress={onSignIn} activeOpacity={0.7}>
             <Text style={styles.signInLink}>Sign In</Text>
           </TouchableOpacity>
         </View>
@@ -184,7 +171,7 @@ const styles = StyleSheet.create({
   },
   contentSection: {
     paddingHorizontal: 24,
-    paddingBottom: 32,
+    paddingBottom: 36,
     alignItems: 'center'
   },
   heading: {
@@ -200,7 +187,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 21,
     paddingHorizontal: 8,
-    marginBottom: 24
+    marginBottom: 28
   },
   primaryButton: {
     flexDirection: 'row',
@@ -210,7 +197,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 52,
     borderRadius: 26,
-    marginBottom: 12,
+    marginBottom: 20,
     shadowColor: '#00A859',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
@@ -221,20 +208,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700'
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    height: 46,
-    borderRadius: 23,
-    borderWidth: 1,
-    marginBottom: 20
-  },
-  secondaryButtonText: {
-    fontSize: 14,
-    fontWeight: '600'
   },
   footerRow: {
     flexDirection: 'row',

@@ -91,7 +91,6 @@ const MainApp: React.FC = () => {
         <OnboardingScreen
           onGetStarted={() => setAuthStep('login')}
           onSignIn={() => setAuthStep('login')}
-          onExploreNearby={() => setAuthStep('guest_explore')}
         />
       </SafeAreaView>
     );
@@ -101,7 +100,13 @@ const MainApp: React.FC = () => {
     return (
       <SafeAreaView style={[styles.safeContainer, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
-        <LoginScreen onBackToExplore={() => setAuthStep('onboarding')} />
+        <LoginScreen
+          onBackToOnboarding={() => setAuthStep('onboarding')}
+          onEnterAsGuest={() => {
+            setAuthStep('guest_explore');
+            setCurrentTab('rooms');
+          }}
+        />
       </SafeAreaView>
     );
   }

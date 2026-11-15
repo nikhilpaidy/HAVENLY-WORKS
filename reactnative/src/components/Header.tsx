@@ -33,7 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
   onPressLocation
 }) => {
   const { theme, isDark } = useTheme();
-  const { user, isGuest } = useAuth();
+  const { user } = useAuth();
 
   const effectiveCount = unreadNotifsCount ?? unreadCount ?? 0;
   const handleNotifPress = onOpenNotifications || onPressNotifications;
@@ -71,28 +71,31 @@ export const Header: React.FC<HeaderProps> = ({
           </TouchableOpacity>
         )}
 
-        {locationName && onPressLocation ? (
-          <TouchableOpacity onPress={onPressLocation} style={[styles.locationPill, { backgroundColor: isDark ? '#162032' : '#F1F5F9' }]} activeOpacity={0.8}>
-            <Ionicons name="location-sharp" size={13} color="#00A859" style={{ marginRight: 3 }} />
-            <Text style={[styles.locationText, { color: theme.textPrimary }]} numberOfLines={1}>
-              {locationName}
+        <View style={styles.titleWrap}>
+          {title && (
+            <Text style={[styles.title, { color: theme.textPrimary }]} numberOfLines={1}>
+              {title}
             </Text>
-            <Ionicons name="chevron-down" size={13} color={theme.textMuted} style={{ marginLeft: 3 }} />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.titleWrap}>
-            {subtitle && (
-              <Text style={styles.subtitle}>
-                {subtitle.toUpperCase()}
+          )}
+
+          {locationName && onPressLocation ? (
+            <TouchableOpacity
+              onPress={onPressLocation}
+              style={styles.locationSelectorRow}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="location-sharp" size={13} color="#00A859" style={{ marginRight: 3 }} />
+              <Text style={[styles.locationSelectorText, { color: theme.textSecondary }]} numberOfLines={1}>
+                {locationName}
               </Text>
-            )}
-            {title && (
-              <Text style={[styles.title, { color: theme.textPrimary }]} numberOfLines={1}>
-                {title}
-              </Text>
-            )}
-          </View>
-        )}
+              <Ionicons name="chevron-down" size={12} color={theme.textMuted} style={{ marginLeft: 2 }} />
+            </TouchableOpacity>
+          ) : subtitle ? (
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
       </View>
 
       <View style={styles.rightRow}>
@@ -169,30 +172,29 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#FFFFFF'
   },
-  locationPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16
-  },
-  locationText: {
-    fontSize: 12,
-    fontWeight: '700'
-  },
   titleWrap: {
-    justifyContent: 'center'
-  },
-  subtitle: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    color: '#00A859',
-    marginBottom: 2
+    justifyContent: 'center',
+    flex: 1
   },
   title: {
     fontSize: 18,
-    fontWeight: '800'
+    fontWeight: '800',
+    letterSpacing: -0.3
+  },
+  locationSelectorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2
+  },
+  locationSelectorText: {
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  subtitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#00A859',
+    marginTop: 2
   },
   rightRow: {
     flexDirection: 'row',

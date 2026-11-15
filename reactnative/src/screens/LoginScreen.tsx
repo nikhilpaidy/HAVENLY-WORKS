@@ -17,10 +17,14 @@ import { useTheme } from '../theme/ThemeContext';
 import { HavenlyLogo } from '../components/HavenlyLogo';
 
 interface LoginScreenProps {
-  onBackToExplore?: () => void;
+  onBackToOnboarding?: () => void;
+  onEnterAsGuest?: () => void;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToExplore }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({
+  onBackToOnboarding,
+  onEnterAsGuest
+}) => {
   const { login } = useAuth();
   const { theme, isDark } = useTheme();
 
@@ -63,10 +67,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToExplore }) => 
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {onBackToExplore && (
+          {onBackToOnboarding && (
             <TouchableOpacity
               style={[styles.backBtn, { borderColor: theme.cardBorder, backgroundColor: theme.card }]}
-              onPress={onBackToExplore}
+              onPress={onBackToOnboarding}
               activeOpacity={0.8}
             >
               <Ionicons name="chevron-back" size={20} color={theme.textPrimary} />
@@ -199,18 +203,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToExplore }) => 
             </TouchableOpacity>
           </View>
 
-          {onBackToExplore && (
+          {onEnterAsGuest && (
             <TouchableOpacity
               style={[styles.guestCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
-              onPress={onBackToExplore}
+              onPress={onEnterAsGuest}
               activeOpacity={0.85}
             >
               <View style={styles.guestIconBox}>
                 <Ionicons name="compass-outline" size={18} color="#00A859" />
               </View>
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={[styles.guestCardTitle, { color: theme.textPrimary }]}>Continue as Guest</Text>
-                <Text style={[styles.guestCardSub, { color: theme.textMuted }]}>Explore public workspaces and hubs nearby</Text>
+                <Text style={[styles.guestCardTitle, { color: theme.textPrimary }]}>Enter as Guest</Text>
+                <Text style={[styles.guestCardSub, { color: theme.textMuted }]}>Explore public workspaces, desks & meeting rooms</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
             </TouchableOpacity>
