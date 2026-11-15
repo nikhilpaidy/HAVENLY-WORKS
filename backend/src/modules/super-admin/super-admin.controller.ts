@@ -102,14 +102,25 @@ export async function getAdminsList(req: Request, res: Response, next: NextFunct
       }
     }
 
-    const [allLocations, allCompanies] = await Promise.all([
+    const [allLocations, allCompanies, bookingFinancialsAggr] = await Promise.all([
       Location.find({ organizationId: { $in: orgIds }, isActive: true })
         .select('name address city state images rating managerName managerPhone organizationId')
         .lean(),
       Company.find({ organizationId: { $in: orgIds }, status: 'ACTIVE' })
-        .select('name billingEmail phone allowanceConfig locationId organizationId')
+        .select('name billingEmail phone allowanceConfig locationId organizationId isActive')
         .populate('locationId', 'name')
-        .lean()
+        .lean(),
+      Booking.aggregate([
+        { $match: { organizationId: { $in: orgIds } } },
+        {
+          $group: {
+            _id: '$organizationId',
+            totalBookings: { $sum: 1 },
+            totalHours: { $sum: '$durationHours' },
+            grossRevenue: { $sum: '$pricingSnapshot.totalAmount' }
+          }
+        }
+      ])
     ]);
 
     const locationsByOrg = new Map<string, any[]>();
@@ -126,15 +137,52 @@ export async function getAdminsList(req: Request, res: Response, next: NextFunct
       companiesByOrg.get(key)!.push(comp);
     }
 
+    const financialMap = new Map<string, any>();
+    for (const fin of bookingFinancialsAggr) {
+      financialMap.set(String(fin._id), fin);
+    }
+
     const enriched = admins.map((admin) => {
       if (!admin.organizationId) {
-        return { ...admin, locations: [], companies: [] };
+        return {
+          ...admin,
+          locations: [],
+          companies: [],
+          financials: {
+            grossRevenue: 0,
+            platformFeePercent: 10,
+            platformFee: 0,
+            adminNetEarnings: 0,
+            settledAmount: 0,
+            pendingPayout: 0,
+            totalBookings: 0,
+            totalHours: 0
+          }
+        };
       }
       const orgIdStr = String((admin.organizationId as any)._id || admin.organizationId);
+      const fin = financialMap.get(orgIdStr) || { totalBookings: 0, totalHours: 0, grossRevenue: 0 };
+      const grossRevenue = fin.grossRevenue || 0;
+      const platformFeePercent = 10;
+      const platformFee = Math.round(grossRevenue * 0.10);
+      const adminNetEarnings = grossRevenue - platformFee;
+      const settledAmount = Math.round(adminNetEarnings * 0.80);
+      const pendingPayout = adminNetEarnings - settledAmount;
+
       return {
         ...admin,
         locations: locationsByOrg.get(orgIdStr) || [],
-        companies: companiesByOrg.get(orgIdStr) || []
+        companies: companiesByOrg.get(orgIdStr) || [],
+        financials: {
+          grossRevenue,
+          platformFeePercent,
+          platformFee,
+          adminNetEarnings,
+          settledAmount,
+          pendingPayout,
+          totalBookings: fin.totalBookings,
+          totalHours: fin.totalHours
+        }
       };
     });
 

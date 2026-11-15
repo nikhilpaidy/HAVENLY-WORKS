@@ -163,20 +163,21 @@ export async function getBookingsHandler(req: Request, res: Response, next: Next
     }
 
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
+    const limit = Math.min(2000, Math.max(1, parseInt(req.query.limit as string, 10) || 1000));
     const skip = (page - 1) * limit;
 
     let bookingQuery = Booking.find(query)
-      .populate('roomId', 'name code capacity hourlyRate dailyRate photos amenities workspaceType rating')
+      .populate('roomId', 'name code capacity hourlyRate dailyRate photos amenities workspaceType rating floor')
       .populate('locationId', 'name city timezone address managerName managerPhone paymentQrCodeUrl')
-      .populate('companyId', 'name')
+      .populate('organizationId', 'name slug email phone')
+      .populate('companyId', 'name billingEmail')
       .populate('bookedByUserId', 'name email')
       .sort({ startTime: -1 });
 
     if (req.query.page || req.query.limit) {
       bookingQuery = bookingQuery.skip(skip).limit(limit);
     } else {
-      bookingQuery = bookingQuery.limit(100);
+      bookingQuery = bookingQuery.limit(1000);
     }
 
     const bookings = await bookingQuery;

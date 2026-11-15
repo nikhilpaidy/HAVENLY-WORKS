@@ -31,6 +31,7 @@ export interface ICompany extends Document {
   };
   allowanceConfig: ICompanyAllowanceConfig;
   status: 'ACTIVE' | 'SUSPENDED';
+  isActive: boolean;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -134,6 +135,11 @@ const CompanySchema = new Schema<ICompany>(
       type: String,
       enum: ['ACTIVE', 'SUSPENDED'],
       default: 'ACTIVE',
+      index: true
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
       index: true
     },
     notes: String

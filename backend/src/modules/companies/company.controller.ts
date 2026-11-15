@@ -100,7 +100,9 @@ export async function createCompany(req: Request, res: Response, next: NextFunct
 
     const company = await Company.create({
       ...companyData,
-      organizationId
+      organizationId,
+      status: companyData.status || 'ACTIVE',
+      isActive: companyData.isActive !== false && companyData.status !== 'SUSPENDED'
     });
 
     const isAnnual = company.allowanceConfig?.allowancePeriodType !== 'MONTHLY';
@@ -193,7 +195,18 @@ export async function updateCompany(req: Request, res: Response, next: NextFunct
       throw new AppError('Unauthorized access to update this company', 403);
     }
 
-    const updated = await Company.findByIdAndUpdate(id, req.body, {
+    const updatePayload = { ...req.body };
+    if (updatePayload.status === 'SUSPENDED') {
+      updatePayload.isActive = false;
+    } else if (updatePayload.status === 'ACTIVE') {
+      updatePayload.isActive = true;
+    } else if (updatePayload.isActive === true) {
+      updatePayload.status = 'ACTIVE';
+    } else if (updatePayload.isActive === false) {
+      updatePayload.status = 'SUSPENDED';
+    }
+
+    const updated = await Company.findByIdAndUpdate(id, updatePayload, {
       new: true,
       runValidators: true
     });

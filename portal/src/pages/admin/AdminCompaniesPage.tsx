@@ -38,6 +38,7 @@ interface Company {
     currency: string;
     resetDayOfMonth?: number;
   };
+  status?: string;
   isActive: boolean;
   createdAt: string;
 }
@@ -396,12 +397,12 @@ export const AdminCompaniesPage: React.FC = () => {
                   </div>
                   <span
                     className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                      company.isActive
+                      company.status === 'ACTIVE' || company.isActive !== false
                         ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                         : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
                     }`}
                   >
-                    {company.isActive ? 'Active Plan' : 'Suspended'}
+                    {company.status === 'ACTIVE' || company.isActive !== false ? 'Active Plan' : 'Suspended'}
                   </span>
                 </div>
 

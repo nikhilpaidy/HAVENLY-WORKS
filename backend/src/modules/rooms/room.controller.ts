@@ -372,10 +372,22 @@ export async function toggleRoomLike(req: Request, res: Response, next: NextFunc
 
 export async function uploadRoomPhotoHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const { image, images } = req.body;
-    const uploadsDir = path.join(process.cwd(), 'uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
+    const { image, images, adminFolder, hubFolder, imageName, locationId, organizationId } = req.body;
+    const uploadsBaseDir = path.join(process.cwd(), 'uploads');
+
+    const adminSegment = (adminFolder || organizationId || req.user?.organizationId || 'admin-spaces')
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, '-');
+
+    const hubSegment = (hubFolder || locationId || 'main-hub')
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, '-');
+
+    const targetDir = path.join(uploadsBaseDir, adminSegment, hubSegment);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
     }
 
     const itemsToSave: string[] = [];
@@ -390,16 +402,22 @@ export async function uploadRoomPhotoHandler(req: Request, res: Response, next: 
     }
 
     const uploadedUrls: string[] = [];
+    const baseName = (imageName || 'room')
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, '-');
+
     for (let i = 0; i < itemsToSave.length; i++) {
       const raw = itemsToSave[i];
       const match = raw.match(/^data:image\/(\w+);base64,/);
       const ext = match ? match[1] : 'jpg';
       const base64Data = raw.replace(/^data:image\/\w+;base64,/, '');
       const buffer = Buffer.from(base64Data, 'base64');
-      const uniqueName = `room-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
-      const destPath = path.join(uploadsDir, uniqueName);
+      const uuid5 = Math.random().toString(36).substring(2, 7);
+      const uniqueName = `${baseName}-${uuid5}.${ext}`;
+      const destPath = path.join(targetDir, uniqueName);
       await fs.promises.writeFile(destPath, buffer);
-      uploadedUrls.push(`/uploads/${uniqueName}`);
+      uploadedUrls.push(`/uploads/${adminSegment}/${hubSegment}/${uniqueName}`);
     }
 
     return apiSuccess(
